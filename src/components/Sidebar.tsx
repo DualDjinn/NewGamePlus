@@ -1,6 +1,6 @@
 import { useState, useEffect, type ComponentType } from "react";
 import type { Section, Game } from "../types";
-import { HomeIcon, LibraryIcon, HeartIcon, GearIcon, TagIcon, CastIcon } from "./icons";
+import { HomeIcon, LibraryIcon, HeartIcon, GearIcon, TagIcon, CastIcon, MaximizeIcon, MinimizeIcon } from "./icons";
 import { VinylPlayer } from "./VinylPlayer";
 import "./Sidebar.css";
 
@@ -19,6 +19,8 @@ interface Props {
   profiles?: string[];
   onProfileSwitch?: (name: string) => void;
   onOpenCast?: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 const NAV_ITEMS: { section: Section; icon: ComponentType; label: string }[] = [
@@ -42,6 +44,8 @@ export default function Sidebar({
   profiles = [],
   onProfileSwitch,
   onOpenCast,
+  isFullscreen = false,
+  onToggleFullscreen,
 }: Props) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const isImmersive = layoutStyle === "immersive";
@@ -100,50 +104,53 @@ export default function Sidebar({
                 }}
               >
                 <span className="sidebar-icon"><TagIcon /></span>
+                {!isCollapsed && <span className="sidebar-label">Géneros</span>}
               </a>
             </li>
           )}
         </ul>
       </nav>
 
-      {!isCollapsed && genres.length > 0 && (
-        <div className="sidebar-genres">
-          <div className="sidebar-genres-header">
-            GÉNEROS {company ? `• ${company}` : ""}
+      <div className="sidebar-footer">
+        {!isCollapsed && genres.length > 0 && (
+          <div className="sidebar-genres">
+            <span className="sidebar-genres-title">
+              GÉNEROS {company ? `• ${company}` : ""}
+            </span>
+            <ul>
+              {genres.slice(0, 10).map((g) => (
+                <li key={g.name}>
+                  <a
+                    href="#"
+                    className={section === "genre" && selectedGenre === g.name ? "active" : ""}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSelectGenre(g.name);
+                    }}
+                  >
+                    <span>{g.name}</span>
+                    <span className="sidebar-genre-count">{g.count}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul>
-            {genres.map((g) => (
-              <li key={g.name}>
-                <a
-                  href="#"
-                  className={section === "genre" && selectedGenre === g.name ? "active" : ""}
-                  title={g.name}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onSelectGenre(g.name);
-                  }}
-                >
-                  <span className="sidebar-label">{g.name}</span>
-                  <span className="sidebar-genre-count">{g.count}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        )}
 
-      <div className="sidebar-bottom">
+        {isImmersive && (
+          <div className="sidebar-vinyl-wrap">
+            <VinylPlayer games={games} mode="collapsed" />
+          </div>
+        )}
+
         {!isImmersive && (
           <>
             <div className="sidebar-vinyl-wrap">
-              <VinylPlayer games={games} collapsed={isCollapsed} mode={isCollapsed ? "collapsed" : "sidebar"} />
+              <VinylPlayer games={games} mode={isCollapsed ? "collapsed" : "sidebar"} />
             </div>
-
-            <div className="sidebar-divider" />
-
             <a
               href="#"
-              className={`sidebar-settings ${section === "settings" ? "active" : ""}`}
+              className={`sidebar-footer-link ${section === "settings" ? "active" : ""}`}
               title={isCollapsed ? "Configuración" : undefined}
               onClick={(e) => {
                 e.preventDefault();
@@ -158,6 +165,18 @@ export default function Sidebar({
 
         {isImmersive && (
           <div className="sidebar-immersive-bottom-actions">
+            {onToggleFullscreen && (
+              <button
+                type="button"
+                className="sidebar-fullscreen-btn"
+                onClick={onToggleFullscreen}
+                title={isFullscreen ? "Salir de pantalla completa (F11)" : "Pantalla completa (F11)"}
+                aria-label="Pantalla completa"
+              >
+                {isFullscreen ? <MinimizeIcon /> : <MaximizeIcon />}
+              </button>
+            )}
+
             {onOpenCast && (
               <button
                 type="button"

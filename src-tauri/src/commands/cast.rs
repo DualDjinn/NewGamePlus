@@ -210,44 +210,6 @@ pub fn discover_lan_devices() -> Result<Vec<LanDevice>, String> {
         }
     }
 
-    // Presets sugeridos
-    let has_xiaomi = devices.iter().any(|d| d.name.contains("Xiaomi") || d.name.contains("Android TV"));
-    let has_firetv = devices.iter().any(|d| d.name.contains("Fire TV"));
-    let has_lg = devices.iter().any(|d| d.name.contains("LG"));
-
-    if !has_xiaomi {
-        devices.insert(0, LanDevice {
-            id: "preset-xiaomi-tv-stick".into(),
-            name: "Xiaomi TV Stick (Android TV)".into(),
-            ip: "Detección por Moonlight".into(),
-            device_type: "stick".into(),
-            status: "Listo para emparejar".into(),
-            protocol: "Moonlight (60 FPS Ultra-Low Latency)".into(),
-        });
-    }
-
-    if !has_firetv {
-        devices.insert(1, LanDevice {
-            id: "preset-fire-tv-stick".into(),
-            name: "Amazon Fire TV Stick".into(),
-            ip: "Detección por Moonlight".into(),
-            device_type: "stick".into(),
-            status: "Listo para emparejar".into(),
-            protocol: "Moonlight (60 FPS Ultra-Low Latency)".into(),
-        });
-    }
-
-    if !has_lg {
-        devices.push(LanDevice {
-            id: "preset-lg-tv".into(),
-            name: "LG UHD TV 4K (webOS)".into(),
-            ip: "Inalámbrico (Miracast)".into(),
-            device_type: "tv".into(),
-            status: "Disponible para proyectar".into(),
-            protocol: "Miracast Directo (Sin Apps)".into(),
-        });
-    }
-
     Ok(devices)
 }
 

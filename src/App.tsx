@@ -16,6 +16,8 @@ import {
   launchGame,
   setTheme,
   setLayoutStyle,
+  isWindowFullscreen,
+  toggleWindowFullscreen,
 } from "./lib/tauri";
 import HeroBanner from "./components/HeroBanner";
 import CategoryRow from "./components/CategoryRow";
@@ -26,7 +28,7 @@ import Sidebar from "./components/Sidebar";
 import CastModal from "./components/CastModal";
 import { VinylPlayer } from "./components/VinylPlayer";
 import { MusicProvider } from "./context/MusicContext";
-import { GearIcon, SearchIcon, CloseIcon, CastIcon } from "./components/icons";
+import { GearIcon, SearchIcon, CloseIcon, CastIcon, MaximizeIcon, MinimizeIcon } from "./components/icons";
 import { useGamepad } from "./hooks/useGamepad";
 import { getPlatformCompany, getPlatformDisplayName, PLATFORM_COLORS } from "./lib/platforms";
 import { getGenreTheme } from "./lib/genreThemes";
@@ -70,7 +72,28 @@ function App() {
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [randomHomeCategories, setRandomHomeCategories] = useState<string[]>([]);
   const [castModalOpen, setCastModalOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const prevSectionRef = useRef<Section>(section);
+
+  // Sync and toggle fullscreen
+  const handleToggleFullscreen = useCallback(async () => {
+    const full = await toggleWindowFullscreen();
+    setIsFullscreen(full);
+  }, []);
+
+  // Monitor F11 key to toggle fullscreen
+  useEffect(() => {
+    isWindowFullscreen().then(setIsFullscreen).catch(() => {});
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F11") {
+        e.preventDefault();
+        handleToggleFullscreen();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleToggleFullscreen]);
 
   // Close profile dropdown on outside click
   useEffect(() => {
@@ -829,6 +852,8 @@ function App() {
         profiles={profiles}
         onProfileSwitch={handleProfileSwitch}
         onOpenCast={() => setCastModalOpen(true)}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={handleToggleFullscreen}
       />
 
       <div className="app-main">
@@ -935,6 +960,16 @@ function App() {
               <VinylPlayer games={games} mode="navbar" />
             ) : (
               <div className="app-header-actions">
+                <button
+                  type="button"
+                  className="app-fullscreen-btn"
+                  onClick={handleToggleFullscreen}
+                  title={isFullscreen ? "Salir de pantalla completa (F11)" : "Pantalla completa (F11)"}
+                  aria-label="Pantalla completa"
+                >
+                  {isFullscreen ? <MinimizeIcon /> : <MaximizeIcon />}
+                </button>
+
                 <button
                   type="button"
                   className="app-cast-btn"

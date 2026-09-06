@@ -235,7 +235,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
         <div className="cast-modal-body">
           {activeTab === "devices" && (
             <div className="cast-devices-section">
-              {/* Tarjeta Destacada: Xiaomi TV Stick & Fire TV Stick (Moonlight + Sunshine Portable) */}
+              {/* Tarjeta Destacada: Streaming por Moonlight (Smart TVs, TV Sticks, Tablets y Celulares) */}
               <div className="cast-device-card featured">
                 <div className="cast-device-card-header">
                   <div className="cast-device-icon-box stick">
@@ -243,7 +243,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
                   </div>
                   <div className="cast-device-info">
                     <div className="cast-device-title-row">
-                      <h3 className="cast-device-name">Xiaomi TV Stick & Amazon Fire TV</h3>
+                      <h3 className="cast-device-name">Smart TV / TV Stick (Moonlight)</h3>
                       <span className="cast-badge recommended">Recomendado (60 FPS)</span>
                       {sunshineStatus?.is_running && (
                         <span className="cast-badge status-online">
@@ -252,7 +252,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
                       )}
                     </div>
                     <p className="cast-device-protocol">
-                      Modo Ultra-Low Latency con <strong>Moonlight</strong> y <strong>Sunshine Portable</strong>
+                      Modo Ultra-Low Latency con <strong>Moonlight</strong> (compatible con Fire TV, Android TV, webOS, iOS y PC)
                     </p>
                   </div>
                 </div>
@@ -271,44 +271,50 @@ export default function CastModal({ isOpen, onClose }: Props) {
                       </span>
                     </div>
 
-                    {!sunshineStatus?.is_installed ? (
-                      <button
-                        type="button"
-                        className="cast-download-sunshine-btn"
-                        onClick={handleDownloadSunshine}
-                        disabled={downloadingSunshine}
-                      >
-                        {downloadingSunshine ? "Descargando Sunshine..." : "📥 Descargar Sunshine Portable (1 Clic)"}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className={`cast-server-toggle-btn ${sunshineStatus.is_running ? "running" : ""}`}
-                        onClick={handleToggleServer}
-                        disabled={togglingServer}
-                      >
-                        {togglingServer
-                          ? "Procesando..."
-                          : sunshineStatus.is_running
-                          ? "⏹ Detener Servidor"
-                          : "▶ Iniciar Transmisión a TV"}
-                      </button>
-                    )}
+                    <div className="cast-sunshine-btns">
+                      {sunshineStatus?.is_installed ? (
+                        <button
+                          type="button"
+                          className={`cast-server-toggle-btn ${sunshineStatus?.is_running ? "stop" : "start"}`}
+                          onClick={handleToggleServer}
+                          disabled={togglingServer}
+                        >
+                          {togglingServer
+                            ? "Procesando..."
+                            : sunshineStatus?.is_running
+                            ? "⏹ Detener Servidor"
+                            : "▶ Iniciar Transmisión a TV"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="cast-server-toggle-btn download"
+                          onClick={handleDownloadSunshine}
+                          disabled={downloadingSunshine}
+                        >
+                          {downloadingSunshine
+                            ? "Descargando Sunshine..."
+                            : "⚡ Descargar Sunshine Portable (1 Clic)"}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  {serverMessage && <div className="cast-alert info">{serverMessage}</div>}
+                  {serverMessage && (
+                    <div className="cast-server-toast">{serverMessage}</div>
+                  )}
 
                   <div className="cast-steps-mini">
                     <div className="cast-step-item">
                       <span className="cast-step-num">1</span>
                       <span>
-                        Pulsa <strong>"▶ Iniciar Transmisión a TV"</strong> arriba (inicia Sunshine en segundo plano).
+                        Pulsa <strong>"▶ Iniciar Transmisión a TV"</strong> arriba (inicia el servidor en segundo plano).
                       </span>
                     </div>
                     <div className="cast-step-item">
                       <span className="cast-step-num">2</span>
                       <span>
-                        Abre <strong>Moonlight</strong> en tu Fire TV o Xiaomi Stick; detectará tu PC (<strong>{networkInfo?.ip || "tu IP"}</strong>). Al pulsarla, te mostrará un <strong>PIN de 4 dígitos</strong>.
+                        Abre la app <strong>Moonlight</strong> en tu televisor o dispositivo; detectará tu PC (<strong>{networkInfo?.ip || "tu IP"}</strong>). Al pulsarla, te mostrará un <strong>PIN de 4 dígitos</strong>.
                       </span>
                     </div>
                     <div className="cast-step-item">
@@ -344,7 +350,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
                 </div>
               </div>
 
-              {/* Tarjeta: LG UHD TV 4K (Miracast / Conexión Directa) */}
+              {/* Tarjeta: Proyección inalámbrica universal (Miracast) */}
               <div className="cast-device-card">
                 <div className="cast-device-card-header">
                   <div className="cast-device-icon-box tv">
@@ -355,11 +361,11 @@ export default function CastModal({ isOpen, onClose }: Props) {
                   </div>
                   <div className="cast-device-info">
                     <div className="cast-device-title-row">
-                      <h3 className="cast-device-name">LG UHD 4K TV (webOS)</h3>
+                      <h3 className="cast-device-name">Smart TV / Pantalla Inalámbrica (Miracast)</h3>
                       <span className="cast-badge">Miracast Directo</span>
                     </div>
                     <p className="cast-device-protocol">
-                      Proyección inalámbrica nativa de Windows (Sin necesidad de instalar apps)
+                      Proyección inalámbrica nativa de Windows a cualquier Smart TV compatible (LG, Samsung, Sony, Roku, etc.)
                     </p>
                   </div>
                   <button
@@ -372,24 +378,22 @@ export default function CastModal({ isOpen, onClose }: Props) {
                 </div>
               </div>
 
-              {/* Otros dispositivos detectados */}
+              {/* Dispositivos reales detectados en la red local */}
               <div className="cast-other-devices">
-                <h4 className="cast-section-subhead">Otros dispositivos activos en tu red Wi-Fi:</h4>
+                <h4 className="cast-section-subhead">Dispositivos detectados en tu red Wi-Fi:</h4>
                 <div className="cast-devices-grid">
-                  {devices
-                    .filter((d) => !d.id.startsWith("preset-"))
-                    .map((device) => (
-                      <div key={device.id} className="cast-device-chip">
-                        <span className="cast-chip-dot" />
-                        <div className="cast-chip-info">
-                          <span className="cast-chip-name">{device.name}</span>
-                          <span className="cast-chip-ip">{device.ip} • {device.protocol}</span>
-                        </div>
+                  {devices.map((device) => (
+                    <div key={device.id} className="cast-device-chip">
+                      <span className="cast-chip-dot" />
+                      <div className="cast-chip-info">
+                        <span className="cast-chip-name">{device.name}</span>
+                        <span className="cast-chip-ip">{device.ip} • {device.protocol}</span>
                       </div>
-                    ))}
-                  {devices.filter((d) => !d.id.startsWith("preset-")).length === 0 && !loadingDevices && (
+                    </div>
+                  ))}
+                  {devices.length === 0 && !loadingDevices && (
                     <div className="cast-empty-devices">
-                      No se detectaron otros receptores adicionales en este escaneo.
+                      No se detectaron receptores multimedia adicionales automáticamente. Pulsa "Buscar dispositivos" para escanear de nuevo.
                     </div>
                   )}
                 </div>

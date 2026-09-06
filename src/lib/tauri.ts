@@ -387,3 +387,24 @@ export async function downloadSunshinePortable(): Promise<string> {
 export async function pairMoonlightPin(pin: string): Promise<string> {
   return invoke<string>("pair_moonlight_pin", { pin });
 }
+
+export async function isWindowFullscreen(): Promise<boolean> {
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    return await getCurrentWindow().isFullscreen();
+  } catch {
+    return false;
+  }
+}
+
+export async function toggleWindowFullscreen(): Promise<boolean> {
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    const win = getCurrentWindow();
+    const isFull = await win.isFullscreen();
+    await win.setFullscreen(!isFull);
+    return !isFull;
+  } catch {
+    return false;
+  }
+}

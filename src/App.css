@@ -1365,6 +1365,29 @@
   gap: 12px;
 }
 
+.app-fullscreen-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.app-fullscreen-btn:hover {
+  background: rgba(var(--accent-rgb, 229, 160, 13), 0.16);
+  border-color: var(--accent, #e5a00d);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(var(--accent-rgb, 229, 160, 13), 0.25);
+}
+
 .app-cast-btn {
   display: flex;
   align-items: center;

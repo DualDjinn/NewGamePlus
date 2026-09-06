@@ -204,6 +204,7 @@
   padding: 8px 0 4px;
 }
 
+.sidebar-fullscreen-btn,
 .sidebar-cast-btn {
   width: 36px;
   height: 36px;
@@ -219,6 +220,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+.sidebar-fullscreen-btn:hover,
 .sidebar-cast-btn:hover {
   background: rgba(var(--accent-rgb, 229, 160, 13), 0.18);
   border-color: var(--accent, #e5a00d);

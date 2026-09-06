@@ -116,3 +116,19 @@ export function CastIcon({ className }: { className?: string }) {
     </Icon>
   );
 }
+
+export function MaximizeIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+    </Icon>
+  );
+}
+
+export function MinimizeIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M4 14h6m0 0v6m0-6L3 21m17-7h-6m0 0v6m0-6l7 7M14 10h6m0 0V4m0 6l7-7M10 10H4m0 0V4m0 6L3 3" />
+    </Icon>
+  );
+}
