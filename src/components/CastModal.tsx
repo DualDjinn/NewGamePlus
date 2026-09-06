@@ -4,6 +4,9 @@ import {
   discoverLanDevices,
   openWirelessDisplay,
   checkSunshineStatus,
+  startSunshine,
+  stopSunshine,
+  downloadSunshinePortable,
   pairMoonlightPin,
   type CastNetworkInfo,
   type LanDevice,
@@ -27,6 +30,9 @@ export default function CastModal({ isOpen, onClose }: Props) {
   const [pinError, setPinError] = useState<string | null>(null);
   const [pairing, setPairing] = useState(false);
   const [copiedIp, setCopiedIp] = useState(false);
+  const [downloadingSunshine, setDownloadingSunshine] = useState(false);
+  const [togglingServer, setTogglingServer] = useState(false);
+  const [serverMessage, setServerMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"devices" | "controller" | "help">("devices");
 
   useEffect(() => {
@@ -38,9 +44,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
       .catch((e) => console.error("Error al obtener red:", e));
 
     // Comprobar estado de Sunshine
-    checkSunshineStatus()
-      .then(setSunshineStatus)
-      .catch((e) => console.error("Error Sunshine:", e));
+    refreshSunshineStatus();
 
     // Escanear dispositivos
     scanDevices();
@@ -53,6 +57,15 @@ export default function CastModal({ isOpen, onClose }: Props) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
+  const refreshSunshineStatus = async () => {
+    try {
+      const status = await checkSunshineStatus();
+      setSunshineStatus(status);
+    } catch (e) {
+      console.error("Error Sunshine:", e);
+    }
+  };
+
   const scanDevices = async () => {
     setLoadingDevices(true);
     try {
@@ -62,6 +75,39 @@ export default function CastModal({ isOpen, onClose }: Props) {
       console.error("Error escaneando dispositivos:", e);
     } finally {
       setLoadingDevices(false);
+    }
+  };
+
+  const handleToggleServer = async () => {
+    setTogglingServer(true);
+    setServerMessage(null);
+    try {
+      if (sunshineStatus?.is_running) {
+        const res = await stopSunshine();
+        setServerMessage(res);
+      } else {
+        const res = await startSunshine();
+        setServerMessage(res);
+      }
+      await refreshSunshineStatus();
+    } catch (err: any) {
+      setServerMessage(err?.toString() || "Error al cambiar estado del servidor");
+    } finally {
+      setTogglingServer(false);
+    }
+  };
+
+  const handleDownloadSunshine = async () => {
+    setDownloadingSunshine(true);
+    setServerMessage(null);
+    try {
+      const res = await downloadSunshinePortable();
+      setServerMessage(res);
+      await refreshSunshineStatus();
+    } catch (err: any) {
+      setServerMessage(err?.toString() || "Error descargando Sunshine Portable");
+    } finally {
+      setDownloadingSunshine(false);
     }
   };
 
@@ -77,6 +123,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
       const res = await pairMoonlightPin(pin.trim());
       setPinMessage(res);
       setPin("");
+      await refreshSunshineStatus();
     } catch (err: any) {
       setPinError(err?.toString() || "Error al vincular PIN");
     } finally {
@@ -188,7 +235,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
         <div className="cast-modal-body">
           {activeTab === "devices" && (
             <div className="cast-devices-section">
-              {/* Tarjeta Destacada: Xiaomi TV Stick & Fire TV Stick (Moonlight) */}
+              {/* Tarjeta Destacada: Xiaomi TV Stick & Fire TV Stick (Moonlight + Sunshine Portable) */}
               <div className="cast-device-card featured">
                 <div className="cast-device-card-header">
                   <div className="cast-device-icon-box stick">
@@ -199,30 +246,76 @@ export default function CastModal({ isOpen, onClose }: Props) {
                       <h3 className="cast-device-name">Xiaomi TV Stick & Amazon Fire TV</h3>
                       <span className="cast-badge recommended">Recomendado (60 FPS)</span>
                       {sunshineStatus?.is_running && (
-                        <span className="cast-badge" style={{ background: "rgba(16, 185, 129, 0.2)", color: "#6ee7b7" }}>
-                          ● Host Activo
+                        <span className="cast-badge status-online">
+                          ● Servidor Activo
                         </span>
                       )}
                     </div>
                     <p className="cast-device-protocol">
-                      Modo Ultra-Low Latency con <strong>Moonlight Game Streaming</strong>
+                      Modo Ultra-Low Latency con <strong>Moonlight</strong> y <strong>Sunshine Portable</strong>
                     </p>
                   </div>
                 </div>
 
                 <div className="cast-device-body">
+                  {/* Barra de control de servidor Sunshine Portable */}
+                  <div className="cast-sunshine-control-bar">
+                    <div className="cast-sunshine-status-info">
+                      <span className={`cast-status-dot ${sunshineStatus?.is_running ? "online" : "offline"}`} />
+                      <span className="cast-sunshine-status-text">
+                        {sunshineStatus?.is_running
+                          ? "Servidor de Transmisión ACTIVO"
+                          : sunshineStatus?.is_installed
+                          ? "Sunshine Portable listo para iniciar"
+                          : "Sunshine Portable no descargado"}
+                      </span>
+                    </div>
+
+                    {!sunshineStatus?.is_installed ? (
+                      <button
+                        type="button"
+                        className="cast-download-sunshine-btn"
+                        onClick={handleDownloadSunshine}
+                        disabled={downloadingSunshine}
+                      >
+                        {downloadingSunshine ? "Descargando Sunshine..." : "📥 Descargar Sunshine Portable (1 Clic)"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className={`cast-server-toggle-btn ${sunshineStatus.is_running ? "running" : ""}`}
+                        onClick={handleToggleServer}
+                        disabled={togglingServer}
+                      >
+                        {togglingServer
+                          ? "Procesando..."
+                          : sunshineStatus.is_running
+                          ? "⏹ Detener Servidor"
+                          : "▶ Iniciar Transmisión a TV"}
+                      </button>
+                    )}
+                  </div>
+
+                  {serverMessage && <div className="cast-alert info">{serverMessage}</div>}
+
                   <div className="cast-steps-mini">
                     <div className="cast-step-item">
                       <span className="cast-step-num">1</span>
-                      <span>Instala <strong>Moonlight</strong> gratis en tu Stick (Play Store / Amazon Appstore).</span>
+                      <span>
+                        Pulsa <strong>"▶ Iniciar Transmisión a TV"</strong> arriba (inicia Sunshine en segundo plano).
+                      </span>
                     </div>
                     <div className="cast-step-item">
                       <span className="cast-step-num">2</span>
-                      <span>Abre Moonlight en la tele; detectará tu PC (<strong>{networkInfo?.ip || "tu IP"}</strong>) y te mostrará un <strong>PIN de 4 dígitos</strong>.</span>
+                      <span>
+                        Abre <strong>Moonlight</strong> en tu Fire TV o Xiaomi Stick; detectará tu PC (<strong>{networkInfo?.ip || "tu IP"}</strong>). Al pulsarla, te mostrará un <strong>PIN de 4 dígitos</strong>.
+                      </span>
                     </div>
                     <div className="cast-step-item">
                       <span className="cast-step-num">3</span>
-                      <span>Ingresa ese PIN aquí abajo para vincular tu televisor en 1 segundo:</span>
+                      <span>
+                        Ingresa ese PIN aquí abajo y pulsa <strong>Vincular Dispositivo</strong>:
+                      </span>
                     </div>
                   </div>
 
@@ -339,21 +432,21 @@ export default function CastModal({ isOpen, onClose }: Props) {
                 <h3>Preguntas Frecuentes sobre Transmisión</h3>
                 <div className="cast-faq-item">
                   <h4>¿Qué resolución y tasa de refresco obtendré?</h4>
-                  <p>Hasta 1080p o 4K a 60 FPS fluidos con decodificación por hardware.</p>
+                  <p>Hasta 1080p o 4K a 60 FPS fluidos con decodificación por hardware de tu placa de video.</p>
                 </div>
                 <div className="cast-faq-item">
-                  <h4>¿Por qué usar Moonlight en lugar de Google Cast / Chromecast?</h4>
+                  <h4>¿Por qué usar Moonlight + Sunshine Portable?</h4>
                   <p>
-                    Chromecast normal añade entre 2 y 4 segundos de retraso obligatorio. Moonlight utiliza streaming en tiempo real diseñado específicamente para videojuegos, con menos de 15 ms de latencia.
+                    Moonlight y Sunshine utilizan el protocolo de streaming en tiempo real más rápido del mundo, con menos de 15 ms de retraso. Como es portable, vive dentro de la carpeta de NewGamePlus y no ensucia tu instalación de Windows.
                   </p>
                 </div>
                 <div className="cast-faq-item">
-                  <h4>Servidor Sunshine</h4>
+                  <h4>Panel web local de Sunshine</h4>
                   <p>
-                    Para transmitir con Moonlight, tu PC ejecuta o interactúa con el protocolo Sunshine. Si necesitas acceder a su panel avanzado, puedes abrir{" "}
+                    Si alguna vez deseas ver estadísticas avanzadas o gestionar clientes vinculados, puedes abrir{" "}
                     <a href="https://localhost:47990" target="_blank" rel="noreferrer">
                       https://localhost:47990
-                    </a>.
+                    </a> con el servidor encendido.
                   </p>
                 </div>
               </div>

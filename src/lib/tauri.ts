@@ -349,9 +349,11 @@ export interface LanDevice {
 }
 
 export interface SunshineStatus {
+  is_installed: boolean;
   is_running: boolean;
   web_ui_url: string;
   version: string | null;
+  exe_path: string | null;
 }
 
 export async function getCastNetworkInfo(): Promise<CastNetworkInfo> {
@@ -368,6 +370,18 @@ export async function discoverLanDevices(): Promise<LanDevice[]> {
 
 export async function checkSunshineStatus(): Promise<SunshineStatus> {
   return invoke<SunshineStatus>("check_sunshine_status");
+}
+
+export async function startSunshine(): Promise<string> {
+  return invoke<string>("start_sunshine");
+}
+
+export async function stopSunshine(): Promise<string> {
+  return invoke<string>("stop_sunshine");
+}
+
+export async function downloadSunshinePortable(): Promise<string> {
+  return invoke<string>("download_sunshine_portable");
 }
 
 export async function pairMoonlightPin(pin: string): Promise<string> {

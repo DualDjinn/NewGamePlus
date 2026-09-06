@@ -194,6 +194,9 @@ fn main() {
             commands::open_wireless_display,
             commands::discover_lan_devices,
             commands::check_sunshine_status,
+            commands::start_sunshine,
+            commands::stop_sunshine,
+            commands::download_sunshine_portable,
             commands::pair_moonlight_pin
         ])
         .run(tauri::generate_context!())

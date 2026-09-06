@@ -318,10 +318,94 @@
   border: 1px solid rgba(var(--accent-rgb, 229, 160, 13), 0.3);
 }
 
+.cast-badge.status-online {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.cast-status-dot.offline {
+  background: #64748b;
+  box-shadow: none;
+}
+
 .cast-device-protocol {
   margin: 3px 0 0;
   font-size: 12px;
   color: #94a3b8;
+}
+
+/* Barra de control de Sunshine Portable */
+.cast-sunshine-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.cast-sunshine-status-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cast-sunshine-status-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.cast-server-toggle-btn {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35));
+  color: #6ee7b7;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cast-server-toggle-btn:hover:not(:disabled) {
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+
+.cast-server-toggle-btn.running {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(185, 28, 28, 0.3));
+  color: #fca5a5;
+}
+
+.cast-download-sunshine-btn {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent, #e5a00d), #d97706);
+  color: #000;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cast-download-sunshine-btn:hover:not(:disabled) {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.cast-alert.info {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #7dd3fc;
 }
 
 /* Pasos rápidos */
