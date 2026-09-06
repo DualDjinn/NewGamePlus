@@ -23,9 +23,10 @@ import GameCard from "./components/GameCard";
 import GameDetailModal from "./components/GameDetailModal";
 import Settings from "./components/Settings";
 import Sidebar from "./components/Sidebar";
+import CastModal from "./components/CastModal";
 import { VinylPlayer } from "./components/VinylPlayer";
 import { MusicProvider } from "./context/MusicContext";
-import { GearIcon, SearchIcon, CloseIcon } from "./components/icons";
+import { GearIcon, SearchIcon, CloseIcon, CastIcon } from "./components/icons";
 import { useGamepad } from "./hooks/useGamepad";
 import { getPlatformCompany, getPlatformDisplayName, PLATFORM_COLORS } from "./lib/platforms";
 import { getGenreTheme } from "./lib/genreThemes";
@@ -68,6 +69,7 @@ function App() {
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [randomHomeCategories, setRandomHomeCategories] = useState<string[]>([]);
+  const [castModalOpen, setCastModalOpen] = useState(false);
   const prevSectionRef = useRef<Section>(section);
 
   // Close profile dropdown on outside click
@@ -826,6 +828,7 @@ function App() {
         currentProfile={currentProfile}
         profiles={profiles}
         onProfileSwitch={handleProfileSwitch}
+        onOpenCast={() => setCastModalOpen(true)}
       />
 
       <div className="app-main">
@@ -931,44 +934,57 @@ function App() {
             {layoutStyle === "immersive" ? (
               <VinylPlayer games={games} mode="navbar" />
             ) : (
-              <div className="app-profile-wrap">
-                <div
-                  className="app-profile"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setProfileDropdownOpen((v) => !v);
-                  }}
-                  title={`Perfil: ${currentProfile}`}
+              <div className="app-header-actions">
+                <button
+                  type="button"
+                  className="app-cast-btn"
+                  onClick={() => setCastModalOpen(true)}
+                  title="Transmitir a TV / Dispositivo"
+                  aria-label="Transmitir a TV"
                 >
-                  {currentProfile.charAt(0).toUpperCase()}
-                </div>
-                {profileDropdownOpen && (
-                  <div className="app-profile-dropdown" onClick={(e) => e.stopPropagation()}>
-                    <div className="app-profile-dropdown-header">Perfil actual</div>
-                    {profiles.map((p) => (
+                  <CastIcon />
+                  <span className="app-cast-btn-label">Transmitir</span>
+                </button>
+
+                <div className="app-profile-wrap">
+                  <div
+                    className="app-profile"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setProfileDropdownOpen((v) => !v);
+                    }}
+                    title={`Perfil: ${currentProfile}`}
+                  >
+                    {currentProfile.charAt(0).toUpperCase()}
+                  </div>
+                  {profileDropdownOpen && (
+                    <div className="app-profile-dropdown" onClick={(e) => e.stopPropagation()}>
+                      <div className="app-profile-dropdown-header">Perfil actual</div>
+                      {profiles.map((p) => (
+                        <button
+                          key={p}
+                          className={`app-profile-dropdown-item ${p === currentProfile ? "active" : ""}`}
+                          onClick={() => {
+                            handleProfileSwitch(p);
+                            setProfileDropdownOpen(false);
+                          }}
+                        >
+                          {p === currentProfile ? "● " : ""}{p}
+                        </button>
+                      ))}
+                      <div className="app-profile-dropdown-divider" />
                       <button
-                        key={p}
-                        className={`app-profile-dropdown-item ${p === currentProfile ? "active" : ""}`}
+                        className="app-profile-dropdown-item"
                         onClick={() => {
-                          handleProfileSwitch(p);
+                          setSection("settings");
                           setProfileDropdownOpen(false);
                         }}
                       >
-                        {p === currentProfile ? "● " : ""}{p}
+                        <GearIcon /> Configuración
                       </button>
-                    ))}
-                    <div className="app-profile-dropdown-divider" />
-                    <button
-                      className="app-profile-dropdown-item"
-                      onClick={() => {
-                        setSection("settings");
-                        setProfileDropdownOpen(false);
-                      }}
-                    >
-                      <GearIcon /> Configuración
-                    </button>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -1347,6 +1363,11 @@ function App() {
           }}
         />
       )}
+
+      <CastModal
+        isOpen={castModalOpen}
+        onClose={() => setCastModalOpen(false)}
+      />
       </div>
     </MusicProvider>
   );

@@ -105,3 +105,14 @@ export function CloseIcon({ className }: { className?: string }) {
     </Icon>
   );
 }
+
+export function CastIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <line x1="2" y1="20" x2="2.01" y2="20" />
+      <path d="M5 20a5 5 0 0 0-5-5" />
+      <path d="M8 20a8 8 0 0 0-8-8" />
+      <path d="M2 12V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" />
+    </Icon>
+  );
+}

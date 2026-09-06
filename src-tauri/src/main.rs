@@ -189,7 +189,12 @@ fn main() {
             commands::fix_match_search,
             commands::fix_match_get_covers,
             commands::apply_fix_match,
-            commands::update_game_title
+            commands::update_game_title,
+            commands::get_cast_network_info,
+            commands::open_wireless_display,
+            commands::discover_lan_devices,
+            commands::check_sunshine_status,
+            commands::pair_moonlight_pin
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

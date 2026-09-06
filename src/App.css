@@ -1359,6 +1359,42 @@
   font-size: 13px;
 }
 
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-cast-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  user-select: none;
+}
+
+.app-cast-btn:hover {
+  background: rgba(var(--accent-rgb, 229, 160, 13), 0.16);
+  border-color: var(--accent, #e5a00d);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(var(--accent-rgb, 229, 160, 13), 0.25);
+}
+
+.app-cast-btn-label {
+  letter-spacing: 0.2px;
+}
+
 .app-profile-wrap {
   position: relative;
 }

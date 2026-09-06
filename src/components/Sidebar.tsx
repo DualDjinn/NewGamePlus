@@ -1,6 +1,6 @@
 import { useState, useEffect, type ComponentType } from "react";
 import type { Section, Game } from "../types";
-import { HomeIcon, LibraryIcon, HeartIcon, GearIcon, TagIcon } from "./icons";
+import { HomeIcon, LibraryIcon, HeartIcon, GearIcon, TagIcon, CastIcon } from "./icons";
 import { VinylPlayer } from "./VinylPlayer";
 import "./Sidebar.css";
 
@@ -18,6 +18,7 @@ interface Props {
   currentProfile?: string;
   profiles?: string[];
   onProfileSwitch?: (name: string) => void;
+  onOpenCast?: () => void;
 }
 
 const NAV_ITEMS: { section: Section; icon: ComponentType; label: string }[] = [
@@ -40,6 +41,7 @@ export default function Sidebar({
   currentProfile = "Por defecto",
   profiles = [],
   onProfileSwitch,
+  onOpenCast,
 }: Props) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const isImmersive = layoutStyle === "immersive";
@@ -155,14 +157,27 @@ export default function Sidebar({
         )}
 
         {isImmersive && (
-          <div className="sidebar-profile-wrap" onClick={(e) => e.stopPropagation()}>
-            <div
-              className="sidebar-profile-avatar"
-              onClick={() => setProfileMenuOpen((v) => !v)}
-              title={`Perfil: ${currentProfile}`}
-            >
-              {currentProfile.charAt(0).toUpperCase()}
-            </div>
+          <div className="sidebar-immersive-bottom-actions">
+            {onOpenCast && (
+              <button
+                type="button"
+                className="sidebar-cast-btn"
+                onClick={onOpenCast}
+                title="Transmitir a TV / Dispositivo"
+                aria-label="Transmitir a TV"
+              >
+                <CastIcon />
+              </button>
+            )}
+
+            <div className="sidebar-profile-wrap" onClick={(e) => e.stopPropagation()}>
+              <div
+                className="sidebar-profile-avatar"
+                onClick={() => setProfileMenuOpen((v) => !v)}
+                title={`Perfil: ${currentProfile}`}
+              >
+                {currentProfile.charAt(0).toUpperCase()}
+              </div>
             {profileMenuOpen && (
               <div className="sidebar-profile-dropdown" onClick={(e) => e.stopPropagation()}>
                 <div className="sidebar-profile-dropdown-header">Perfil actual</div>
@@ -191,6 +206,7 @@ export default function Sidebar({
               </div>
             )}
           </div>
+        </div>
         )}
       </div>
     </aside>
