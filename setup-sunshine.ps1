@@ -69,6 +69,9 @@ if (-not (Test-Path $sunshineExe)) {
 
 if (Test-Path $sunshineExe) {
     Write-Ok "Sunshine Portable configurado exitosamente en: $sunshineExe"
+    # Configurar credenciales iniciales para la API de emparejamiento
+    & $sunshineExe --creds admin newgameplus | Out-Null
+    Write-Ok "Credenciales iniciales de Sunshine configuradas correctamente."
 } else {
     Write-Err "No se encontró sunshine.exe luego de la descompresión."
     exit 1

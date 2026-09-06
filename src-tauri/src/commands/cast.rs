@@ -306,6 +306,16 @@ pub fn start_sunshine() -> Result<String, String> {
             let _ = fs::write(&apps_json_path, default_apps);
         }
 
+        // Asegurar que existan credenciales iniciales en sunshine_state.json
+        let state_json = config_dir.join("sunshine_state.json");
+        if !state_json.exists() {
+            let _ = Command::new(&exe)
+                .current_dir(working_dir)
+                .args(["--creds", "admin", "newgameplus"])
+                .creation_flags(0x08000000)
+                .output();
+        }
+
         // Flag Windows: CREATE_NO_WINDOW (0x08000000) | DETACHED_PROCESS (0x00000008) | CREATE_NEW_PROCESS_GROUP (0x00000200)
         const FLAGS: u32 = 0x08000000 | 0x00000008 | 0x00000200;
 
@@ -389,7 +399,18 @@ pub fn download_sunshine_portable() -> Result<String, String> {
     }
 }
 
-/// Intenta enviar el PIN de 4 dígitos a la API de Sunshine si está en ejecución
+#[derive(Serialize)]
+struct PairPinPayload {
+    pin: String,
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct PairPinResponse {
+    status: Option<bool>,
+}
+
+/// Envía el PIN de 4 dígitos a la API de Sunshine con autenticación HTTP Basic
 #[tauri::command]
 pub async fn pair_moonlight_pin(pin: String) -> Result<String, String> {
     let pin = pin.trim().to_string();
@@ -405,22 +426,35 @@ pub async fn pair_moonlight_pin(pin: String) -> Result<String, String> {
 
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
-        .timeout(Duration::from_secs(4))
+        .timeout(Duration::from_secs(6))
         .build()
         .map_err(|e| format!("Error creando cliente HTTP: {}", e))?;
 
-    let url = format!("https://localhost:47990/api/pin?pin={}", pin);
+    let url = "https://localhost:47990/api/pin";
+    let payload = PairPinPayload {
+        pin: pin.clone(),
+        name: "NewGamePlus TV".to_string(),
+    };
 
-    match client.post(&url).send().await {
-        Ok(resp) => {
-            if resp.status().is_success() {
-                Ok("¡Dispositivo emparejado con éxito! Tu TV ya está conectada a NewGamePlus.".into())
+    let resp = client
+        .post(url)
+        .basic_auth("admin", Some("newgameplus"))
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Error comunicando con Sunshine: {}", e))?;
+
+    let status = resp.status();
+    if status.is_success() {
+        if let Ok(body) = resp.json::<PairPinResponse>().await {
+            if body.status == Some(true) {
+                return Ok("¡Dispositivo emparejado con éxito! Tu TV ya está conectada a NewGamePlus.".into());
             } else {
-                Ok(format!("PIN enviado a Sunshine. Respuesta: {}. Comprueba la pantalla de tu TV.", resp.status()))
+                return Ok("PIN enviado. Si el TV no se vinculó, asegúrate de haber pulsado sobre tu PC en Moonlight antes de ingresar el PIN.".into());
             }
         }
-        Err(_) => {
-            Ok(format!("Código PIN {} enviado. Si tu TV no lo detectó de inmediato, asegúrate de haber pulsado sobre tu PC en la pantalla de Moonlight.", pin))
-        }
+        Ok("PIN enviado exitosamente a Sunshine.".into())
+    } else {
+        Err(format!("Sunshine respondió con código {}. Asegúrate de que Moonlight en tu TV está en la pantalla solicitando el PIN.", status))
     }
 }
