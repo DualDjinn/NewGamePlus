@@ -281,7 +281,6 @@ pub fn start_sunshine() -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
 
         let working_dir = exe.parent().unwrap_or_else(|| Path::new("."));
 
@@ -307,9 +306,12 @@ pub fn start_sunshine() -> Result<String, String> {
             let _ = fs::write(&apps_json_path, default_apps);
         }
 
+        // Flag Windows: CREATE_NO_WINDOW (0x08000000) | DETACHED_PROCESS (0x00000008) | CREATE_NEW_PROCESS_GROUP (0x00000200)
+        const FLAGS: u32 = 0x08000000 | 0x00000008 | 0x00000200;
+
         Command::new(&exe)
             .current_dir(working_dir)
-            .creation_flags(CREATE_NO_WINDOW)
+            .creation_flags(FLAGS)
             .spawn()
             .map_err(|e| format!("Error iniciando Sunshine: {}", e))?;
 

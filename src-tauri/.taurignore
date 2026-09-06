@@ -1,0 +1,5 @@
+﻿# Tauri file watcher ignore file
+binaries/**
+data/**
+target/**
+*.log
