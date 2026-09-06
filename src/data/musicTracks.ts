@@ -17,13 +17,6 @@ export const MUSIC_TRACKS: MusicTrack[] = [
     platform: "SNES",
   },
   {
-    id: "bloody-tears-mp3",
-    file: "/music/Castlevania 4 - Bloody Tears (Super Nintendo).mp3",
-    title: "Bloody Tears (Arranged)",
-    game: "Super Castlevania IV",
-    platform: "SNES",
-  },
-  {
     id: "bloody-tears",
     file: "/music/Castlevania 4 - Bloody Tears (Super Nintendo).ogg",
     title: "Bloody Tears",
@@ -32,7 +25,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "chrono-cross-dream-of-the-shore",
-    file: "/music/Chrono Cross - Dream of the Shore Near Another World.mp3",
+    file: "/music/Chrono Cross - Dream of the Shore Near Another World.ogg",
     title: "Dream of the Shore Near Another World",
     game: "Chrono Cross",
     platform: "PS1",
@@ -46,7 +39,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "chrono-trigger-main-theme",
-    file: "/music/Chrono Trigger Main Theme.mp3",
+    file: "/music/Chrono Trigger Main Theme.ogg",
     title: "Chrono Trigger Main Theme",
     game: "Chrono Trigger",
     platform: "SNES",
@@ -67,7 +60,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "dkc-jungle-hijinx",
-    file: "/music/Donkey Kong Country-Jungle Hijinx.mp3",
+    file: "/music/Donkey Kong Country-Jungle Hijinx.ogg",
     title: "Jungle Hijinx",
     game: "Donkey Kong Country",
     platform: "SNES",
@@ -102,7 +95,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "ffvii-remake-let-the-battles-begin",
-    file: "/music/FFVII REMAKE Let the Battles Begin! - A Merc's Job.mp3",
+    file: "/music/FFVII REMAKE Let the Battles Begin! - A Merc's Job.ogg",
     title: "Let the Battles Begin! (Remake)",
     game: "Final Fantasy VII Remake",
     platform: "PS4",
@@ -130,7 +123,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "gangplank-galleon-hd",
-    file: "/music/Gangplank Galleon Restored to HD.mp3",
+    file: "/music/Gangplank Galleon Restored to HD.ogg",
     title: "Gangplank Galleon (Restored HD)",
     game: "Donkey Kong Country",
     platform: "SNES",
@@ -144,14 +137,14 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "hikari-simple-and-clean",
-    file: "/music/Hikari 光  (Simple and Clean) Orchestral Instrumental Version.mp3",
+    file: "/music/Hikari 光  (Simple and Clean) Orchestral Instrumental Version.ogg",
     title: "Hikari (Simple and Clean Orchestral)",
     game: "Kingdom Hearts",
     platform: "PS2",
   },
   {
     id: "his-theme-undertale",
-    file: "/music/His Theme - Undertale.mp3",
+    file: "/music/His Theme - Undertale.ogg",
     title: "His Theme",
     game: "Undertale",
     platform: "PC",
@@ -172,7 +165,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "kingdom-hearts-dearly-beloved",
-    file: "/music/Kingdom Hearts I - Dearly Beloved.mp3",
+    file: "/music/Kingdom Hearts I - Dearly Beloved.ogg",
     title: "Dearly Beloved",
     game: "Kingdom Hearts",
     platform: "PS2",
@@ -186,7 +179,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "ssb-brawl-main-theme",
-    file: "/music/Main Theme - Super Smash Bros Brawl.mp3",
+    file: "/music/Main Theme - Super Smash Bros Brawl.ogg",
     title: "Main Theme (Super Smash Bros. Brawl)",
     game: "Super Smash Bros. Brawl",
     platform: "Wii",
@@ -221,7 +214,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "mgs2-main-theme",
-    file: "/music/Metal Gear Solid 2 - Main Theme.mp3",
+    file: "/music/Metal Gear Solid 2 - Main Theme.ogg",
     title: "Main Theme (MGS2)",
     game: "Metal Gear Solid 2",
     platform: "PS2",
@@ -242,21 +235,21 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "not-alone-ffix",
-    file: "/music/Not Alone - Nobuo Uematsu.mp3",
+    file: "/music/Not Alone - Nobuo Uematsu.ogg",
     title: "You're Not Alone",
     game: "Final Fantasy IX",
     platform: "PS1",
   },
   {
     id: "octopath-traveler-main-theme",
-    file: "/music/Octopath Traveler -Main Theme- (OCTOPATH TRAVELER Original Soundtrack).mp3",
+    file: "/music/Octopath Traveler -Main Theme- (OCTOPATH TRAVELER Original Soundtrack).ogg",
     title: "Main Theme",
     game: "Octopath Traveler",
     platform: "Switch",
   },
   {
     id: "outset-island",
-    file: "/music/Outset Island - The Legend of Zelda The Wind Waker OST.mp3",
+    file: "/music/Outset Island - The Legend of Zelda The Wind Waker OST.ogg",
     title: "Outset Island",
     game: "The Legend of Zelda: The Wind Waker",
     platform: "GameCube",
@@ -298,7 +291,7 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "sfv-ken-theme",
-    file: "/music/Street Fighter 5 - Ken's Theme (SFV OST).mp3",
+    file: "/music/Street Fighter 5 - Ken's Theme (SFV OST).ogg",
     title: "Ken's Theme (SFV)",
     game: "Street Fighter V",
     platform: "Arcade",
@@ -375,14 +368,14 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "the-way-u-move",
-    file: "/music/The Way U Move (Original Arcade Soundtrack).mp3",
+    file: "/music/The Way U Move (Original Arcade Soundtrack).ogg",
     title: "The Way U Move",
     game: "Ridge Racer",
     platform: "Arcade",
   },
   {
     id: "wild-arms-opening",
-    file: "/music/Wild Arms Opening.mp3",
+    file: "/music/Wild Arms Opening.ogg",
     title: "Into the Wilderness (Opening)",
     game: "Wild Arms",
     platform: "PS1",
@@ -417,9 +410,10 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   },
   {
     id: "ffvii-let-the-battles-begin",
-    file: "/music/[Video Soundtrack] Let the Battles Begin ! [FINAL FANTASY VII].mp3",
+    file: "/music/[Video Soundtrack] Let the Battles Begin ! [FINAL FANTASY VII].ogg",
     title: "Let the Battles Begin!",
     game: "Final Fantasy VII",
     platform: "PS1",
   },
 ];
+
