@@ -1,0 +1,17 @@
+# Dependencies & Build
+node_modules/
+dist/
+src-tauri/target/
+
+# App runtime & User data
+src-tauri/data/
+
+# Emulators & Binaries (setup via setup-retroarch.ps1 and setup-rpcs3.ps1)
+src-tauri/binaries/*
+!src-tauri/binaries/.gitkeep
+
+# Temporary test logs
+err_*.txt
+test_*.txt
+test_db.js
+*.log

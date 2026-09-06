@@ -1,0 +1,664 @@
+.hero-container {
+  position: relative;
+  padding: 16px 48px 0;
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero-card {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  min-height: 440px;
+  max-height: 580px;
+  border-radius: 20px;
+  overflow: hidden;
+  background-color: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+}
+
+.hero-card:hover {
+  /* No hover jump or zoom on the hero card */
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Cada diapositiva del carrusel con transición cinematográfica fluida */
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.85s ease;
+  z-index: 1;
+}
+
+.hero-slide.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background-color: #0b0c10;
+  overflow: hidden;
+}
+
+.hero-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  opacity: 1;
+  filter: saturate(1.05) brightness(1);
+  transform: scale(1);
+  transition: opacity 0.85s ease;
+}
+
+.hero-slide.active .hero-bg-img {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.hero-card:hover .hero-slide.active .hero-bg-img {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* Sombreado suave solo lateral para proteger la lectura de títulos sin oscurecer arriba ni abajo */
+.hero-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(10, 11, 16, 0.82) 0%, rgba(10, 11, 16, 0.4) 30%, transparent 65%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  padding: 44px 48px;
+  max-width: 780px;
+  transform: translateY(12px);
+  opacity: 0;
+  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.65s ease;
+}
+
+.hero-slide.active .hero-content {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.hero-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.hero-platform-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 14px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.32), rgba(var(--accent-rgb), 0.12));
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.hero-genre-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.hero-fav-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(229, 9, 20, 0.2);
+  border: 1px solid rgba(229, 9, 20, 0.4);
+  color: #ff4d4f;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.hero-title {
+  font-family: var(--font-title);
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.12;
+  margin-bottom: 20px;
+  color: #fff;
+  letter-spacing: -0.5px;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.7);
+}
+
+.hero-logo-wrap {
+  margin-bottom: 24px;
+  max-width: 700px;
+  max-height: 240px;
+  display: flex;
+  align-items: center;
+}
+
+.hero-logo-img {
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  object-position: left bottom;
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.88)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.95));
+}
+
+.hero-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.hero-btn {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.hero-btn-play {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: #0b0c10;
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+
+.hero-btn-play:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 8px 30px var(--accent-glow);
+  filter: brightness(1.08);
+}
+
+.hero-btn-info {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.hero-btn-info:hover {
+  transform: translateY(-2px) scale(1.03);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Indicadores de puntos centrados debajo de la tarjeta gigante */
+.hero-indicators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 4px 8px;
+  user-select: none;
+}
+
+.hero-pill {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-pill:hover {
+  background: rgba(255, 255, 255, 0.55);
+  transform: scale(1.2);
+}
+
+.hero-pill.active {
+  width: 24px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.hero-pill-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ffffff, rgba(255, 255, 255, 0.9));
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+  animation: hero-progress 8s linear forwards;
+}
+
+@keyframes hero-progress {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+/* ============================================================
+   ESTILO INMERSIVO: FULL BLEED HERO & AMBIENT LIGHTING
+   ============================================================ */
+.hero-container.hero-immersive {
+  padding: 0;
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.hero-container.hero-immersive .hero-card {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
+  height: auto;
+  min-height: 75vh;
+  max-height: none;
+  box-shadow: none;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 28px;
+  position: relative;
+}
+
+.hero-container.hero-immersive .hero-card:hover {
+  transform: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.hero-container.hero-immersive .hero-slide {
+  cursor: default;
+}
+
+.hero-container.hero-immersive .hero-bg-img {
+  object-position: center 20%;
+  opacity: 1;
+  filter: saturate(1.05) brightness(1);
+}
+
+.hero-container.hero-immersive .hero-gradient {
+  background: 
+    /* Lateral: legibilidad del texto */
+    linear-gradient(to right, rgba(8, 10, 15, 0.85) 0%, rgba(8, 10, 15, 0.45) 30%, transparent 65%),
+    /* Vertical inferior: transición suave hacia --bg-main */
+    linear-gradient(to top, var(--bg-main) 0%, rgba(10, 11, 16, 0.92) 8%, rgba(10, 11, 16, 0.55) 28%, transparent 55%),
+    /* Vignette superior sutil para profundidad */
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, transparent 20%);
+}
+
+/* Cuerpo interactivo del Hero en modo Inmersivo */
+.hero-immersive-body {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100%;
+  padding-top: 90px;
+}
+
+.hero-immersive-upper {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 56px;
+  position: relative;
+}
+
+.hero-container.hero-immersive .hero-content {
+  padding: 0 0 16px 0;
+  max-width: 720px;
+  margin-top: 0;
+  transform: none;
+  opacity: 1;
+}
+
+.hero-container.hero-immersive .hero-title {
+  font-size: 52px;
+  font-weight: 900;
+  letter-spacing: -1.2px;
+  margin-bottom: 22px;
+  line-height: 1.08;
+}
+
+.hero-year-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ddd;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Indicadores alineados a la esquina inferior derecha dentro del Hero */
+.hero-indicators.hero-indicators-right {
+  position: absolute;
+  right: 56px;
+  bottom: 24px;
+  z-index: 25;
+  margin: 0;
+  padding: 8px 14px;
+  background: rgba(10, 13, 20, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 30px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+
+/* Fila de franquicia embebida en la base del Hero (Estilo Inmersivo) */
+.hero-franchise-section {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  padding: 16px 56px 0;
+  animation: hero-franchise-fade 0.35s ease-out;
+}
+
+@keyframes hero-franchise-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-franchise-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.hero-franchise-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent, #f59e0b);
+}
+
+.hero-franchise-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.3px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.hero-franchise-row {
+  display: flex;
+  gap: 18px;
+  overflow: visible;
+  padding: 2px 0 8px;
+}
+
+.hero-franchise-row .game-card {
+  width: 235px;
+}
+
+.hero-franchise-row .game-card-body {
+  height: 152px;
+}
+
+/* Buscador embebido en la parte superior central del Hero (Estilo Inmersivo) */
+.hero-top-search-wrap {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 20;
+  pointer-events: auto;
+  padding: 0 24px;
+}
+
+.hero-search-box {
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(14, 18, 28, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 10px 18px;
+  width: 100%;
+  max-width: 520px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: all 0.25s ease;
+}
+
+.hero-search-box:focus-within {
+  border-color: var(--accent, #f59e0b);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.7), 0 0 20px var(--accent-glow, rgba(245, 158, 11, 0.3));
+  background: rgba(18, 23, 34, 0.92);
+}
+
+.hero-search-icon {
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.hero-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.hero-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.hero-search-clear {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 2px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+
+.hero-search-clear:hover {
+  color: #fff;
+}
+
+/* Dropdown flotante de resultados de búsqueda */
+.hero-search-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 520px;
+  background: rgba(14, 18, 28, 0.65);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+  animation: heroSearchDropdownFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes heroSearchDropdownFade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.hero-search-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+  user-select: none;
+}
+
+.hero-search-item:last-child {
+  border-bottom: none;
+}
+
+.hero-search-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hero-search-item:active {
+  background: rgba(var(--accent-rgb, 245, 158, 11), 0.22);
+}
+
+.hero-search-item-thumb {
+  width: 40px;
+  height: 52px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-search-item-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-search-item-placeholder {
+  font-size: 18px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.hero-search-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hero-search-item-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.hero-search-item:hover .hero-search-item-title {
+  color: var(--accent, #f59e0b);
+}
+
+.hero-search-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.hero-search-item-plat {
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hero-search-item-year {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.hero-search-item-genre {
+  color: rgba(var(--accent-rgb, 245, 158, 11), 0.95);
+  background: rgba(var(--accent-rgb, 245, 158, 11), 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.hero-search-no-results {
+  padding: 16px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+}
+

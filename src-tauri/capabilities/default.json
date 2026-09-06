@@ -1,0 +1,14 @@
+{
+  "identifier": "default",
+  "description": "Default permissions for gameFlix",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-set-decorations",
+    "core:window:allow-set-focus",
+    "shell:allow-open",
+    "shell:allow-execute",
+    "dialog:default"
+  ]
+}
