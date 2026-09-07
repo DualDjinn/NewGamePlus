@@ -221,6 +221,9 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          quick_menu_show_resume_content = \"true\"\n\
          quick_menu_show_restart_content = \"true\"\n\
          quick_menu_show_close_content = \"true\"\n\
+         quit_on_close_content = \"2\"\n\
+         quit_press_twice = \"false\"\n\
+         menu_show_quit_retroarch = \"true\"\n\
          quick_menu_show_take_screenshot = \"true\"\n\
          quick_menu_show_save_load_state = \"true\"\n\
          quick_menu_show_core_options = \"true\"\n\
