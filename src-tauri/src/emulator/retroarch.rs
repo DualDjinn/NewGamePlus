@@ -18,6 +18,7 @@ pub fn check_retroarch() -> Result<bool, String> {
     }
 }
 
+#[allow(dead_code)]
 fn detect_system_retroarch_language() -> u32 {
     #[cfg(target_os = "windows")]
     {
@@ -146,8 +147,6 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     let core_opts_str_path = core_opts_path.to_string_lossy().replace('\\', "/");
     let config_dir = ra_dir.join("config");
     let config_dir_str = config_dir.to_string_lossy().replace('\\', "/");
-    let assets_dir = ra_dir.join("assets");
-    let assets_str = assets_dir.to_string_lossy().replace('\\', "/");
 
     let (audio_driver_str, audio_device_str, audio_latency_val, audio_vol_db, video_smooth, video_scale_integer, aspect_ratio_str, all_core_options) = {
         let state = STATE.lock().unwrap();
@@ -199,55 +198,11 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
         (audio_drv, dev, latency, vol_db, smooth, integer, aspect, opts)
     };
 
-    let retro_lang = detect_system_retroarch_language();
-
     let mut full_cfg = format!(
-        "menu_driver = \"ozone\"\n\
-         ozone_menu_color_theme = \"10\"\n\
-         ozone_collapse_sidebar = \"true\"\n\
-         menu_framebuffer_opacity = \"0.850000\"\n\
-         user_language = \"{}\"\n\
-         assets_directory = \"{}\"\n\
-         input_menu_toggle = \"escape\"\n\
-         input_menu_toggle_gamepad_combo = \"2\"\n\
-         input_quit_gamepad_combo = \"0\"\n\
+        "menu_driver = \"null\"\n\
+         input_menu_toggle = \"nul\"\n\
          input_enable_hotkey = \"\"\n\
          input_exit_emulator = \"nul\"\n\
-         menu_show_core_updater = \"false\"\n\
-         menu_show_load_core = \"false\"\n\
-         menu_show_load_content = \"false\"\n\
-         menu_show_online_updater = \"false\"\n\
-         menu_show_information = \"false\"\n\
-         menu_show_configurations = \"false\"\n\
-         menu_show_help = \"false\"\n\
-         menu_show_restart_retroarch = \"false\"\n\
-         menu_show_quit_retroarch = \"false\"\n\
-         quick_menu_show_resume_content = \"true\"\n\
-         quick_menu_show_restart_content = \"true\"\n\
-         quick_menu_show_close_content = \"true\"\n\
-         quit_on_close_content = \"2\"\n\
-         quit_press_twice = \"false\"\n\
-         quick_menu_show_save_load_state = \"true\"\n\
-         quick_menu_show_savestate_submenu = \"true\"\n\
-         quick_menu_show_controls = \"true\"\n\
-         quick_menu_show_options = \"false\"\n\
-         quick_menu_show_core_options = \"false\"\n\
-         quick_menu_show_shaders = \"false\"\n\
-         quick_menu_show_cheats = \"false\"\n\
-         quick_menu_show_take_screenshot = \"false\"\n\
-         quick_menu_show_start_recording = \"false\"\n\
-         quick_menu_show_start_streaming = \"false\"\n\
-         quick_menu_show_add_to_favorites = \"false\"\n\
-         quick_menu_show_add_to_playlist = \"false\"\n\
-         quick_menu_show_reset_core_association = \"false\"\n\
-         quick_menu_show_set_core_association = \"false\"\n\
-         quick_menu_show_download_thumbnails = \"false\"\n\
-         quick_menu_show_information = \"false\"\n\
-         quick_menu_show_replay = \"false\"\n\
-         quick_menu_show_save_content_dir_overrides = \"false\"\n\
-         quick_menu_show_save_core_overrides = \"false\"\n\
-         quick_menu_show_save_game_overrides = \"false\"\n\
-         quick_menu_show_undo_save_load_state = \"false\"\n\
          network_cmd_enable = \"true\"\n\
          network_cmd_port = \"55355\"\n\
          pause_nonactive = \"false\"\n\
@@ -289,7 +244,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          system_directory = \"{}\"\n\
          savefile_directory = \"{}\"\n\
          savestate_directory = \"{}\"\n",
-        retro_lang, assets_str, audio_driver_str, audio_device_str, audio_latency_val, audio_vol_db, core_opts_str_path, config_dir_str, system_str, saves_str, states_str
+        audio_driver_str, audio_device_str, audio_latency_val, audio_vol_db, core_opts_str_path, config_dir_str, system_str, saves_str, states_str
     );
 
     full_cfg.push_str(&format!(
