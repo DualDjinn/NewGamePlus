@@ -73,7 +73,9 @@ pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
     OVERLAY_OPEN.store(true, Ordering::Relaxed);
 
     if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
         let _ = window.show();
+        let _ = window.set_always_on_top(true);
         let _ = window.set_focus();
     }
 
@@ -89,6 +91,7 @@ pub fn resume_in_game(app: &AppHandle) -> Result<(), String> {
     let _ = app.emit("in-game-pause-close", ());
 
     if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_always_on_top(false);
         let _ = window.hide();
     }
 
@@ -118,6 +121,8 @@ pub fn quit_in_game(app: &AppHandle) -> Result<(), String> {
     let _ = send_retroarch_command("QUIT");
 
     if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_always_on_top(false);
+        let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
     }

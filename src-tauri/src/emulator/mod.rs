@@ -104,6 +104,8 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
 
     // Show main window again immediately without waiting for any background tasks
     if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_always_on_top(false);
+        let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
     }
