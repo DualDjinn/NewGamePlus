@@ -18,6 +18,34 @@ pub fn check_retroarch() -> Result<bool, String> {
     }
 }
 
+fn detect_system_retroarch_language() -> u32 {
+    #[cfg(target_os = "windows")]
+    {
+        extern "system" {
+            fn GetUserDefaultUILanguage() -> u16;
+        }
+        let lang_id = unsafe { GetUserDefaultUILanguage() };
+        let primary_lang = lang_id & 0x03FF;
+        match primary_lang {
+            0x0a => 3, // Spanish (Español)
+            0x09 => 0, // English
+            0x0c => 2, // French (Français)
+            0x07 => 4, // German (Deutsch)
+            0x10 => 5, // Italian (Italiano)
+            0x16 => 7, // Portuguese (Português)
+            0x19 => 9, // Russian (Русский)
+            0x12 => 10, // Korean (한국어)
+            0x04 => 12, // Chinese Simplified
+            0x11 => 1, // Japanese (日本語)
+            _ => 3, // Default to Spanish
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        3 // Default to Spanish
+    }
+}
+
 pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String> {
     let ra_exe = get_retroarch_exe();
     if !ra_exe.exists() {
@@ -171,9 +199,11 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
         (audio_drv, dev, latency, vol_db, smooth, integer, aspect, opts)
     };
 
+    let retro_lang = detect_system_retroarch_language();
+
     let mut full_cfg = format!(
         "menu_driver = \"ozone\"\n\
-         user_language = \"1\"\n\
+         user_language = \"{}\"\n\
          assets_directory = \"{}\"\n\
          input_menu_toggle = \"escape\"\n\
          input_menu_toggle_gamepad_combo = \"2\"\n\
@@ -237,7 +267,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          system_directory = \"{}\"\n\
          savefile_directory = \"{}\"\n\
          savestate_directory = \"{}\"\n",
-        assets_str, audio_driver_str, audio_device_str, audio_latency_val, audio_vol_db, core_opts_str_path, config_dir_str, system_str, saves_str, states_str
+        retro_lang, assets_str, audio_driver_str, audio_device_str, audio_latency_val, audio_vol_db, core_opts_str_path, config_dir_str, system_str, saves_str, states_str
     );
 
     full_cfg.push_str(&format!(
