@@ -185,3 +185,38 @@ pub fn update_game_title(app: tauri::AppHandle, game_id: String, new_title: Stri
     let _ = app.emit("covers-updated", ());
     Ok(updated)
 }
+
+#[tauri::command]
+pub fn in_game_resume(app: tauri::AppHandle) -> Result<(), String> {
+    crate::emulator::resume_in_game(&app)
+}
+
+#[tauri::command]
+pub fn in_game_save_state(slot: Option<u32>) -> Result<String, String> {
+    if let Some(s) = slot {
+        // Change slot then save
+        let _ = crate::emulator::send_retroarch_command(&format!("STATE_SLOT {}", s));
+    }
+    crate::emulator::send_retroarch_command("SAVE_STATE")?;
+    Ok(format!("Estado guardado en ranura {}", slot.unwrap_or(1)))
+}
+
+#[tauri::command]
+pub fn in_game_load_state(slot: Option<u32>) -> Result<String, String> {
+    if let Some(s) = slot {
+        let _ = crate::emulator::send_retroarch_command(&format!("STATE_SLOT {}", s));
+    }
+    crate::emulator::send_retroarch_command("LOAD_STATE")?;
+    Ok(format!("Estado cargado de ranura {}", slot.unwrap_or(1)))
+}
+
+#[tauri::command]
+pub fn in_game_set_volume(volume: u32) -> Result<(), String> {
+    crate::emulator::set_retroarch_volume(volume)
+}
+
+#[tauri::command]
+pub fn in_game_quit(app: tauri::AppHandle) -> Result<(), String> {
+    crate::emulator::quit_in_game(&app)
+}
+

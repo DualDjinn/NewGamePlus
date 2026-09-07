@@ -176,7 +176,10 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          menu_show_load_content = \"false\"\n\
          menu_show_online_updater = \"false\"\n\
          input_enable_hotkey = \"\"\n\
-         input_exit_emulator = \"escape\"\n\
+         input_exit_emulator = \"nul\"\n\
+         network_cmd_enable = \"true\"\n\
+         network_cmd_port = \"55355\"\n\
+         pause_nonactive = \"true\"\n\
          input_auto_mouse_grab = \"false\"\n\
          cursor_hide_fullscreen = \"true\"\n\
          cursor_hide_delay = \"2000000\"\n\

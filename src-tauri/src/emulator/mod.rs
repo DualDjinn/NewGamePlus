@@ -1,13 +1,17 @@
 pub mod downloader;
+pub mod ingame_controller;
 pub mod retroarch;
 pub mod standalone;
 
 pub use downloader::*;
+pub use ingame_controller::*;
 pub use retroarch::*;
 pub use standalone::*;
 
 use std::path::Path;
 use std::process::Command;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tauri::{Emitter, Manager};
 use crate::platforms;
 use crate::state::storage::{now_str, save_state, log_error};
@@ -51,7 +55,16 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
 
     let start_instant = std::time::Instant::now();
 
-    let status = if platforms::is_standalone_emulator(&core_name) {
+    let is_retroarch = !platforms::is_standalone_emulator(&core_name);
+    let stop_listener = Arc::new(AtomicBool::new(false));
+
+    if is_retroarch {
+        GAME_RUNNING.store(true, Ordering::Relaxed);
+        OVERLAY_OPEN.store(false, Ordering::Relaxed);
+        start_global_hotkey_listener(app.clone(), Arc::clone(&stop_listener));
+    }
+
+    let status = if !is_retroarch {
         launch_standalone(&core_name, &rom_path)?
     } else {
         let core_path = ensure_core(&core_name)?;
@@ -66,6 +79,12 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
             .status()
             .map_err(|e| e.to_string())?
     };
+
+    if is_retroarch {
+        stop_listener.store(true, Ordering::Relaxed);
+        GAME_RUNNING.store(false, Ordering::Relaxed);
+        OVERLAY_OPEN.store(false, Ordering::Relaxed);
+    }
 
     let elapsed_secs = start_instant.elapsed().as_secs();
 

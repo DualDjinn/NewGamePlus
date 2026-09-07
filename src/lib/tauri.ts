@@ -35,13 +35,19 @@ export async function scanAndFetchCores(folders: string[]): Promise<ScanResult> 
 }
 
 const launchAudio = typeof Audio !== "undefined" ? new Audio("/sounds/game_launch.mp3") : null;
+let activeLaunchedRomPath: string | null = null;
+
+export function getActiveLaunchedRomPath(): string | null {
+  return activeLaunchedRomPath;
+}
 
 export async function launchGame(romPath: string): Promise<string> {
+  activeLaunchedRomPath = romPath;
   if (launchAudio) {
     const sfxVol = parseFloat(localStorage.getItem("gameflix_sfx_volume") ?? "0.8");
     launchAudio.volume = isNaN(sfxVol) ? 0.8 : Math.max(0, Math.min(1, sfxVol));
     launchAudio.currentTime = 0;
-    launchAudio.play().catch((err) => {
+    launchAudio.play().catch((err: unknown) => {
       console.warn("No se pudo reproducir el sonido de inicio:", err);
     });
   }
@@ -49,6 +55,7 @@ export async function launchGame(romPath: string): Promise<string> {
   try {
     return await invoke<string>("launch_game", { romPath });
   } finally {
+    activeLaunchedRomPath = null;
     window.dispatchEvent(new CustomEvent("game-closed"));
   }
 }
@@ -408,3 +415,33 @@ export async function toggleWindowFullscreen(): Promise<boolean> {
     return false;
   }
 }
+
+// In-Game Pause Overlay controls
+export async function inGameResume(): Promise<void> {
+  return invoke<void>("in_game_resume");
+}
+
+export async function inGameSaveState(slot?: number): Promise<string> {
+  return invoke<string>("in_game_save_state", { slot });
+}
+
+export async function inGameLoadState(slot?: number): Promise<string> {
+  return invoke<string>("in_game_load_state", { slot });
+}
+
+export async function inGameSetVolume(volume: number): Promise<void> {
+  return invoke<void>("in_game_set_volume", { volume });
+}
+
+export async function inGameQuit(): Promise<void> {
+  return invoke<void>("in_game_quit");
+}
+
+export function onInGamePauseOpen(cb: () => void) {
+  return listen("in-game-pause-open", () => cb());
+}
+
+export function onInGamePauseClose(cb: () => void) {
+  return listen("in-game-pause-close", () => cb());
+}
+

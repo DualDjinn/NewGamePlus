@@ -197,7 +197,12 @@ fn main() {
             commands::start_sunshine,
             commands::stop_sunshine,
             commands::download_sunshine_portable,
-            commands::pair_moonlight_pin
+            commands::pair_moonlight_pin,
+            commands::in_game_resume,
+            commands::in_game_save_state,
+            commands::in_game_load_state,
+            commands::in_game_set_volume,
+            commands::in_game_quit
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
