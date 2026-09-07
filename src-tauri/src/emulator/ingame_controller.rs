@@ -80,13 +80,152 @@ pub fn set_retroarch_volume(pct: u32) -> Result<(), String> {
     Ok(())
 }
 
-/// Starts the global Escape listener thread while a game is running
-#[allow(dead_code)]
+/// Captures the primary screen into a standard Windows BMP file and returns its path
+#[cfg(target_os = "windows")]
+pub fn capture_screen_to_bmp() -> Result<String, String> {
+    use std::fs::File;
+    use std::io::Write;
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Gdi::{
+        BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC,
+        GetDIBits, ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
+        HBITMAP, HDC, SRCCOPY,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
+
+    unsafe {
+        let screen_w = GetSystemMetrics(SM_CXSCREEN);
+        let screen_h = GetSystemMetrics(SM_CYSCREEN);
+
+        if screen_w <= 0 || screen_h <= 0 {
+            return Err("Resolución de pantalla inválida".into());
+        }
+
+        let hdc_screen: HDC = GetDC(Some(HWND(std::ptr::null_mut())));
+        if hdc_screen.0.is_null() {
+            return Err("No se pudo obtener el contexto de pantalla".into());
+        }
+
+        let hdc_mem: HDC = CreateCompatibleDC(Some(hdc_screen));
+        if hdc_mem.0.is_null() {
+            let _ = ReleaseDC(Some(HWND(std::ptr::null_mut())), hdc_screen);
+            return Err("No se pudo crear contexto de memoria".into());
+        }
+
+        let h_bitmap: HBITMAP = CreateCompatibleBitmap(hdc_screen, screen_w, screen_h);
+        if h_bitmap.0.is_null() {
+            let _ = DeleteDC(hdc_mem);
+            let _ = ReleaseDC(Some(HWND(std::ptr::null_mut())), hdc_screen);
+            return Err("No se pudo crear mapa de bits compatible".into());
+        }
+
+        let old_bitmap = SelectObject(hdc_mem, h_bitmap.into());
+
+        let _ = BitBlt(
+            hdc_mem,
+            0,
+            0,
+            screen_w,
+            screen_h,
+            Some(hdc_screen),
+            0,
+            0,
+            SRCCOPY,
+        );
+
+        let mut bi = BITMAPINFO {
+            bmiHeader: BITMAPINFOHEADER {
+                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                biWidth: screen_w,
+                biHeight: screen_h, // Bottom-up bitmap
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: BI_RGB.0,
+                biSizeImage: 0,
+                biXPelsPerMeter: 0,
+                biYPelsPerMeter: 0,
+                biClrUsed: 0,
+                biClrImportant: 0,
+            },
+            bmiColors: [windows::Win32::Graphics::Gdi::RGBQUAD::default(); 1],
+        };
+
+        let row_stride = ((screen_w * 4 + 3) & !3) as usize;
+        let image_size = row_stride * (screen_h as usize);
+        let mut pixels: Vec<u8> = vec![0u8; image_size];
+
+        GetDIBits(
+            hdc_mem,
+            h_bitmap,
+            0,
+            screen_h as u32,
+            Some(pixels.as_mut_ptr() as *mut _),
+            &mut bi,
+            DIB_RGB_COLORS,
+        );
+
+        // Restore and free GDI objects
+        let _ = SelectObject(hdc_mem, old_bitmap);
+        let _ = DeleteObject(h_bitmap.into());
+        let _ = DeleteDC(hdc_mem);
+        let _ = ReleaseDC(Some(HWND(std::ptr::null_mut())), hdc_screen);
+
+        // Build BMP file in temp directory
+        let temp_dir = crate::state::storage::get_data_dir().join("temp");
+        let _ = std::fs::create_dir_all(&temp_dir);
+        let bmp_path = temp_dir.join("pause_bg.bmp");
+
+        let file_header_size: u32 = 14;
+        let info_header_size: u32 = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
+        let bf_off_bits: u32 = file_header_size + info_header_size;
+        let bf_size: u32 = bf_off_bits + (pixels.len() as u32);
+
+        let mut bmp_bytes = Vec::with_capacity(bf_size as usize);
+        // BITMAPFILEHEADER
+        bmp_bytes.extend_from_slice(b"BM"); // bfType
+        bmp_bytes.extend_from_slice(&bf_size.to_le_bytes()); // bfSize
+        bmp_bytes.extend_from_slice(&0u16.to_le_bytes()); // bfReserved1
+        bmp_bytes.extend_from_slice(&0u16.to_le_bytes()); // bfReserved2
+        bmp_bytes.extend_from_slice(&bf_off_bits.to_le_bytes()); // bfOffBits
+
+        // BITMAPINFOHEADER
+        bmp_bytes.extend_from_slice(&info_header_size.to_le_bytes());
+        bmp_bytes.extend_from_slice(&screen_w.to_le_bytes());
+        bmp_bytes.extend_from_slice(&screen_h.to_le_bytes());
+        bmp_bytes.extend_from_slice(&1u16.to_le_bytes()); // biPlanes
+        bmp_bytes.extend_from_slice(&32u16.to_le_bytes()); // biBitCount
+        bmp_bytes.extend_from_slice(&BI_RGB.0.to_le_bytes()); // biCompression
+        bmp_bytes.extend_from_slice(&(pixels.len() as u32).to_le_bytes()); // biSizeImage
+        bmp_bytes.extend_from_slice(&0u32.to_le_bytes()); // biXPelsPerMeter
+        bmp_bytes.extend_from_slice(&0u32.to_le_bytes()); // biYPelsPerMeter
+        bmp_bytes.extend_from_slice(&0u32.to_le_bytes()); // biClrUsed
+        bmp_bytes.extend_from_slice(&0u32.to_le_bytes()); // biClrImportant
+
+        // Pixel data
+        bmp_bytes.extend_from_slice(&pixels);
+
+        let mut f = File::create(&bmp_path).map_err(|e| e.to_string())?;
+        f.write_all(&bmp_bytes).map_err(|e| e.to_string())?;
+
+        Ok(bmp_path.to_string_lossy().to_string())
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn capture_screen_to_bmp() -> Result<String, String> {
+    Err("Captura de pantalla no soportada en esta plataforma".into())
+}
+
+/// Starts the global hotkey and controller listener thread while a game is running
 pub fn start_global_hotkey_listener(app: AppHandle, stop_flag: Arc<AtomicBool>) {
     std::thread::spawn(move || {
         #[cfg(target_os = "windows")]
         {
             use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_ESCAPE};
+            use windows::Win32::UI::Input::XboxController::{
+                XInputGetState, XINPUT_GAMEPAD_LEFT_THUMB, XINPUT_GAMEPAD_RIGHT_THUMB,
+                XINPUT_STATE,
+            };
 
             let mut was_pressed = false;
             let mut last_toggle = std::time::Instant::now() - Duration::from_secs(1);
@@ -94,7 +233,24 @@ pub fn start_global_hotkey_listener(app: AppHandle, stop_flag: Arc<AtomicBool>) 
             while !stop_flag.load(Ordering::Relaxed) {
                 // Check if Escape key is pressed (bit 15 indicates key is down)
                 let state = unsafe { GetAsyncKeyState(VK_ESCAPE.0 as i32) };
-                let is_down = (state as u16 & 0x8000) != 0;
+                let is_esc_down = (state as u16 & 0x8000) != 0;
+
+                // Check L3 + R3 thumbsticks on any connected XInput gamepad (0..4)
+                let mut is_gamepad_combo_down = false;
+                for i in 0..4 {
+                    let mut xs = XINPUT_STATE::default();
+                    let ret = unsafe { XInputGetState(i, &mut xs) };
+                    if ret == 0 {
+                        let btns = xs.Gamepad.wButtons.0;
+                        let combo = XINPUT_GAMEPAD_LEFT_THUMB.0 | XINPUT_GAMEPAD_RIGHT_THUMB.0;
+                        if (btns & combo) == combo {
+                            is_gamepad_combo_down = true;
+                            break;
+                        }
+                    }
+                }
+
+                let is_down = is_esc_down || is_gamepad_combo_down;
 
                 if is_down && !was_pressed && last_toggle.elapsed() > Duration::from_millis(350) {
                     last_toggle = std::time::Instant::now();
@@ -116,134 +272,70 @@ pub fn start_global_hotkey_listener(app: AppHandle, stop_flag: Arc<AtomicBool>) 
     });
 }
 
-/// Pauses RetroArch and brings NewGame+ window to front with overlay active
-#[allow(dead_code)]
+/// Pauses RetroArch, captures a frame screenshot, hides RetroArch window, and shows NewGame+ pause cards
 pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
+    // 1. Pause RetroArch emulation
     let _ = send_retroarch_command("PAUSE_TOGGLE");
-
     OVERLAY_OPEN.store(true, Ordering::SeqCst);
 
-    if let Some(overlay_win) = app.get_webview_window("in_game_overlay") {
-        let _ = overlay_win.unminimize();
-        let _ = overlay_win.show();
-        let _ = overlay_win.set_always_on_top(true);
-        let _ = overlay_win.set_focus();
+    // 2. Allow RetroArch frame presentation to settle
+    std::thread::sleep(Duration::from_millis(120));
 
-        #[cfg(target_os = "windows")]
-        {
-            use windows::Win32::Foundation::HWND;
-            use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
-            use windows::Win32::UI::WindowsAndMessaging::{
-                BringWindowToTop, GetForegroundWindow, GetWindowThreadProcessId,
-                SetForegroundWindow, SetWindowPos, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOMOVE,
-                SWP_NOSIZE, SWP_SHOWWINDOW,
-            };
+    // 3. Capture screenshot of paused game frame
+    let screenshot_path = capture_screen_to_bmp().ok();
 
-            // Remove TOPMOST from RetroArch if it grabbed it
-            if let Some(ra_hwnd) = get_retroarch_hwnd() {
-                unsafe {
-                    let _ = SetWindowPos(
-                        ra_hwnd,
-                        Some(HWND_NOTOPMOST),
-                        0,
-                        0,
-                        0,
-                        0,
-                        SWP_NOMOVE | SWP_NOSIZE,
-                    );
-                }
-            }
-
-            if let Ok(raw_hwnd) = overlay_win.hwnd() {
-                let hwnd = HWND(raw_hwnd.0 as *mut _);
-                unsafe {
-                    let fg_hwnd = GetForegroundWindow();
-                    let fg_thread = GetWindowThreadProcessId(fg_hwnd, None);
-                    let cur_thread = GetCurrentThreadId();
-
-                    if fg_thread != 0 && fg_thread != cur_thread {
-                        let _ = AttachThreadInput(cur_thread, fg_thread, true);
-                        let _ = SetWindowPos(
-                            hwnd,
-                            Some(HWND_TOPMOST),
-                            0,
-                            0,
-                            0,
-                            0,
-                            SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
-                        );
-                        let _ = BringWindowToTop(hwnd);
-                        let _ = SetForegroundWindow(hwnd);
-                        let _ = AttachThreadInput(cur_thread, fg_thread, false);
-                    } else {
-                        let _ = SetWindowPos(
-                            hwnd,
-                            Some(HWND_TOPMOST),
-                            0,
-                            0,
-                            0,
-                            0,
-                            SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
-                        );
-                        let _ = BringWindowToTop(hwnd);
-                        let _ = SetForegroundWindow(hwnd);
-                    }
-                }
+    // 4. Hide RetroArch window completely so NewGame+ has uninterrupted display ownership
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE};
+        if let Some(ra_hwnd) = get_retroarch_hwnd() {
+            unsafe {
+                let _ = ShowWindow(ra_hwnd, SW_HIDE);
             }
         }
     }
 
-    let _ = app.emit("in-game-pause-open", ());
+    // 5. Show and focus main NewGame+ window at full screen
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.set_always_on_top(true);
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+
+    // 6. Notify frontend to mount InGameOverlayModal with captured frame
+    let _ = app.emit("in-game-pause-open", screenshot_path);
 
     Ok(())
 }
 
-/// Resumes RetroArch, unfreezing emulation and hiding the overlay
+/// Resumes RetroArch, restoring its full screen presentation and unpausing
 pub fn resume_in_game(app: &AppHandle) -> Result<(), String> {
     OVERLAY_OPEN.store(false, Ordering::SeqCst);
 
     let _ = app.emit("in-game-pause-close", ());
 
-    if let Some(overlay_win) = app.get_webview_window("in_game_overlay") {
-        let _ = overlay_win.set_always_on_top(false);
-
-        #[cfg(target_os = "windows")]
-        {
-            use windows::Win32::Foundation::HWND;
-            use windows::Win32::UI::WindowsAndMessaging::{
-                SetWindowPos, HWND_NOTOPMOST, SWP_NOMOVE, SWP_NOSIZE,
-            };
-            if let Ok(raw_hwnd) = overlay_win.hwnd() {
-                let hwnd = HWND(raw_hwnd.0 as *mut _);
-                unsafe {
-                    let _ = SetWindowPos(
-                        hwnd,
-                        Some(HWND_NOTOPMOST),
-                        0,
-                        0,
-                        0,
-                        0,
-                        SWP_NOMOVE | SWP_NOSIZE,
-                    );
-                }
-            }
-        }
-
-        let _ = overlay_win.hide();
+    // 1. Hide NewGame+ main window again
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_always_on_top(false);
+        let _ = window.hide();
     }
 
+    // 2. Restore and elevate RetroArch window
     #[cfg(target_os = "windows")]
     {
-        use windows::Win32::UI::WindowsAndMessaging::{SetForegroundWindow, ShowWindow, SW_RESTORE};
+        use windows::Win32::UI::WindowsAndMessaging::{SetForegroundWindow, ShowWindow, SW_RESTORE, SW_SHOW};
         if let Some(hwnd) = get_retroarch_hwnd() {
             unsafe {
+                let _ = ShowWindow(hwnd, SW_SHOW);
                 let _ = ShowWindow(hwnd, SW_RESTORE);
                 let _ = SetForegroundWindow(hwnd);
             }
         }
     }
 
-    std::thread::sleep(Duration::from_millis(50));
+    // 3. Unpause RetroArch
+    std::thread::sleep(Duration::from_millis(100));
     let _ = send_retroarch_command("PAUSE_TOGGLE");
 
     Ok(())
@@ -253,11 +345,6 @@ pub fn resume_in_game(app: &AppHandle) -> Result<(), String> {
 pub fn quit_in_game(app: &AppHandle) -> Result<(), String> {
     OVERLAY_OPEN.store(false, Ordering::SeqCst);
     GAME_RUNNING.store(false, Ordering::SeqCst);
-
-    if let Some(overlay_win) = app.get_webview_window("in_game_overlay") {
-        let _ = overlay_win.set_always_on_top(false);
-        let _ = overlay_win.hide();
-    }
 
     let _ = send_retroarch_command("QUIT");
 

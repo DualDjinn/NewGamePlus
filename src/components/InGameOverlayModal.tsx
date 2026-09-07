@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import type { Game } from "../types";
 import {
   inGameResume,
@@ -13,10 +14,11 @@ import "./InGameOverlayModal.css";
 interface Props {
   isOpen: boolean;
   game: Game | null;
+  screenshotPath?: string | null;
   onClose: () => void;
 }
 
-export default function InGameOverlayModal({ isOpen, game, onClose }: Props) {
+export default function InGameOverlayModal({ isOpen, game, screenshotPath, onClose }: Props) {
   const [activeSlot, setActiveSlot] = useState<number>(1);
   const [volume, setVolume] = useState<number>(80);
   const [notification, setNotification] = useState<string | null>(null);
@@ -156,6 +158,13 @@ export default function InGameOverlayModal({ isOpen, game, onClose }: Props) {
 
   return (
     <div className="ingame-overlay-backdrop">
+      {screenshotPath && (
+        <img
+          src={convertFileSrc(screenshotPath)}
+          className="ingame-overlay-screenshot"
+          alt=""
+        />
+      )}
       {notification && (
         <div className="ingame-overlay-toast animate-slide-down">
           <span>{notification}</span>

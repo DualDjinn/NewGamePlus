@@ -437,8 +437,8 @@ export async function inGameQuit(): Promise<void> {
   return invoke<void>("in_game_quit");
 }
 
-export function onInGamePauseOpen(cb: () => void) {
-  return listen("in-game-pause-open", () => cb());
+export function onInGamePauseOpen(cb: (screenshotPath: string | null) => void) {
+  return listen<string | null>("in-game-pause-open", (event) => cb(event.payload));
 }
 
 export function onInGamePauseClose(cb: () => void) {
