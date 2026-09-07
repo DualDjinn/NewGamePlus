@@ -18,15 +18,11 @@ import {
   setLayoutStyle,
   isWindowFullscreen,
   toggleWindowFullscreen,
-  onInGamePauseOpen,
-  onInGamePauseClose,
-  getActiveLaunchedRomPath,
 } from "./lib/tauri";
 import HeroBanner from "./components/HeroBanner";
 import CategoryRow from "./components/CategoryRow";
 import GameCard from "./components/GameCard";
 import GameDetailModal from "./components/GameDetailModal";
-import InGameOverlayModal from "./components/InGameOverlayModal";
 import Settings from "./components/Settings";
 import Sidebar from "./components/Sidebar";
 import CastModal from "./components/CastModal";
@@ -77,30 +73,7 @@ function App() {
   const [randomHomeCategories, setRandomHomeCategories] = useState<string[]>([]);
   const [castModalOpen, setCastModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [inGamePauseOpen, setInGamePauseOpen] = useState(false);
-  const [gameInPause, setGameInPause] = useState<Game | null>(null);
   const prevSectionRef = useRef<Section>(section);
-
-  // In-Game pause overlay event listeners
-  useEffect(() => {
-    const unlistenOpen = onInGamePauseOpen(() => {
-      const activeRom = getActiveLaunchedRomPath();
-      if (activeRom) {
-        const found = games.find((g) => g.rom_path === activeRom);
-        setGameInPause(found || null);
-      }
-      setInGamePauseOpen(true);
-    });
-
-    const unlistenClose = onInGamePauseClose(() => {
-      setInGamePauseOpen(false);
-    });
-
-    return () => {
-      unlistenOpen.then((fn) => fn());
-      unlistenClose.then((fn) => fn());
-    };
-  }, [games]);
 
   // Sync and toggle fullscreen
   const handleToggleFullscreen = useCallback(async () => {
@@ -1429,12 +1402,6 @@ function App() {
       <CastModal
         isOpen={castModalOpen}
         onClose={() => setCastModalOpen(false)}
-      />
-
-      <InGameOverlayModal
-        isOpen={inGamePauseOpen}
-        game={gameInPause}
-        onClose={() => setInGamePauseOpen(false)}
       />
       </div>
     </MusicProvider>

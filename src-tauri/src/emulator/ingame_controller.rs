@@ -81,6 +81,7 @@ pub fn set_retroarch_volume(pct: u32) -> Result<(), String> {
 }
 
 /// Starts the global Escape listener thread while a game is running
+#[allow(dead_code)]
 pub fn start_global_hotkey_listener(app: AppHandle, stop_flag: Arc<AtomicBool>) {
     std::thread::spawn(move || {
         #[cfg(target_os = "windows")]
@@ -116,6 +117,7 @@ pub fn start_global_hotkey_listener(app: AppHandle, stop_flag: Arc<AtomicBool>) 
 }
 
 /// Pauses RetroArch and brings NewGame+ window to front with overlay active
+#[allow(dead_code)]
 pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
     let _ = send_retroarch_command("PAUSE_TOGGLE");
 
