@@ -186,6 +186,8 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          video_fullscreen = \"true\"\n\
          video_windowed_fullscreen = \"true\"\n\
          video_borderless = \"true\"\n\
+         video_fullscreen_x = \"0\"\n\
+         video_fullscreen_y = \"0\"\n\
          video_vsync = \"true\"\n\
          video_driver = \"glcore\"\n\
          audio_enable = \"true\"\n\

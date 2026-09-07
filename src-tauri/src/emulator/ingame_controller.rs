@@ -77,6 +77,30 @@ pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
         let _ = window.show();
         let _ = window.set_always_on_top(true);
         let _ = window.set_focus();
+
+        #[cfg(target_os = "windows")]
+        {
+            use windows::core::s;
+            use windows::Win32::UI::WindowsAndMessaging::{
+                FindWindowA, SetForegroundWindow, SetWindowPos, HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
+            };
+            unsafe {
+                if let Ok(hwnd) = FindWindowA(windows::core::PCSTR::null(), s!("NewGame+")) {
+                    if !hwnd.0.is_null() {
+                        let _ = SetWindowPos(
+                            hwnd,
+                            Some(HWND_TOPMOST),
+                            0,
+                            0,
+                            0,
+                            0,
+                            SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
+                        );
+                        let _ = SetForegroundWindow(hwnd);
+                    }
+                }
+            }
+        }
     }
 
     let _ = app.emit("in-game-pause-open", ());
@@ -93,6 +117,29 @@ pub fn resume_in_game(app: &AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.set_always_on_top(false);
         let _ = window.hide();
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use windows::core::s;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            FindWindowA, SetWindowPos, HWND_NOTOPMOST, SWP_NOMOVE, SWP_NOSIZE,
+        };
+        unsafe {
+            if let Ok(hwnd) = FindWindowA(windows::core::PCSTR::null(), s!("NewGame+")) {
+                if !hwnd.0.is_null() {
+                    let _ = SetWindowPos(
+                        hwnd,
+                        Some(HWND_NOTOPMOST),
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE,
+                    );
+                }
+            }
+        }
     }
 
     let _ = send_retroarch_command("PAUSE_TOGGLE");
