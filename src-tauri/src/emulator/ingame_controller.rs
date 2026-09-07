@@ -133,9 +133,24 @@ pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
             use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
             use windows::Win32::UI::WindowsAndMessaging::{
                 BringWindowToTop, GetForegroundWindow, GetWindowThreadProcessId,
-                SetForegroundWindow, SetWindowPos, HWND_TOPMOST, SWP_NOMOVE,
+                SetForegroundWindow, SetWindowPos, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOMOVE,
                 SWP_NOSIZE, SWP_SHOWWINDOW,
             };
+
+            // Remove TOPMOST from RetroArch if it grabbed it
+            if let Some(ra_hwnd) = get_retroarch_hwnd() {
+                unsafe {
+                    let _ = SetWindowPos(
+                        ra_hwnd,
+                        Some(HWND_NOTOPMOST),
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE,
+                    );
+                }
+            }
 
             if let Ok(raw_hwnd) = overlay_win.hwnd() {
                 let hwnd = HWND(raw_hwnd.0 as *mut _);

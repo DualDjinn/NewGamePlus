@@ -209,7 +209,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          input_auto_mouse_grab = \"false\"\n\
          cursor_hide_fullscreen = \"true\"\n\
          cursor_hide_delay = \"2000000\"\n\
-         video_fullscreen = \"true\"\n\
+         video_fullscreen = \"false\"\n\
          video_windowed_fullscreen = \"true\"\n\
          video_borderless = \"true\"\n\
          video_fullscreen_x = \"0\"\n\
