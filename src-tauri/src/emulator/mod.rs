@@ -10,8 +10,7 @@ pub use standalone::*;
 
 use std::path::Path;
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use tauri::{Emitter, Manager};
 use crate::platforms;
 use crate::state::storage::{now_str, save_state, log_error};
@@ -56,12 +55,10 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
     let start_instant = std::time::Instant::now();
 
     let is_retroarch = !platforms::is_standalone_emulator(&core_name);
-    let stop_listener = Arc::new(AtomicBool::new(false));
 
     if is_retroarch {
-        GAME_RUNNING.store(true, Ordering::Relaxed);
-        OVERLAY_OPEN.store(false, Ordering::Relaxed);
-        start_global_hotkey_listener(app.clone(), Arc::clone(&stop_listener));
+        GAME_RUNNING.store(true, Ordering::SeqCst);
+        OVERLAY_OPEN.store(false, Ordering::SeqCst);
     }
 
     let status = if !is_retroarch {
@@ -85,7 +82,6 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
     };
 
     if is_retroarch {
-        stop_listener.store(true, Ordering::Relaxed);
         GAME_RUNNING.store(false, Ordering::SeqCst);
         OVERLAY_OPEN.store(false, Ordering::SeqCst);
     }

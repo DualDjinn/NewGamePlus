@@ -118,6 +118,8 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     let core_opts_str_path = core_opts_path.to_string_lossy().replace('\\', "/");
     let config_dir = ra_dir.join("config");
     let config_dir_str = config_dir.to_string_lossy().replace('\\', "/");
+    let assets_dir = ra_dir.join("assets");
+    let assets_str = assets_dir.to_string_lossy().replace('\\', "/");
 
     let (audio_driver_str, audio_device_str, audio_latency_val, audio_vol_db, video_smooth, video_scale_integer, aspect_ratio_str, all_core_options) = {
         let state = STATE.lock().unwrap();
@@ -170,13 +172,30 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     };
 
     let mut full_cfg = format!(
-        "menu_driver = \"null\"\n\
+        "menu_driver = \"ozone\"\n\
+         user_language = \"1\"\n\
+         assets_directory = \"{}\"\n\
+         input_menu_toggle = \"escape\"\n\
+         input_menu_toggle_gamepad_combo = \"2\"\n\
+         input_quit_gamepad_combo = \"0\"\n\
+         input_enable_hotkey = \"\"\n\
+         input_exit_emulator = \"nul\"\n\
          menu_show_core_updater = \"false\"\n\
          menu_show_load_core = \"false\"\n\
          menu_show_load_content = \"false\"\n\
          menu_show_online_updater = \"false\"\n\
-         input_enable_hotkey = \"\"\n\
-         input_exit_emulator = \"nul\"\n\
+         menu_show_information = \"false\"\n\
+         menu_show_configurations = \"false\"\n\
+         menu_show_help = \"false\"\n\
+         menu_show_restart_retroarch = \"false\"\n\
+         quick_menu_show_resume_content = \"true\"\n\
+         quick_menu_show_restart_content = \"true\"\n\
+         quick_menu_show_close_content = \"true\"\n\
+         quick_menu_show_take_screenshot = \"true\"\n\
+         quick_menu_show_save_load_state = \"true\"\n\
+         quick_menu_show_core_options = \"true\"\n\
+         quick_menu_show_controls = \"true\"\n\
+         quick_menu_show_shaders = \"true\"\n\
          network_cmd_enable = \"true\"\n\
          network_cmd_port = \"55355\"\n\
          pause_nonactive = \"false\"\n\
@@ -218,7 +237,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          system_directory = \"{}\"\n\
          savefile_directory = \"{}\"\n\
          savestate_directory = \"{}\"\n",
-        audio_driver_str, audio_device_str, audio_latency_val, audio_vol_db, core_opts_str_path, config_dir_str, system_str, saves_str, states_str
+        assets_str, audio_driver_str, audio_device_str, audio_latency_val, audio_vol_db, core_opts_str_path, config_dir_str, system_str, saves_str, states_str
     );
 
     full_cfg.push_str(&format!(
