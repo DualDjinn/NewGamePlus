@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "NewGame+",
         "width": 1280,
         "height": 720,
@@ -19,6 +20,17 @@
         "fullscreen": false,
         "maximized": true,
         "decorations": true
+      },
+      {
+        "label": "in_game_overlay",
+        "title": "NewGame+ Pause",
+        "fullscreen": true,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "shadow": false
       }
     ],
     "security": {

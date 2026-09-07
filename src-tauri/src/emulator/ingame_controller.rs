@@ -121,22 +121,11 @@ pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
 
     OVERLAY_OPEN.store(true, Ordering::SeqCst);
 
-    // Minimize RetroArch window so it yields the full screen buffer cleanly
-    #[cfg(target_os = "windows")]
-    {
-        use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_MINIMIZE};
-        if let Some(ra_hwnd) = get_retroarch_hwnd() {
-            unsafe {
-                let _ = ShowWindow(ra_hwnd, SW_MINIMIZE);
-            }
-        }
-    }
-
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.unminimize();
-        let _ = window.show();
-        let _ = window.set_always_on_top(true);
-        let _ = window.set_focus();
+    if let Some(overlay_win) = app.get_webview_window("in_game_overlay") {
+        let _ = overlay_win.unminimize();
+        let _ = overlay_win.show();
+        let _ = overlay_win.set_always_on_top(true);
+        let _ = overlay_win.set_focus();
 
         #[cfg(target_os = "windows")]
         {
@@ -148,7 +137,7 @@ pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
                 SWP_NOSIZE, SWP_SHOWWINDOW,
             };
 
-            if let Ok(raw_hwnd) = window.hwnd() {
+            if let Ok(raw_hwnd) = overlay_win.hwnd() {
                 let hwnd = HWND(raw_hwnd.0 as *mut _);
                 unsafe {
                     let fg_hwnd = GetForegroundWindow();
@@ -198,8 +187,8 @@ pub fn resume_in_game(app: &AppHandle) -> Result<(), String> {
 
     let _ = app.emit("in-game-pause-close", ());
 
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.set_always_on_top(false);
+    if let Some(overlay_win) = app.get_webview_window("in_game_overlay") {
+        let _ = overlay_win.set_always_on_top(false);
 
         #[cfg(target_os = "windows")]
         {
@@ -207,7 +196,7 @@ pub fn resume_in_game(app: &AppHandle) -> Result<(), String> {
             use windows::Win32::UI::WindowsAndMessaging::{
                 SetWindowPos, HWND_NOTOPMOST, SWP_NOMOVE, SWP_NOSIZE,
             };
-            if let Ok(raw_hwnd) = window.hwnd() {
+            if let Ok(raw_hwnd) = overlay_win.hwnd() {
                 let hwnd = HWND(raw_hwnd.0 as *mut _);
                 unsafe {
                     let _ = SetWindowPos(
@@ -223,7 +212,7 @@ pub fn resume_in_game(app: &AppHandle) -> Result<(), String> {
             }
         }
 
-        let _ = window.hide();
+        let _ = overlay_win.hide();
     }
 
     #[cfg(target_os = "windows")]
@@ -247,6 +236,11 @@ pub fn resume_in_game(app: &AppHandle) -> Result<(), String> {
 pub fn quit_in_game(app: &AppHandle) -> Result<(), String> {
     OVERLAY_OPEN.store(false, Ordering::SeqCst);
     GAME_RUNNING.store(false, Ordering::SeqCst);
+
+    if let Some(overlay_win) = app.get_webview_window("in_game_overlay") {
+        let _ = overlay_win.set_always_on_top(false);
+        let _ = overlay_win.hide();
+    }
 
     let _ = send_retroarch_command("QUIT");
 

@@ -106,6 +106,12 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
         save_state(&state);
     }
 
+    // Hide in-game overlay if it was open
+    if let Some(overlay_win) = app.get_webview_window("in_game_overlay") {
+        let _ = overlay_win.set_always_on_top(false);
+        let _ = overlay_win.hide();
+    }
+
     // Show main window again immediately without waiting for any background tasks
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.set_always_on_top(false);
