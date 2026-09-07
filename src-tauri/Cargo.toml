@@ -20,4 +20,4 @@ md5 = "0.7"
 tauri-plugin-dialog = "2.7.2"
 regex = "1"
 rayon = "1.10"
-windows = { version = "0.62.2", features = ["Win32_UI_Input_KeyboardAndMouse", "Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+windows = { version = "0.62.2", features = ["Win32_UI_Input_KeyboardAndMouse", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading"] }

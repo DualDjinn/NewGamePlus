@@ -69,21 +69,25 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
     } else {
         let core_path = ensure_core(&core_name)?;
         let (ra_exe, cfg_path) = ensure_retroarch(&profile_name)?;
-        Command::new(&ra_exe)
+        let mut child = Command::new(&ra_exe)
             .args([
                 "-c", cfg_path.to_str().unwrap_or(""),
                 "-L", core_path.to_str().unwrap_or(""),
                 &rom_path,
-                "--fullscreen",
             ])
-            .status()
-            .map_err(|e| e.to_string())?
+            .spawn()
+            .map_err(|e| e.to_string())?;
+
+        RETROARCH_PID.store(child.id(), Ordering::SeqCst);
+        let s = child.wait().map_err(|e| e.to_string())?;
+        RETROARCH_PID.store(0, Ordering::SeqCst);
+        s
     };
 
     if is_retroarch {
         stop_listener.store(true, Ordering::Relaxed);
-        GAME_RUNNING.store(false, Ordering::Relaxed);
-        OVERLAY_OPEN.store(false, Ordering::Relaxed);
+        GAME_RUNNING.store(false, Ordering::SeqCst);
+        OVERLAY_OPEN.store(false, Ordering::SeqCst);
     }
 
     let elapsed_secs = start_instant.elapsed().as_secs();
