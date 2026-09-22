@@ -1,25 +1,35 @@
+pub mod curated;
 pub mod headers;
 pub mod libretro;
+pub mod n3ds;
 pub mod steamgrid;
 
-pub use libretro::GameMetadata;
-pub use libretro::{base_title, sequel_number, region_tokens};
 pub use libretro::download_file;
+pub use libretro::GameMetadata;
+pub use libretro::{base_title, region_tokens, sequel_number};
 
+use crate::platforms;
 use rusqlite::Connection;
 use std::fs;
 use std::path::Path;
-use crate::platforms;
 
 pub fn clean_display_name_from_filename(name: &str) -> String {
-    let stem = Path::new(name).file_stem().and_then(|s| s.to_str()).unwrap_or(name);
+    let stem = Path::new(name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(name);
     let no_paren = stem.split(" (").next().unwrap_or(stem);
     let no_bracket = no_paren.split(" [").next().unwrap_or(no_paren);
     no_bracket.trim().to_string()
 }
 
-pub fn resolve_display_name(rom_name: &str, platform: &str, meta_display_name: Option<&str>) -> Option<String> {
-    if platforms::is_arcade_platform(platform) || platforms::arcade_display_name(rom_name).is_some() {
+pub fn resolve_display_name(
+    rom_name: &str,
+    platform: &str,
+    meta_display_name: Option<&str>,
+) -> Option<String> {
+    if platforms::is_arcade_platform(platform) || platforms::arcade_display_name(rom_name).is_some()
+    {
         return platforms::arcade_display_name(rom_name)
             .map(|s| s.to_string())
             .or_else(|| meta_display_name.map(|s| s.to_string()));
@@ -40,39 +50,14 @@ pub fn resolve_display_name(rom_name: &str, platform: &str, meta_display_name: O
             return Some(clean_file_title);
         }
 
-        // 2. Rechazar variantes en italiano u otro idioma si la ROM es en español o inglés
-        let db_lower = db_name.to_lowercase();
-        let rom_lower = rom_name.to_lowercase();
-        let is_italian_db = db_lower.contains("versione")
-            || db_lower.contains("rossa")
-            || db_lower.contains("blu")
-            || db_lower.contains("oro")
-            || db_lower.contains("argento")
-            || db_lower.contains("cristallo")
-            || db_lower.contains("smeraldo")
-            || db_lower.contains("rubino")
-            || db_lower.contains("zaffiro");
-
-        let is_non_italian_rom = rom_lower.contains("spain")
-            || rom_lower.contains("(es)")
-            || rom_lower.contains("edicion")
-            || rom_lower.contains("edición")
-            || rom_lower.contains("usa")
-            || rom_lower.contains("version")
-            || rom_lower.contains("europe");
-
-        if is_italian_db && is_non_italian_rom && !rom_lower.contains("italy") && !rom_lower.contains("(it)") {
-            return Some(clean_file_title);
-        }
-
-        // 3. Si la base coincide, usar el nombre de la BD
-        if file_base == db_base || db_base.starts_with(&file_base) || file_base.starts_with(&db_base) {
-            return Some(db_name.to_string());
-        }
-
-        // 4. Si el archivo ya tiene un nombre legible, conservarlo
-        if !clean_file_title.is_empty() && clean_file_title.len() >= 3 {
-            return Some(clean_file_title);
+        // 2. Si el archivo tiene región específica y la DB es otra versión
+        let file_regions = region_tokens(rom_name);
+        let db_regions = region_tokens(db_name);
+        if !file_regions.is_empty() && !db_regions.is_empty() {
+            let shares_region = file_regions.iter().any(|r| db_regions.contains(r));
+            if !shares_region {
+                return Some(clean_file_title);
+            }
         }
 
         return Some(db_name.to_string());
@@ -88,36 +73,128 @@ pub fn resolve_display_name(rom_name: &str, platform: &str, meta_display_name: O
 /// Cadena de resolución de metadatos:
 /// 1. Extracción de cabecera binaria del cartucho / disco (Strategy Pattern)
 /// 2. Consulta en base de datos local libretrodb por serial
-/// 3. Búsqueda exhaustiva en libretrodb
+/// 3. Búsqueda exhaustiva en libretrodb (con cross-platform enrichment)
+/// 4. Catálogo curado específico de 3DS
+/// 5. Catálogo curado multiplataforma (GB, GBC, GBA, NDS, SNES, PS1, PS2, PSP, etc.)
 pub fn lookup_metadata(
     meta_conn: &Option<Connection>,
     path: &Path,
     game_name: &str,
 ) -> Option<GameMetadata> {
-    let conn = meta_conn.as_ref()?;
     let platform = platforms::detect_platform(&path.to_string_lossy())
         .map(|i| i.platform)
         .unwrap_or("");
 
-    // 1. Intentar obtener información de la cabecera binaria (GBA, NDS, GB, N64, SNES)
-    if let Some(header) = headers::extract_rom_header(platform, path) {
-        if let Some(serial) = &header.serial {
-            if let Some(meta) = libretro::query_metadata_by_serial(conn, serial, game_name) {
-                return Some(meta);
+    let header = headers::extract_rom_header(platform, path);
+
+    let mut db_meta = None;
+
+    if let Some(conn) = meta_conn.as_ref() {
+        // 1. Intentar obtener información de la cabecera binaria (GBA, NDS, 3DS, GB, N64, SNES)
+        if let Some(ref hdr) = header {
+            if let Some(serial) = &hdr.serial {
+                if let Some(meta) = libretro::query_metadata_by_serial(conn, serial, game_name) {
+                    if meta.genre.is_some()
+                        || meta.developer.is_some()
+                        || meta.release_year.is_some()
+                    {
+                        db_meta = Some(meta);
+                    }
+                }
             }
-        }
-        if let Some(internal_title) = &header.internal_title {
-            if let Some(meta) = libretro::query_game_metadata_comprehensive(conn, internal_title, platform, path) {
-                let dname = meta.display_name.as_deref().unwrap_or(internal_title);
-                if libretro::plausible_match(game_name, dname) {
-                    return Some(meta);
+            if db_meta.is_none() {
+                if let Some(internal_title) = &hdr.internal_title {
+                    if let Some(meta) = libretro::query_game_metadata_comprehensive(
+                        conn,
+                        internal_title,
+                        platform,
+                        path,
+                    ) {
+                        let dname = meta.display_name.as_deref().unwrap_or(internal_title);
+                        if libretro::plausible_match(game_name, dname) {
+                            if meta.genre.is_some()
+                                || meta.developer.is_some()
+                                || meta.release_year.is_some()
+                            {
+                                db_meta = Some(meta);
+                            }
+                        }
+                    }
                 }
             }
         }
+
+        // 2. Consulta general por nombre de archivo
+        if db_meta.is_none() {
+            db_meta = libretro::query_game_metadata_comprehensive(conn, game_name, platform, path);
+        }
     }
 
-    // 2. Consulta general por nombre de archivo
-    libretro::query_game_metadata_comprehensive(conn, game_name, platform, path)
+    // 3. Si es plataforma 3DS y no tiene género/desarrollador o no se encontró, consultar catálogo curado de 3DS
+    if platform == "3DS" {
+        let serial = header.as_ref().and_then(|h| h.serial.as_deref());
+        if let Some(n3ds_meta) = n3ds::find_n3ds_catalog_metadata(game_name, serial) {
+            return if let Some(mut existing) = db_meta {
+                if existing.genre.is_none() {
+                    existing.genre = n3ds_meta.genre;
+                }
+                if existing.developer.is_none() {
+                    existing.developer = n3ds_meta.developer;
+                }
+                if existing.publisher.is_none() {
+                    existing.publisher = n3ds_meta.publisher;
+                }
+                if existing.release_year.is_none() {
+                    existing.release_year = n3ds_meta.release_year;
+                }
+                if existing.display_name.is_none() {
+                    existing.display_name = n3ds_meta.display_name;
+                }
+                if existing.franchise.is_none() {
+                    existing.franchise = n3ds_meta.franchise;
+                }
+                Some(existing)
+            } else {
+                Some(n3ds_meta)
+            };
+        }
+    }
+
+    // 4. Fallback al catálogo curado multiplataforma (GB, GBC, GBA, NDS, SNES, PS1, PS2, PSP, etc.)
+    let needs_curated = match &db_meta {
+        None => true,
+        Some(m) => m.genre.is_none() || m.developer.is_none() || m.release_year.is_none(),
+    };
+
+    if needs_curated {
+        if let Some(curated_meta) = curated::find_curated_catalog_metadata(game_name, platform) {
+            return if let Some(mut existing) = db_meta {
+                if existing.genre.is_none() {
+                    existing.genre = curated_meta.genre;
+                }
+                if existing.developer.is_none() {
+                    existing.developer = curated_meta.developer;
+                }
+                if existing.publisher.is_none() {
+                    existing.publisher = curated_meta.publisher;
+                }
+                if existing.release_year.is_none() {
+                    existing.release_year = curated_meta.release_year;
+                }
+                if existing.display_name.is_none() {
+                    existing.display_name = curated_meta.display_name;
+                }
+                if existing.franchise.is_none() {
+                    existing.franchise = curated_meta.franchise;
+                }
+                Some(existing)
+            } else {
+                Some(curated_meta)
+            };
+        }
+    }
+
+    db_meta
 }
 
 /// Cadena de Responsabilidad para Carátulas:
@@ -147,7 +224,8 @@ pub fn ensure_thumbnail(
         .and_then(|d| sequel_number(d))
         .or_else(|| sequel_number(game_name));
 
-    let is_arcade = platforms::is_arcade_platform(platform) || platforms::arcade_display_name(game_name).is_some();
+    let is_arcade = platforms::is_arcade_platform(platform)
+        || platforms::arcade_display_name(game_name).is_some();
     if is_arcade {
         candidates = platforms::arcade_thumbnail_candidates(game_name, db_name);
         if let Some(db) = db_name {
@@ -181,10 +259,16 @@ pub fn ensure_thumbnail(
             for search_term in [db_name, Some(game_name)].into_iter().flatten() {
                 let base = base_title(search_term);
                 let like = format!("%{}%", base);
-                if let Ok(mut stmt) = conn.prepare("SELECT name FROM roms WHERE name LIKE ?1 LIMIT 25") {
+                if let Ok(mut stmt) =
+                    conn.prepare("SELECT name FROM roms WHERE name LIKE ?1 LIMIT 25")
+                {
                     if let Ok(rows) = stmt.query_map([like], |r| r.get::<_, String>(0)) {
                         for row in rows.flatten() {
-                            let stem = Path::new(&row).file_stem().and_then(|s| s.to_str()).unwrap_or(&row).to_string();
+                            let stem = Path::new(&row)
+                                .file_stem()
+                                .and_then(|s| s.to_str())
+                                .unwrap_or(&row)
+                                .to_string();
                             let stem_sequel = sequel_number(&base_title(&stem));
                             if stem_sequel == target_sequel && !candidates.contains(&stem) {
                                 candidates.push(stem);
@@ -201,8 +285,14 @@ pub fn ensure_thumbnail(
             if c.eq_ignore_ascii_case(game_name) {
                 0
             } else {
-                let matches_region = region_tokens(c).into_iter().any(|t| file_tokens.contains(&t));
-                if matches_region { 1 } else { 2 }
+                let matches_region = region_tokens(c)
+                    .into_iter()
+                    .any(|t| file_tokens.contains(&t));
+                if matches_region {
+                    1
+                } else {
+                    2
+                }
             }
         });
         candidates.truncate(12);

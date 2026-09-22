@@ -1,18 +1,18 @@
-use std::collections::HashMap;
-use std::fs;
+use crate::state::lock_state;
 use crate::state::models::{AppSettings, AppState, GraphicsSettings};
 use crate::state::storage::{get_logs_dir, save_state};
-use crate::state::STATE;
+use std::collections::HashMap;
+use std::fs;
 
 #[tauri::command]
 pub fn get_settings() -> Result<AppSettings, String> {
-    let state = STATE.lock().unwrap();
+    let state = lock_state();
     Ok(state.settings.clone())
 }
 
 #[tauri::command]
 pub fn save_settings(folders: Vec<String>, kiosk_mode: Option<bool>) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     state.settings.folders = folders;
     if let Some(km) = kiosk_mode {
         state.settings.kiosk_mode = km;
@@ -23,7 +23,7 @@ pub fn save_settings(folders: Vec<String>, kiosk_mode: Option<bool>) -> Result<(
 
 #[tauri::command]
 pub fn save_platform_cores(cores: HashMap<String, String>) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     state.settings.platform_cores = cores;
     save_state(&state);
     Ok(())
@@ -31,8 +31,10 @@ pub fn save_platform_cores(cores: HashMap<String, String>) -> Result<(), String>
 
 #[tauri::command]
 pub fn save_bios_folder(folder: Option<String>) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
-    let opt = folder.map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let mut state = lock_state();
+    let opt = folder
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
     if let Some(ref f) = opt {
         if !state.settings.bios_folders.contains(f) {
             state.settings.bios_folders.push(f.clone());
@@ -45,7 +47,7 @@ pub fn save_bios_folder(folder: Option<String>) -> Result<(), String> {
 
 #[tauri::command]
 pub fn save_bios_folders(folders: Vec<String>) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     let cleaned: Vec<String> = folders
         .into_iter()
         .map(|s| s.trim().to_string())
@@ -59,7 +61,7 @@ pub fn save_bios_folders(folders: Vec<String>) -> Result<(), String> {
 
 #[tauri::command]
 pub fn get_bios_folders() -> Result<Vec<String>, String> {
-    let state = STATE.lock().unwrap();
+    let state = lock_state();
     if state.settings.bios_folders.is_empty() {
         if let Some(ref legacy) = state.settings.bios_folder {
             return Ok(vec![legacy.clone()]);
@@ -70,23 +72,36 @@ pub fn get_bios_folders() -> Result<Vec<String>, String> {
 
 #[tauri::command]
 pub fn get_bios_folder() -> Result<Option<String>, String> {
-    let state = STATE.lock().unwrap();
+    let state = lock_state();
     Ok(state.settings.bios_folder.clone())
 }
 
 #[tauri::command]
 pub fn set_kiosk_mode(enabled: bool) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     state.settings.kiosk_mode = enabled;
     save_state(&state);
     Ok(())
 }
 
 #[tauri::command]
+pub fn set_auto_update_check(enabled: bool) -> Result<(), String> {
+    let mut state = lock_state();
+    state.settings.auto_update_check = enabled;
+    save_state(&state);
+    Ok(())
+}
+
+#[tauri::command]
 pub fn set_theme(theme: String) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     let current_profile = state.settings.current_profile.clone();
-    if let Some(p) = state.settings.profiles.iter_mut().find(|p| p.name == current_profile) {
+    if let Some(p) = state
+        .settings
+        .profiles
+        .iter_mut()
+        .find(|p| p.name == current_profile)
+    {
         p.theme = theme.clone();
     }
     state.settings.theme = theme;
@@ -96,9 +111,14 @@ pub fn set_theme(theme: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn set_layout_style(style: String) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     let current_profile = state.settings.current_profile.clone();
-    if let Some(p) = state.settings.profiles.iter_mut().find(|p| p.name == current_profile) {
+    if let Some(p) = state
+        .settings
+        .profiles
+        .iter_mut()
+        .find(|p| p.name == current_profile)
+    {
         p.layout_style = style.clone();
     }
     state.settings.layout_style = style;
@@ -108,13 +128,13 @@ pub fn set_layout_style(style: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn get_graphics_settings() -> Result<GraphicsSettings, String> {
-    let state = STATE.lock().unwrap();
+    let state = lock_state();
     Ok(state.settings.graphics.clone())
 }
 
 #[tauri::command]
 pub fn save_graphics_settings(graphics: GraphicsSettings) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     state.settings.graphics = graphics;
     save_state(&state);
     Ok(())
@@ -156,16 +176,21 @@ pub fn get_audio_output_devices() -> Result<Vec<String>, String> {
 
 #[tauri::command]
 pub fn export_library() -> Result<String, String> {
-    let state = STATE.lock().unwrap();
+    let state = lock_state();
     serde_json::to_string_pretty(&*state).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn import_library(json: String) -> Result<(), String> {
-    let imported: AppState = serde_json::from_str(&json).map_err(|e| format!("Invalid JSON: {}", e))?;
-    let mut state = STATE.lock().unwrap();
+    let imported: AppState =
+        serde_json::from_str(&json).map_err(|e| format!("Invalid JSON: {}", e))?;
+    let mut state = lock_state();
     for g in &imported.games {
-        if !state.games.iter().any(|existing| existing.rom_path == g.rom_path) {
+        if !state
+            .games
+            .iter()
+            .any(|existing| existing.rom_path == g.rom_path)
+        {
             state.games.push(g.clone());
         }
     }
@@ -186,7 +211,7 @@ pub fn get_error_logs() -> Result<String, String> {
 
 #[tauri::command]
 pub fn save_music_volume(volume: f32) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     state.settings.music_volume = volume.clamp(0.0, 1.0);
     save_state(&state);
     Ok(())
@@ -194,13 +219,13 @@ pub fn save_music_volume(volume: f32) -> Result<(), String> {
 
 #[tauri::command]
 pub fn get_music_volume() -> Result<f32, String> {
-    let state = STATE.lock().unwrap();
+    let state = lock_state();
     Ok(state.settings.music_volume)
 }
 
 #[tauri::command]
 pub fn save_music_folders(folders: Vec<String>) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     let cleaned: Vec<String> = folders
         .into_iter()
         .map(|s| s.trim().to_string())
@@ -213,7 +238,6 @@ pub fn save_music_folders(folders: Vec<String>) -> Result<(), String> {
 
 #[tauri::command]
 pub fn get_music_folders() -> Result<Vec<String>, String> {
-    let state = STATE.lock().unwrap();
+    let state = lock_state();
     Ok(state.settings.music_folders.clone())
 }
-

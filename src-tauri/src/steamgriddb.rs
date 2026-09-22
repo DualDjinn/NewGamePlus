@@ -137,7 +137,10 @@ pub fn search_game_candidates(api_key: &str, term: &str) -> Result<Vec<SGDBGameC
         .map_err(|e| format!("Error en petición a SteamGridDB: {}", e))?;
 
     if !resp.status().is_success() {
-        return Err(format!("SteamGridDB respondió con código {}", resp.status()));
+        return Err(format!(
+            "SteamGridDB respondió con código {}",
+            resp.status()
+        ));
     }
 
     #[derive(Deserialize)]
@@ -153,7 +156,9 @@ pub fn search_game_candidates(api_key: &str, term: &str) -> Result<Vec<SGDBGameC
         data: Option<Vec<CandidateRaw>>,
     }
 
-    let parsed: Resp = resp.json().map_err(|e| format!("Error parseando candidatos: {}", e))?;
+    let parsed: Resp = resp
+        .json()
+        .map_err(|e| format!("Error parseando candidatos: {}", e))?;
     if !parsed.success {
         return Ok(Vec::new());
     }
@@ -183,7 +188,10 @@ pub fn get_heroes_for_game(api_key: &str, game_id: u64) -> Result<Vec<SGDBHero>,
         .map_err(|e| format!("Error en petición de heroes a SteamGridDB: {}", e))?;
 
     if !resp.status().is_success() {
-        return Err(format!("SteamGridDB respondió con código {}", resp.status()));
+        return Err(format!(
+            "SteamGridDB respondió con código {}",
+            resp.status()
+        ));
     }
 
     #[derive(Deserialize)]
@@ -209,7 +217,9 @@ pub fn get_heroes_for_game(api_key: &str, game_id: u64) -> Result<Vec<SGDBHero>,
         data: Option<Vec<HeroRaw>>,
     }
 
-    let parsed: Resp = resp.json().map_err(|e| format!("Error parseando heroes: {}", e))?;
+    let parsed: Resp = resp
+        .json()
+        .map_err(|e| format!("Error parseando heroes: {}", e))?;
     if !parsed.success {
         return Ok(Vec::new());
     }
@@ -275,28 +285,40 @@ pub fn download_hero(hero_url: &str, dest_path: &Path) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let resp = client.get(hero_url).send().map_err(|e| format!("Error en petición HTTP: {}", e))?;
+    let resp = client
+        .get(hero_url)
+        .send()
+        .map_err(|e| format!("Error en petición HTTP: {}", e))?;
     if !resp.status().is_success() {
-        return Err(format!("Error descargando imagen (código status: {})", resp.status()));
+        return Err(format!(
+            "Error descargando imagen (código status: {})",
+            resp.status()
+        ));
     }
 
     if let Some(parent) = dest_path.parent() {
         let _ = fs::create_dir_all(parent);
     }
 
-    let bytes = resp.bytes().map_err(|e| format!("Error leyendo bytes de imagen: {}", e))?;
+    let bytes = resp
+        .bytes()
+        .map_err(|e| format!("Error leyendo bytes de imagen: {}", e))?;
 
     // Atomic write to avoid Windows file sharing/locking issues
     let temp_path = dest_path.with_extension("tmp.png");
-    let mut file = fs::File::create(&temp_path).map_err(|e| format!("Error creando archivo temporal: {}", e))?;
-    file.write_all(&bytes).map_err(|e| format!("Error escribiendo imagen: {}", e))?;
-    file.flush().map_err(|e| format!("Error guardando imagen: {}", e))?;
+    let mut file = fs::File::create(&temp_path)
+        .map_err(|e| format!("Error creando archivo temporal: {}", e))?;
+    file.write_all(&bytes)
+        .map_err(|e| format!("Error escribiendo imagen: {}", e))?;
+    file.flush()
+        .map_err(|e| format!("Error guardando imagen: {}", e))?;
     drop(file);
 
     if dest_path.exists() {
         let _ = fs::remove_file(dest_path);
     }
-    fs::rename(&temp_path, dest_path).map_err(|e| format!("Error finalizando imagen de hero: {}", e))?;
+    fs::rename(&temp_path, dest_path)
+        .map_err(|e| format!("Error finalizando imagen de hero: {}", e))?;
 
     Ok(())
 }
@@ -318,7 +340,10 @@ pub fn get_logos_for_game(api_key: &str, game_id: u64) -> Result<Vec<SGDBLogo>, 
         .map_err(|e| format!("Error en petición de logos a SteamGridDB: {}", e))?;
 
     if !resp.status().is_success() {
-        return Err(format!("SteamGridDB respondió con código {}", resp.status()));
+        return Err(format!(
+            "SteamGridDB respondió con código {}",
+            resp.status()
+        ));
     }
 
     #[derive(Deserialize)]
@@ -345,7 +370,9 @@ pub fn get_logos_for_game(api_key: &str, game_id: u64) -> Result<Vec<SGDBLogo>, 
         data: Option<Vec<LogoRaw>>,
     }
 
-    let parsed: Resp = resp.json().map_err(|e| format!("Error parseando logos: {}", e))?;
+    let parsed: Resp = resp
+        .json()
+        .map_err(|e| format!("Error parseando logos: {}", e))?;
     if !parsed.success {
         return Ok(Vec::new());
     }
@@ -409,27 +436,39 @@ pub fn download_logo(logo_url: &str, dest_path: &Path) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let resp = client.get(logo_url).send().map_err(|e| format!("Error en petición HTTP: {}", e))?;
+    let resp = client
+        .get(logo_url)
+        .send()
+        .map_err(|e| format!("Error en petición HTTP: {}", e))?;
     if !resp.status().is_success() {
-        return Err(format!("Error descargando logo (código status: {})", resp.status()));
+        return Err(format!(
+            "Error descargando logo (código status: {})",
+            resp.status()
+        ));
     }
 
     if let Some(parent) = dest_path.parent() {
         let _ = fs::create_dir_all(parent);
     }
 
-    let bytes = resp.bytes().map_err(|e| format!("Error leyendo bytes de logo: {}", e))?;
+    let bytes = resp
+        .bytes()
+        .map_err(|e| format!("Error leyendo bytes de logo: {}", e))?;
 
     let temp_path = dest_path.with_extension("tmp.png");
-    let mut file = fs::File::create(&temp_path).map_err(|e| format!("Error creando archivo temporal: {}", e))?;
-    file.write_all(&bytes).map_err(|e| format!("Error escribiendo logo: {}", e))?;
-    file.flush().map_err(|e| format!("Error guardando logo: {}", e))?;
+    let mut file = fs::File::create(&temp_path)
+        .map_err(|e| format!("Error creando archivo temporal: {}", e))?;
+    file.write_all(&bytes)
+        .map_err(|e| format!("Error escribiendo logo: {}", e))?;
+    file.flush()
+        .map_err(|e| format!("Error guardando logo: {}", e))?;
     drop(file);
 
     if dest_path.exists() {
         let _ = fs::remove_file(dest_path);
     }
-    fs::rename(&temp_path, dest_path).map_err(|e| format!("Error finalizando imagen de logo: {}", e))?;
+    fs::rename(&temp_path, dest_path)
+        .map_err(|e| format!("Error finalizando imagen de logo: {}", e))?;
 
     Ok(())
 }
@@ -472,7 +511,10 @@ pub fn get_grids_for_game(api_key: &str, game_id: u64) -> Result<Vec<SGDBGrid>, 
         .map_err(|e| format!("Error en petición de grids a SteamGridDB: {}", e))?;
 
     if !resp.status().is_success() {
-        return Err(format!("SteamGridDB respondió con código {}", resp.status()));
+        return Err(format!(
+            "SteamGridDB respondió con código {}",
+            resp.status()
+        ));
     }
 
     #[derive(Deserialize)]
@@ -498,7 +540,9 @@ pub fn get_grids_for_game(api_key: &str, game_id: u64) -> Result<Vec<SGDBGrid>, 
         data: Option<Vec<GridRaw>>,
     }
 
-    let parsed: Resp = resp.json().map_err(|e| format!("Error parseando grids: {}", e))?;
+    let parsed: Resp = resp
+        .json()
+        .map_err(|e| format!("Error parseando grids: {}", e))?;
     if !parsed.success {
         return Ok(Vec::new());
     }
@@ -591,21 +635,32 @@ pub fn download_cover(cover_url: &str, dest_path: &Path) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let resp = client.get(cover_url).send().map_err(|e| format!("Error en petición HTTP: {}", e))?;
+    let resp = client
+        .get(cover_url)
+        .send()
+        .map_err(|e| format!("Error en petición HTTP: {}", e))?;
     if !resp.status().is_success() {
-        return Err(format!("Error descargando carátula (código status: {})", resp.status()));
+        return Err(format!(
+            "Error descargando carátula (código status: {})",
+            resp.status()
+        ));
     }
 
     if let Some(parent) = dest_path.parent() {
         let _ = fs::create_dir_all(parent);
     }
 
-    let bytes = resp.bytes().map_err(|e| format!("Error leyendo bytes de carátula: {}", e))?;
+    let bytes = resp
+        .bytes()
+        .map_err(|e| format!("Error leyendo bytes de carátula: {}", e))?;
 
     let temp_path = dest_path.with_extension("tmp.png");
-    let mut file = fs::File::create(&temp_path).map_err(|e| format!("Error creando archivo temporal: {}", e))?;
-    file.write_all(&bytes).map_err(|e| format!("Error escribiendo carátula: {}", e))?;
-    file.flush().map_err(|e| format!("Error guardando carátula: {}", e))?;
+    let mut file = fs::File::create(&temp_path)
+        .map_err(|e| format!("Error creando archivo temporal: {}", e))?;
+    file.write_all(&bytes)
+        .map_err(|e| format!("Error escribiendo carátula: {}", e))?;
+    file.flush()
+        .map_err(|e| format!("Error guardando carátula: {}", e))?;
     drop(file);
 
     if dest_path.exists() {

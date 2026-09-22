@@ -1,11 +1,11 @@
+use crate::state::storage::get_binaries_dir;
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
 use std::net::UdpSocket;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
-use serde::{Deserialize, Serialize};
-use crate::state::storage::get_binaries_dir;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CastNetworkInfo {
@@ -41,12 +41,17 @@ pub fn get_sunshine_exe() -> Option<PathBuf> {
     }
 
     // 2. Ubicación relativa al ejecutable o directorio de trabajo
-    let local = PathBuf::from("src-tauri").join("binaries").join("Sunshine").join("sunshine.exe");
+    let local = PathBuf::from("src-tauri")
+        .join("binaries")
+        .join("Sunshine")
+        .join("sunshine.exe");
     if local.exists() {
         return Some(local);
     }
 
-    let direct = PathBuf::from("binaries").join("Sunshine").join("sunshine.exe");
+    let direct = PathBuf::from("binaries")
+        .join("Sunshine")
+        .join("sunshine.exe");
     if direct.exists() {
         return Some(direct);
     }
@@ -87,7 +92,10 @@ pub fn get_cast_network_info() -> Result<CastNetworkInfo, String> {
     let local_ip = match UdpSocket::bind("0.0.0.0:0") {
         Ok(socket) => {
             if socket.connect("8.8.8.8:80").is_ok() {
-                socket.local_addr().map(|a| a.ip().to_string()).unwrap_or_else(|_| "127.0.0.1".into())
+                socket
+                    .local_addr()
+                    .map(|a| a.ip().to_string())
+                    .unwrap_or_else(|_| "127.0.0.1".into())
             } else {
                 "127.0.0.1".into()
             }
@@ -110,7 +118,11 @@ pub fn open_wireless_display() -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         let _ = Command::new("cmd")
-            .args(["/c", "start", "ms-settings-connectabledevices:devicediscovery"])
+            .args([
+                "/c",
+                "start",
+                "ms-settings-connectabledevices:devicediscovery",
+            ])
             .spawn()
             .map_err(|e| format!("No se pudo abrir la proyección de Windows: {}", e))?;
         Ok(())
@@ -152,21 +164,51 @@ pub fn discover_lan_devices() -> Result<Vec<LanDevice>, String> {
                 seen_ips.insert(ip.clone());
 
                 let resp = String::from_utf8_lossy(&buf[..len]).to_lowercase();
-                
-                let (device_type, name, protocol) = if resp.contains("webos") || resp.contains("lg") {
-                    ("tv", "LG Smart TV (webOS)".to_string(), "Miracast / DLNA".to_string())
+
+                let (device_type, name, protocol) = if resp.contains("webos") || resp.contains("lg")
+                {
+                    (
+                        "tv",
+                        "LG Smart TV (webOS)".to_string(),
+                        "Miracast / DLNA".to_string(),
+                    )
                 } else if resp.contains("samsung") || resp.contains("tizen") {
-                    ("tv", "Samsung Smart TV".to_string(), "SmartView / DLNA".to_string())
-                } else if resp.contains("xiaomi") || resp.contains("mitv") || resp.contains("mibox") {
-                    ("stick", "Xiaomi TV Stick / Android TV".to_string(), "Moonlight / Cast".to_string())
+                    (
+                        "tv",
+                        "Samsung Smart TV".to_string(),
+                        "SmartView / DLNA".to_string(),
+                    )
+                } else if resp.contains("xiaomi") || resp.contains("mitv") || resp.contains("mibox")
+                {
+                    (
+                        "stick",
+                        "Xiaomi TV Stick / Android TV".to_string(),
+                        "Moonlight / Cast".to_string(),
+                    )
                 } else if resp.contains("fire") || resp.contains("aft") || resp.contains("amazon") {
-                    ("stick", "Amazon Fire TV Stick".to_string(), "Moonlight / Miracast".to_string())
+                    (
+                        "stick",
+                        "Amazon Fire TV Stick".to_string(),
+                        "Moonlight / Miracast".to_string(),
+                    )
                 } else if resp.contains("roku") {
-                    ("tv", "Roku TV / Streaming Stick".to_string(), "Miracast / AirPlay".to_string())
+                    (
+                        "tv",
+                        "Roku TV / Streaming Stick".to_string(),
+                        "Miracast / AirPlay".to_string(),
+                    )
                 } else if resp.contains("google") || resp.contains("chromecast") {
-                    ("stick", "Google Chromecast / Android TV".to_string(), "Moonlight / Cast".to_string())
+                    (
+                        "stick",
+                        "Google Chromecast / Android TV".to_string(),
+                        "Moonlight / Cast".to_string(),
+                    )
                 } else {
-                    ("other", format!("Dispositivo multimedia ({})", ip), "Red Local".to_string())
+                    (
+                        "other",
+                        format!("Dispositivo multimedia ({})", ip),
+                        "Red Local".to_string(),
+                    )
                 };
 
                 devices.push(LanDevice {
@@ -186,13 +228,18 @@ pub fn discover_lan_devices() -> Result<Vec<LanDevice>, String> {
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        if let Ok(output) = Command::new("arp").arg("-a").creation_flags(CREATE_NO_WINDOW).output() {
+        if let Ok(output) = Command::new("arp")
+            .arg("-a")
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+        {
             let stdout = String::from_utf8_lossy(&output.stdout);
             for line in stdout.lines() {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 3 && parts[2] == "dinámico" {
                     let ip = parts[0];
-                    if ip.starts_with("192.168.") || ip.starts_with("10.") || ip.starts_with("172.") {
+                    if ip.starts_with("192.168.") || ip.starts_with("10.") || ip.starts_with("172.")
+                    {
                         if !seen_ips.contains(ip) && !ip.ends_with(".1") && !ip.ends_with(".255") {
                             seen_ips.insert(ip.to_string());
                             devices.push(LanDevice {
@@ -224,7 +271,11 @@ pub fn check_sunshine_status() -> Result<SunshineStatus, String> {
         is_installed,
         is_running,
         web_ui_url: "https://localhost:47990".into(),
-        version: if is_installed { Some("Sunshine Portable v2026+".into()) } else { None },
+        version: if is_installed {
+            Some("Sunshine Portable v2026+".into())
+        } else {
+            None
+        },
         exe_path: exe_path.map(|p| p.to_string_lossy().to_string()),
     })
 }
@@ -342,7 +393,13 @@ pub fn download_sunshine_portable() -> Result<String, String> {
         }
 
         let res = Command::new("powershell")
-            .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", &script_path.to_string_lossy()])
+            .args([
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                &script_path.to_string_lossy(),
+            ])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
             .map_err(|e| format!("No se pudo ejecutar setup-sunshine.ps1: {}", e))?;
@@ -410,7 +467,10 @@ pub async fn pair_moonlight_pin(pin: String) -> Result<String, String> {
     if status.is_success() {
         if let Ok(body) = resp.json::<PairPinResponse>().await {
             if body.status == Some(true) {
-                return Ok("¡Dispositivo emparejado con éxito! Tu TV ya está conectada a NewGamePlus.".into());
+                return Ok(
+                    "¡Dispositivo emparejado con éxito! Tu TV ya está conectada a NewGamePlus."
+                        .into(),
+                );
             } else {
                 return Ok("PIN enviado. Si el TV no se vinculó, asegúrate de haber pulsado sobre tu PC en Moonlight antes de ingresar el PIN.".into());
             }

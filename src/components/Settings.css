@@ -869,3 +869,25 @@
   box-shadow: 0 0 10px var(--accent-glow);
 }
 
+/* Card highlight pulse animation when navigating from Settings Search */
+.settings-card-highlight-pulse {
+  animation: settingsCardHighlight 2s cubic-bezier(0.16, 1, 0.3, 1);
+  border-color: var(--accent) !important;
+}
+
+@keyframes settingsCardHighlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--accent-rgb, 245, 158, 11), 0.7);
+    transform: scale(1.015);
+  }
+  25% {
+    box-shadow: 0 0 24px 6px rgba(var(--accent-rgb, 245, 158, 11), 0.45);
+    transform: scale(1.015);
+  }
+  100% {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    transform: scale(1);
+  }
+}
+
+

@@ -6,7 +6,7 @@ export const PLATFORM_CORES: Record<string, string[]> = {
   GBA: ["mgba", "mgba2015", "vbam"],
   GBC: ["gambatte", "sameboy", "gearboy", "mgba"],
   GB: ["gambatte", "sameboy", "gearboy", "mgba"],
-  NDS: ["melonDS", "melonDS DS"],
+  NDS: ["melonds", "melondsds", "desmume"],
   "3DS": ["citra", "lime3ds"],
   GAMECUBE: ["dolphin"],
   MEGA_DRIVE: ["genesis_plus_gx", "picodrive", "blastem"],
@@ -25,4 +25,5 @@ export const PLATFORM_CORES: Record<string, string[]> = {
   WSWAN: ["mednafen_wswan"],
   COLECOVISION: ["gearcoleco"],
   VB: ["mednafen_vb"],
+  PC: ["pc"],
 };

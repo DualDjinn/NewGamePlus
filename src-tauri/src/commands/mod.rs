@@ -5,6 +5,7 @@ pub mod profiles;
 pub mod settings;
 pub mod steamgrid;
 pub mod system;
+pub mod updates;
 
 pub use achievements::*;
 pub use cast::*;
@@ -13,3 +14,4 @@ pub use profiles::*;
 pub use settings::*;
 pub use steamgrid::*;
 pub use system::*;
+pub use updates::*;

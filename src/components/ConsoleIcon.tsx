@@ -268,6 +268,22 @@ export const ConsoleIcon: React.FC<ConsoleIconProps> = ({
     );
   }
 
+  // PC / Windows
+  if (p === "PC" || p.includes("WINDOWS") || p.includes("JUEGOS DE PC")) {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill={color}
+        className={className}
+        aria-hidden="true"
+      >
+        <path d="M3 5.4l7.6-1v7.1H3V5.4zm0 8.3h7.6v7.1l-7.6-1v-6.1zm8.7-9.5L21 2.8v8.7h-9.3V4.2zm0 8.5H21v8.7l-9.3-1.4v-7.3z" />
+      </svg>
+    );
+  }
+
   // Fallback: Generic Retro Gamepad
   return (
     <svg

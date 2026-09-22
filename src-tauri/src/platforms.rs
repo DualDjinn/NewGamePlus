@@ -20,19 +20,30 @@ pub fn detect_iso_platform(p: &Path) -> PlatformInfo {
                 || slice.windows(13).any(|w| w == b"PLAYSTATION 3")
                 || slice.windows(8).any(|w| w == b"PS3_GAME")
             {
-                return PlatformInfo { platform: "PS3", core_name: "rpcs3" };
+                return PlatformInfo {
+                    platform: "PS3",
+                    core_name: "rpcs3",
+                };
             }
 
             // 1.1 GameCube Magic: en offset 0x1C (28) el magic es 0xC2339F3D
             if slice.len() >= 32 && &slice[0x1c..0x20] == &[0xc2, 0x33, 0x9f, 0x3d] {
-                return PlatformInfo { platform: "GAMECUBE", core_name: "dolphin" };
+                return PlatformInfo {
+                    platform: "GAMECUBE",
+                    core_name: "dolphin",
+                };
             }
 
             // 1.2 Firmas de PSP (UMD_DATA.BIN, PSP_GAME o etiqueta PSP GAME)
-            if slice.windows(8).any(|w| w == b"PSP_GAME" || w == b"PSP GAME")
+            if slice
+                .windows(8)
+                .any(|w| w == b"PSP_GAME" || w == b"PSP GAME")
                 || slice.windows(12).any(|w| w == b"UMD_DATA.BIN")
             {
-                return PlatformInfo { platform: "PSP", core_name: "ppsspp" };
+                return PlatformInfo {
+                    platform: "PSP",
+                    core_name: "ppsspp",
+                };
             }
 
             // 1.3 Firmas de PS2 (SYSTEM.CNF con BOOT2, PLAYSTATION 2, o cdrom0:)
@@ -40,21 +51,29 @@ pub fn detect_iso_platform(p: &Path) -> PlatformInfo {
                 || slice.windows(13).any(|w| w == b"PLAYSTATION 2")
                 || slice.windows(8).any(|w| w == b"cdrom0:\\")
             {
-                return PlatformInfo { platform: "PS2", core_name: "pcsx2" };
+                return PlatformInfo {
+                    platform: "PS2",
+                    core_name: "pcsx2",
+                };
             }
 
             // 1.4 Firmas de PS1 (SYSTEM.CNF con BOOT = cdrom:, o BOOT=cdrom:)
-            if slice.windows(6).any(|w| w == b"BOOT =")
-                || slice.windows(5).any(|w| w == b"BOOT=")
-            {
-                return PlatformInfo { platform: "PS1", core_name: "pcsx_rearmed" };
+            if slice.windows(6).any(|w| w == b"BOOT =") || slice.windows(5).any(|w| w == b"BOOT=") {
+                return PlatformInfo {
+                    platform: "PS1",
+                    core_name: "pcsx_rearmed",
+                };
             }
         }
     }
 
     // 2. Heurísticas por ruta y nombre de archivo (fallback si no se puede abrir el archivo o firmas ausentes)
     let path_lower = p.to_string_lossy().to_lowercase();
-    let name_lower = p.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+    let name_lower = p
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_lowercase();
 
     // 2.0 PS3
     let is_ps3 = path_lower.contains("ps3")
@@ -73,7 +92,10 @@ pub fn detect_iso_platform(p: &Path) -> PlatformInfo {
         || name_lower.starts_with("bces")
         || name_lower.starts_with("bcus");
     if is_ps3 {
-        return PlatformInfo { platform: "PS3", core_name: "rpcs3" };
+        return PlatformInfo {
+            platform: "PS3",
+            core_name: "rpcs3",
+        };
     }
 
     // 2.1 GameCube
@@ -87,7 +109,10 @@ pub fn detect_iso_platform(p: &Path) -> PlatformInfo {
         || name_lower.contains("gamecube")
         || name_lower.contains("ngc")
     {
-        return PlatformInfo { platform: "GAMECUBE", core_name: "dolphin" };
+        return PlatformInfo {
+            platform: "GAMECUBE",
+            core_name: "dolphin",
+        };
     }
 
     // 2.2 PSP
@@ -107,7 +132,10 @@ pub fn detect_iso_platform(p: &Path) -> PlatformInfo {
         || name_lower.contains("-uljs")
         || name_lower.contains("-ulex");
     if is_psp {
-        return PlatformInfo { platform: "PSP", core_name: "ppsspp" };
+        return PlatformInfo {
+            platform: "PSP",
+            core_name: "ppsspp",
+        };
     }
 
     // 2.3 PS2
@@ -133,7 +161,10 @@ pub fn detect_iso_platform(p: &Path) -> PlatformInfo {
         || name_lower.starts_with("slps-2")
         || name_lower.starts_with("slps_2");
     if is_ps2 {
-        return PlatformInfo { platform: "PS2", core_name: "pcsx2" };
+        return PlatformInfo {
+            platform: "PS2",
+            core_name: "pcsx2",
+        };
     }
 
     // 2.4 PS1
@@ -156,11 +187,17 @@ pub fn detect_iso_platform(p: &Path) -> PlatformInfo {
         || name_lower.starts_with("scus-94")
         || name_lower.starts_with("scus_94");
     if is_ps1 {
-        return PlatformInfo { platform: "PS1", core_name: "pcsx_rearmed" };
+        return PlatformInfo {
+            platform: "PS1",
+            core_name: "pcsx_rearmed",
+        };
     }
 
     // Default para ISO no clasificada
-    PlatformInfo { platform: "PS1", core_name: "pcsx_rearmed" }
+    PlatformInfo {
+        platform: "PS1",
+        core_name: "pcsx_rearmed",
+    }
 }
 
 pub fn detect_platform(rom_path: &str) -> Option<PlatformInfo> {
@@ -170,10 +207,16 @@ pub fn detect_platform(rom_path: &str) -> Option<PlatformInfo> {
 
     // Si el archivo está dentro de la estructura interna de un juego de PS3 (PS3_GAME, PS3_EXTRA, PS3_UPDATE),
     // el ÚNICO archivo ejecutable que debe detectarse como juego es EBOOT.BIN
-    if path_lower.contains("ps3_game") || path_lower.contains("ps3_extra") || path_lower.contains("ps3_update") {
+    if path_lower.contains("ps3_game")
+        || path_lower.contains("ps3_extra")
+        || path_lower.contains("ps3_update")
+    {
         let file_name = p.file_name().and_then(|s| s.to_str()).unwrap_or("");
         if file_name.eq_ignore_ascii_case("eboot.bin") {
-            return Some(PlatformInfo { platform: "PS3", core_name: "rpcs3" });
+            return Some(PlatformInfo {
+                platform: "PS3",
+                core_name: "rpcs3",
+            });
         }
         return None;
     }
@@ -182,7 +225,10 @@ pub fn detect_platform(rom_path: &str) -> Option<PlatformInfo> {
     if ext == "bin" {
         let file_name = p.file_name().and_then(|s| s.to_str()).unwrap_or("");
         if file_name.eq_ignore_ascii_case("eboot.bin") {
-            return Some(PlatformInfo { platform: "PS3", core_name: "rpcs3" });
+            return Some(PlatformInfo {
+                platform: "PS3",
+                core_name: "rpcs3",
+            });
         }
         return None;
     }
@@ -190,15 +236,28 @@ pub fn detect_platform(rom_path: &str) -> Option<PlatformInfo> {
     // .cso: PSP o PS2
     if ext == "cso" {
         let path_lower = p.to_string_lossy().to_lowercase();
-        if path_lower.contains("ps2") || path_lower.contains("playstation 2") || path_lower.contains(r"\ps2\") || path_lower.contains("/ps2/") {
-            return Some(PlatformInfo { platform: "PS2", core_name: "pcsx2" });
+        if path_lower.contains("ps2")
+            || path_lower.contains("playstation 2")
+            || path_lower.contains(r"\ps2\")
+            || path_lower.contains("/ps2/")
+        {
+            return Some(PlatformInfo {
+                platform: "PS2",
+                core_name: "pcsx2",
+            });
         }
-        return Some(PlatformInfo { platform: "PSP", core_name: "ppsspp" });
+        return Some(PlatformInfo {
+            platform: "PSP",
+            core_name: "ppsspp",
+        });
     }
 
     // GameCube native disc formats
     if ext == "gcm" || ext == "rvz" || ext == "ciso" || ext == "gcz" {
-        return Some(PlatformInfo { platform: "GAMECUBE", core_name: "dolphin" });
+        return Some(PlatformInfo {
+            platform: "GAMECUBE",
+            core_name: "dolphin",
+        });
     }
 
     // .iso: GameCube, PSP, PS2, PS1 — detección profunda e inteligente
@@ -208,65 +267,156 @@ pub fn detect_platform(rom_path: &str) -> Option<PlatformInfo> {
 
     let info = match ext.as_str() {
         // Nintendo
-        "sfc" | "smc" => PlatformInfo { platform: "SNES", core_name: "snes9x" },
-        "nes" | "fc" | "unf" => PlatformInfo { platform: "NES", core_name: "nestopia" },
-        "n64" | "z64" | "v64" | "n64dd" => PlatformInfo { platform: "N64", core_name: "mupen64plus_next" },
-        "gba" | "agb" => PlatformInfo { platform: "GBA", core_name: "mgba" },
-        "gbc" => PlatformInfo { platform: "GBC", core_name: "gambatte" },
-        "gb" | "dmg" => PlatformInfo { platform: "GB", core_name: "gambatte" },
-        "nds" | "ndsi" | "dsi" => PlatformInfo { platform: "NDS", core_name: "melonDS" },
-        "3ds" | "3dscx" => PlatformInfo { platform: "3DS", core_name: "citra" },
-        "vb" => PlatformInfo { platform: "VB", core_name: "mednafen_vb" },
+        "sfc" | "smc" => PlatformInfo {
+            platform: "SNES",
+            core_name: "snes9x",
+        },
+        "nes" | "fc" | "unf" => PlatformInfo {
+            platform: "NES",
+            core_name: "nestopia",
+        },
+        "n64" | "z64" | "v64" | "n64dd" => PlatformInfo {
+            platform: "N64",
+            core_name: "mupen64plus_next",
+        },
+        "gba" | "agb" => PlatformInfo {
+            platform: "GBA",
+            core_name: "mgba",
+        },
+        "gbc" => PlatformInfo {
+            platform: "GBC",
+            core_name: "gambatte",
+        },
+        "gb" | "dmg" => PlatformInfo {
+            platform: "GB",
+            core_name: "gambatte",
+        },
+        "nds" | "ndsi" | "dsi" => PlatformInfo {
+            platform: "NDS",
+            core_name: "melonds",
+        },
+        "3ds" | "3dscx" | "cia" | "cxi" | "app" | "cci" => PlatformInfo {
+            platform: "3DS",
+            core_name: "azahar",
+        },
+        "vb" => PlatformInfo {
+            platform: "VB",
+            core_name: "mednafen_vb",
+        },
 
         // Sega
-        "md" | "gen" | "smd" | "sg" => PlatformInfo { platform: "MEGA_DRIVE", core_name: "genesis_plus_gx" },
-        "sms" => PlatformInfo { platform: "SMS", core_name: "smsplus" },
-        "gg" | "sgg" => PlatformInfo { platform: "GAME_GEAR", core_name: "gearsystem" },
-        "pce" | "pcecd" => PlatformInfo { platform: "PCE", core_name: "mednafen_pce_fast" },
-        "32x" => PlatformInfo { platform: "32X", core_name: "picodrive" },
+        "md" | "gen" | "smd" | "sg" => PlatformInfo {
+            platform: "MEGA_DRIVE",
+            core_name: "genesis_plus_gx",
+        },
+        "sms" => PlatformInfo {
+            platform: "SMS",
+            core_name: "smsplus",
+        },
+        "gg" | "sgg" => PlatformInfo {
+            platform: "GAME_GEAR",
+            core_name: "gearsystem",
+        },
+        "pce" | "pcecd" => PlatformInfo {
+            platform: "PCE",
+            core_name: "mednafen_pce_fast",
+        },
+        "32x" => PlatformInfo {
+            platform: "32X",
+            core_name: "picodrive",
+        },
 
         // Sony
         "chd" => {
             let path_lower = p.to_string_lossy().to_lowercase();
-            if path_lower.contains("ps2") || path_lower.contains("playstation 2") || path_lower.contains(r"\ps2\") || path_lower.contains("/ps2/") {
-                PlatformInfo { platform: "PS2", core_name: "pcsx2" }
+            if path_lower.contains("ps2")
+                || path_lower.contains("playstation 2")
+                || path_lower.contains(r"\ps2\")
+                || path_lower.contains("/ps2/")
+            {
+                PlatformInfo {
+                    platform: "PS2",
+                    core_name: "pcsx2",
+                }
             } else if path_lower.contains("mame") || path_lower.contains("arcade") {
-                PlatformInfo { platform: "MAME", core_name: "fbneo" }
+                PlatformInfo {
+                    platform: "MAME",
+                    core_name: "fbneo",
+                }
             } else {
-                PlatformInfo { platform: "PS1", core_name: "pcsx_rearmed" }
+                PlatformInfo {
+                    platform: "PS1",
+                    core_name: "pcsx_rearmed",
+                }
             }
         }
         "cue" | "pbp" | "ecm" | "mds" | "toc" | "m3u" => {
             let path_lower = p.to_string_lossy().to_lowercase();
             if (path_lower.contains("psp") || path_lower.contains("/psp/")) && ext == "pbp" {
-                PlatformInfo { platform: "PSP", core_name: "ppsspp" }
+                PlatformInfo {
+                    platform: "PSP",
+                    core_name: "ppsspp",
+                }
             } else if path_lower.contains("ps2") || path_lower.contains("playstation 2") {
-                PlatformInfo { platform: "PS2", core_name: "pcsx2" }
+                PlatformInfo {
+                    platform: "PS2",
+                    core_name: "pcsx2",
+                }
             } else {
-                PlatformInfo { platform: "PS1", core_name: "pcsx_rearmed" }
+                PlatformInfo {
+                    platform: "PS1",
+                    core_name: "pcsx_rearmed",
+                }
             }
         }
-        "psf" | "minipsf" => PlatformInfo { platform: "PS1", core_name: "pcsx_rearmed" },
+        "psf" | "minipsf" => PlatformInfo {
+            platform: "PS1",
+            core_name: "pcsx_rearmed",
+        },
 
         // Otros
-        "ngp" => PlatformInfo { platform: "NGP", core_name: "mednafen_ngp" },
+        "ngp" => PlatformInfo {
+            platform: "NGP",
+            core_name: "mednafen_ngp",
+        },
         "ngc" => {
             let path_lower = p.to_string_lossy().to_lowercase();
             if path_lower.contains("gamecube") || path_lower.contains("game cube") {
-                PlatformInfo { platform: "GAMECUBE", core_name: "dolphin" }
+                PlatformInfo {
+                    platform: "GAMECUBE",
+                    core_name: "dolphin",
+                }
             } else {
-                PlatformInfo { platform: "NGP", core_name: "mednafen_ngp" }
+                PlatformInfo {
+                    platform: "NGP",
+                    core_name: "mednafen_ngp",
+                }
             }
         }
-        "lynx" => PlatformInfo { platform: "LYNX", core_name: "mednafen_lynx" },
-        "ws" | "wsc" => PlatformInfo { platform: "WSWAN", core_name: "mednafen_wswan" },
-        "col" => PlatformInfo { platform: "COLECOVISION", core_name: "gearcoleco" },
-        "neo" => PlatformInfo { platform: "NEOGEO", core_name: "fbneo" },
+        "lynx" => PlatformInfo {
+            platform: "LYNX",
+            core_name: "mednafen_lynx",
+        },
+        "ws" | "wsc" => PlatformInfo {
+            platform: "WSWAN",
+            core_name: "mednafen_wswan",
+        },
+        "col" => PlatformInfo {
+            platform: "COLECOVISION",
+            core_name: "gearcoleco",
+        },
+        "neo" => PlatformInfo {
+            platform: "NEOGEO",
+            core_name: "fbneo",
+        },
         "zip" | "7z" => {
             let path_lower = p.to_string_lossy().to_lowercase();
             let stem = p.file_stem()?.to_str()?.to_lowercase();
             if path_lower.contains("mame") || path_lower.contains("arcade") {
-                PlatformInfo { platform: "MAME", core_name: "fbneo" }
+                PlatformInfo {
+                    platform: "MAME",
+                    core_name: "fbneo",
+                }
             } else if path_lower.contains("neogeo")
                 || path_lower.contains("neo-geo")
                 || path_lower.contains("neo geo")
@@ -275,7 +425,28 @@ pub fn detect_platform(rom_path: &str) -> Option<PlatformInfo> {
                 || path_lower.contains("mvs")
                 || neogeo_display_name(&stem).is_some()
             {
-                PlatformInfo { platform: "NEOGEO", core_name: "fbneo" }
+                PlatformInfo {
+                    platform: "NEOGEO",
+                    core_name: "fbneo",
+                }
+            } else {
+                return None;
+            }
+        }
+        "exe" | "lnk" => {
+            let name_lower = p
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            if crate::scanner::pc::is_blacklisted_exe(&name_lower) {
+                return None;
+            }
+            if crate::scanner::pc::is_pc_path(p) {
+                PlatformInfo {
+                    platform: "PC",
+                    core_name: "pc",
+                }
             } else {
                 return None;
             }
@@ -295,7 +466,7 @@ pub fn platform_extensions(platform: &str) -> &'static [&'static str] {
         "GBC" => &["gbc"],
         "GB" => &["gb", "dmg"],
         "NDS" => &["nds", "ndsi", "dsi"],
-        "3DS" => &["3ds", "3dscx"],
+        "3DS" => &["3ds", "3dscx", "cia", "cxi", "app", "cci"],
         "VB" => &["vb"],
         "MEGA_DRIVE" => &["md", "gen", "smd", "sg"],
         "SMS" => &["sms"],
@@ -303,7 +474,9 @@ pub fn platform_extensions(platform: &str) -> &'static [&'static str] {
         "PCE" => &["pce", "pcecd"],
         "32X" => &["32x"],
         "GAMECUBE" => &["iso", "gcm", "rvz", "ciso", "gcz"],
-        "PS1" => &["cue", "chd", "pbp", "ecm", "mds", "toc", "psf", "minipsf", "iso", "m3u"],
+        "PS1" => &[
+            "cue", "chd", "pbp", "ecm", "mds", "toc", "psf", "minipsf", "iso", "m3u",
+        ],
         "PS2" => &["iso", "chd", "cso", "gz", "bin", "cue", "m3u"],
         "PS3" => &["iso", "bin"],
         "PSP" => &["iso", "cso", "pbp"],
@@ -313,6 +486,7 @@ pub fn platform_extensions(platform: &str) -> &'static [&'static str] {
         "LYNX" => &["lynx"],
         "WSWAN" => &["ws", "wsc"],
         "COLECOVISION" => &["col"],
+        "PC" => &["exe", "lnk"],
         _ => &[],
     }
 }
@@ -322,9 +496,16 @@ pub fn core_dll_name(core_name: &str) -> String {
 }
 
 pub fn core_zip_url(core_name: &str) -> String {
+    let lower = core_name.to_lowercase();
+    let sanitized_core = match lower.as_str() {
+        "melonds" => "melonds",
+        "melonds ds" | "melondsds" => "melondsds",
+        "swanstation" => "swanstation",
+        _ => core_name,
+    };
     format!(
         "https://buildbot.libretro.com/nightly/windows/x86_64/latest/{}_libretro.dll.zip",
-        core_name
+        sanitized_core
     )
 }
 
@@ -362,7 +543,7 @@ pub fn thumbnail_dirs(platform: &str) -> &'static [&'static str] {
 }
 
 pub fn is_standalone_emulator(core_name: &str) -> bool {
-    matches!(core_name, "rpcs3")
+    matches!(core_name, "rpcs3" | "azahar" | "pc" | "native" | "windows")
 }
 
 pub fn parse_param_sfo(sfo_path: &Path) -> Option<(String, String)> {
@@ -387,9 +568,16 @@ pub fn parse_param_sfo(sfo_path: &Path) -> Option<(String, String)> {
             break;
         }
 
-        let key_offset = u16::from_le_bytes(buffer[entry_offset..entry_offset + 2].try_into().ok()?) as usize;
-        let data_len = u32::from_le_bytes(buffer[entry_offset + 4..entry_offset + 8].try_into().ok()?) as usize;
-        let data_offset = u32::from_le_bytes(buffer[entry_offset + 12..entry_offset + 16].try_into().ok()?) as usize;
+        let key_offset =
+            u16::from_le_bytes(buffer[entry_offset..entry_offset + 2].try_into().ok()?) as usize;
+        let data_len =
+            u32::from_le_bytes(buffer[entry_offset + 4..entry_offset + 8].try_into().ok()?)
+                as usize;
+        let data_offset = u32::from_le_bytes(
+            buffer[entry_offset + 12..entry_offset + 16]
+                .try_into()
+                .ok()?,
+        ) as usize;
 
         let key_start = key_table_start + key_offset;
         if key_start >= buffer.len() {
@@ -469,7 +657,10 @@ pub fn resolve_ps3_game_info(path: &Path) -> (String, Option<String>) {
     }
 
     // Si es un ISO
-    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("PlayStation 3 Game");
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("PlayStation 3 Game");
     (stem.to_string(), None)
 }
 
@@ -636,20 +827,29 @@ pub fn arcade_display_name(stem: &str) -> Option<&'static str> {
         "wh2" => Some("World Heroes 2"),
         "wh2j" => Some("World Heroes 2 Jet"),
         "whp" => Some("World Heroes Perfect"),
-        "windjams" | "wjammers" | "wjammere" | "wjammersp" => Some("Windjammers / Flying Power Disc"),
+        "windjams" | "wjammers" | "wjammere" | "wjammersp" => {
+            Some("Windjammers / Flying Power Disc")
+        }
         "zedblade" => Some("Zed Blade / Operation Ragnarok"),
         "zintrckb" => Some("Zintrick"),
         "zupapa" => Some("Zupapa!"),
         // Classic Arcade, CPS1, CPS2, CPS3, Neo Geo, Midway, Konami, Sega, etc.
         "kinst" | "kinst13" | "kinst14" | "kinst15" | "kinst15d" => Some("Killer Instinct"),
         "kinst2" | "kinst210" | "kinst211" | "kinst213" | "kinst214" => Some("Killer Instinct 2"),
-        "ssriders" | "ssrideru" | "ssriderj" | "ssridere" | "ssridr" | "sunset" | "sunsetbl" | "sunset1" | "sunset2" | "sunset4" | "sunset4p" => Some("Sunset Riders"),
+        "ssriders" | "ssrideru" | "ssriderj" | "ssridere" | "ssridr" | "sunset" | "sunsetbl"
+        | "sunset1" | "sunset2" | "sunset4" | "sunset4p" => Some("Sunset Riders"),
         "numanath" | "numanatha" | "numanathj" => Some("Numan Athletics"),
         "machbrkr" | "machbrkj" => Some("Mach Breakers - Numan Athletics 2"),
-        "pbobblen" | "pbobble" | "pbobbl2n" | "pbobble2" | "pbobble3" | "pbobble4" => Some("Puzzle Bobble"),
+        "pbobblen" | "pbobble" | "pbobbl2n" | "pbobble2" | "pbobble3" | "pbobble4" => {
+            Some("Puzzle Bobble")
+        }
         "tophuntr" | "tophuntru" | "tophuntrh" => Some("Top Hunter - Roddy & Cathy"),
-        "dino" | "dinos" | "dinou" | "dinoa" | "dinoj" | "dinopic" | "dinopic2" | "dinopic3" => Some("Cadillacs and Dinosaurs"),
-        "goldnaxe" | "goldnax1" | "goldnax2" | "goldnax3" | "goldnaxu" | "goldnaxj" => Some("Golden Axe"),
+        "dino" | "dinos" | "dinou" | "dinoa" | "dinoj" | "dinopic" | "dinopic2" | "dinopic3" => {
+            Some("Cadillacs and Dinosaurs")
+        }
+        "goldnaxe" | "goldnax1" | "goldnax2" | "goldnax3" | "goldnaxu" | "goldnaxj" => {
+            Some("Golden Axe")
+        }
         "knights" | "knightsu" | "knightsj" | "knightsja" => Some("Knights of the Round"),
         "kod" | "kodu" | "kodj" | "koda" => Some("The King of Dragons"),
         "souledge" | "souledga" | "souledgb" | "souledgc" => Some("Soul Edge"),
@@ -657,17 +857,25 @@ pub fn arcade_display_name(stem: &str) -> Option<&'static str> {
         "tekken" | "tekkena" | "tekkenb" => Some("Tekken"),
         "tekken2" | "tekken2a" | "tekken2b" => Some("Tekken 2"),
         "tekken3" | "tekken3a" | "tekken3b" => Some("Tekken 3"),
-        "sf2" | "sf2ua" | "sf2ub" | "sf2ue" | "sf2ui" | "sf2j" | "sf2ja" | "sf2jb" | "sf2jc" => Some("Street Fighter II - The World Warrior"),
-        "sf2ce" | "sf2ceua" | "sf2ceub" | "sf2ceuc" | "sf2cej" => Some("Street Fighter II' - Champion Edition"),
+        "sf2" | "sf2ua" | "sf2ub" | "sf2ue" | "sf2ui" | "sf2j" | "sf2ja" | "sf2jb" | "sf2jc" => {
+            Some("Street Fighter II - The World Warrior")
+        }
+        "sf2ce" | "sf2ceua" | "sf2ceub" | "sf2ceuc" | "sf2cej" => {
+            Some("Street Fighter II' - Champion Edition")
+        }
         "sf2hf" | "sf2t" => Some("Street Fighter II' Turbo - Hyper Fighting"),
-        "ssf2" | "ssf2u" | "ssf2j" | "ssf2a" | "ssf2ar1" => Some("Super Street Fighter II - The New Challengers"),
+        "ssf2" | "ssf2u" | "ssf2j" | "ssf2a" | "ssf2ar1" => {
+            Some("Super Street Fighter II - The New Challengers")
+        }
         "ssf2t" | "ssf2tu" | "ssf2tj" | "ssf2ta" => Some("Super Street Fighter II Turbo"),
         "sfa" | "sfau" | "sfaj" => Some("Street Fighter Alpha - Warriors' Dreams"),
         "sfa2" | "sfa2u" | "sfa2ur1" => Some("Street Fighter Alpha 2"),
         "sfa3" | "sfa3u" | "sfa3ur1" => Some("Street Fighter Alpha 3"),
         "sfiii" => Some("Street Fighter III - New Generation"),
         "sfiii2" => Some("Street Fighter III 2nd Impact - Giant Attack"),
-        "sfiii3" | "sfiii3nr" | "sfiii3u" => Some("Street Fighter III 3rd Strike - Fight for the Future"),
+        "sfiii3" | "sfiii3nr" | "sfiii3u" => {
+            Some("Street Fighter III 3rd Strike - Fight for the Future")
+        }
         "punisher" | "punisheru" | "punisherj" => Some("The Punisher"),
         "ffight" | "ffightu" | "ffightu1" | "ffightj" | "ffightj1" => Some("Final Fight"),
         "captcomm" | "captcommu" | "captcommj" => Some("Captain Commando"),
@@ -675,23 +883,33 @@ pub fn arcade_display_name(stem: &str) -> Option<&'static str> {
         "avsp" | "avspu" | "avspj" | "avspa" => Some("Alien vs. Predator"),
         "armwar" | "armwaru" | "armwar1" => Some("Armored Warriors"),
         "cybots" | "cybotsu" | "cybotsj" => Some("Cyberbots - Fullmetal Madness"),
-        "ddsom" | "ddsomu" | "ddsomj" | "ddsoma" => Some("Dungeons & Dragons - Shadow over Mystara"),
+        "ddsom" | "ddsomu" | "ddsomj" | "ddsoma" => {
+            Some("Dungeons & Dragons - Shadow over Mystara")
+        }
         "ddtod" | "ddtodu" | "ddtodj" | "ddtoda" => Some("Dungeons & Dragons - Tower of Doom"),
         "msh" | "mshu" | "mshj" | "msha" => Some("Marvel Super Heroes"),
-        "mshvsf" | "mshvsfu" | "mshvsfj" | "mshvsfa" => Some("Marvel Super Heroes Vs. Street Fighter"),
+        "mshvsf" | "mshvsfu" | "mshvsfj" | "mshvsfa" => {
+            Some("Marvel Super Heroes Vs. Street Fighter")
+        }
         "mvsc" | "mvscu" | "mvscj" | "mvsca" => Some("Marvel Vs. Capcom - Clash of Super Heroes"),
         "xmvsf" | "xmvsfu" | "xmvsfj" | "xmvsfa" => Some("X-Men Vs. Street Fighter"),
-        "xmcota" | "xmcotaa" | "xmcotae" | "xmcotae1" | "xmcotaer" | "xmcotaer1" | "xmcotaer2" | "xmcotaer3" => Some("X-Men - Children of the Atom"),
+        "xmcota" | "xmcotaa" | "xmcotae" | "xmcotae1" | "xmcotaer" | "xmcotaer1" | "xmcotaer2"
+        | "xmcotaer3" => Some("X-Men - Children of the Atom"),
         "pacman" | "puckman" => Some("Pac-Man"),
         "mspacman" => Some("Ms. Pac-Man"),
         "galaga" | "galagamf" | "galagao" => Some("Galaga"),
         "galaxian" | "galaxianm" => Some("Galaxian"),
         "tmnt" | "tmnt2_1" => Some("Teenage Mutant Ninja Turtles"),
-        "tmnt2" | "tmnt2a" | "tmnt2pj" | "tmnt2po" => Some("Teenage Mutant Ninja Turtles - Turtles in Time"),
+        "tmnt2" | "tmnt2a" | "tmnt2pj" | "tmnt2po" => {
+            Some("Teenage Mutant Ninja Turtles - Turtles in Time")
+        }
         "simpsons" | "simpsons2p" | "simpsons4p" => Some("The Simpsons"),
         "xmen" | "xmen2p" | "xmen6p" | "xmena" | "xmenj" => Some("X-Men"),
-        "mk" | "mkla1" | "mkla2" | "mkla3" | "mkla4" | "mkr11" | "mkt" | "mky" | "mkyw" => Some("Mortal Kombat"),
-        "mk2" | "mk2r14" | "mk2r20" | "mk2r21" | "mk2r30" | "mk2r31" | "mk2r32" | "mk2r42" | "mk2r91" => Some("Mortal Kombat II"),
+        "mk" | "mkla1" | "mkla2" | "mkla3" | "mkla4" | "mkr11" | "mkt" | "mky" | "mkyw" => {
+            Some("Mortal Kombat")
+        }
+        "mk2" | "mk2r14" | "mk2r20" | "mk2r21" | "mk2r30" | "mk2r31" | "mk2r32" | "mk2r42"
+        | "mk2r91" => Some("Mortal Kombat II"),
         "mk3" | "mk3r10" | "mk3r20" | "mk3r21" | "mk3r22" => Some("Mortal Kombat 3"),
         "umk3" | "umk3r10" | "umk3r11" | "umk3r12" => Some("Ultimate Mortal Kombat 3"),
         "strider" | "striderj" | "striderjr" => Some("Strider"),
@@ -742,7 +960,11 @@ pub fn arcade_thumbnail_candidates(stem: &str, display_name: Option<&str>) -> Ve
     let mut candidates = Vec::new();
     let mut add = |name: &str| {
         let trimmed = name.trim();
-        if !trimmed.is_empty() && !candidates.iter().any(|c: &String| c.eq_ignore_ascii_case(trimmed)) {
+        if !trimmed.is_empty()
+            && !candidates
+                .iter()
+                .any(|c: &String| c.eq_ignore_ascii_case(trimmed))
+        {
             candidates.push(trimmed.to_string());
         }
     };
@@ -967,9 +1189,15 @@ pub fn normalize_thumbnail_name(name: &str) -> String {
 }
 
 #[allow(dead_code)]
-pub fn thumbnail_url_with_category(platform: &str, game_name: &str, category: &str) -> Option<String> {
+pub fn thumbnail_url_with_category(
+    platform: &str,
+    game_name: &str,
+    category: &str,
+) -> Option<String> {
     let dir = thumbnail_dir(platform)?;
-    Some(thumbnail_url_with_category_and_dir(dir, game_name, category))
+    Some(thumbnail_url_with_category_and_dir(
+        dir, game_name, category,
+    ))
 }
 
 pub fn thumbnail_url_with_category_and_dir(dir: &str, game_name: &str, category: &str) -> String {

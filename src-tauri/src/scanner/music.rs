@@ -1,10 +1,10 @@
+use crate::state::storage::get_data_dir;
+use crate::state::STATE;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use crate::state::storage::get_data_dir;
-use crate::state::STATE;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MusicTrack {
@@ -199,7 +199,9 @@ pub fn scan_music_tracks_inner() -> Vec<MusicTrack> {
                 let name_clean = g_name.trim();
                 let disp_clean = g_disp.trim();
 
-                let found = if name_clean.len() >= 4 && stem_lower.contains(&name_clean.to_lowercase()) {
+                let found = if name_clean.len() >= 4
+                    && stem_lower.contains(&name_clean.to_lowercase())
+                {
                     Some(disp_clean.to_string())
                 } else if disp_clean.len() >= 4 && stem_lower.contains(&disp_clean.to_lowercase()) {
                     Some(disp_clean.to_string())
@@ -240,7 +242,11 @@ pub fn scan_music_tracks_inner() -> Vec<MusicTrack> {
             }
 
             let file_url = format!("/music/{}", file_name);
-            let id = format!("track-{}", stem.replace(|c: char| !c.is_alphanumeric(), "-").to_lowercase());
+            let id = format!(
+                "track-{}",
+                stem.replace(|c: char| !c.is_alphanumeric(), "-")
+                    .to_lowercase()
+            );
 
             if seen_ids.contains(&id) {
                 continue;
@@ -253,7 +259,11 @@ pub fn scan_music_tracks_inner() -> Vec<MusicTrack> {
                 id,
                 file: file_url,
                 file_path: abs_path.to_string_lossy().to_string(),
-                title: if extracted_title.is_empty() { stem } else { extracted_title },
+                title: if extracted_title.is_empty() {
+                    stem
+                } else {
+                    extracted_title
+                },
                 game: matched_game,
                 platform: matched_platform,
             });

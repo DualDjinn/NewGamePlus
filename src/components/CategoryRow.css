@@ -95,6 +95,9 @@
 
 .library-grid .game-card {
   width: 100%;
+  /* ponytail: el navegador salta el render de tarjetas fuera de pantalla; grid virtualizado sin librerías */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 420px;
 }
 
 .library-grid .game-card-body {

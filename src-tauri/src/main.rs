@@ -14,8 +14,8 @@ use std::path::Path;
 use tauri::{Emitter, Manager};
 
 use emulator::get_retroarch_exe;
+use state::lock_state;
 use state::storage::{load_state, migrate_legacy_saves, save_state};
-use state::STATE;
 
 fn main() {
     // 1. Cargar estado persistente al iniciar
@@ -23,7 +23,12 @@ fn main() {
 
     // Migrar last_played heredado al perfil activo si el perfil aún no tiene ninguno
     let profile_name = initial.settings.current_profile.clone();
-    if let Some(profile) = initial.settings.profiles.iter_mut().find(|p| p.name == profile_name) {
+    if let Some(profile) = initial
+        .settings
+        .profiles
+        .iter_mut()
+        .find(|p| p.name == profile_name)
+    {
         if profile.last_played.is_empty() {
             for game in &initial.games {
                 if let Some(ts) = &game.last_played {
@@ -38,7 +43,9 @@ fn main() {
 
     // Migrar cores antiguos de MAME a fbneo
     for game in &mut initial.games {
-        if game.platform == "MAME" && (game.core_name == "mame2003_plus" || game.core_name == "mame") {
+        if game.platform == "MAME"
+            && (game.core_name == "mame2003_plus" || game.core_name == "mame")
+        {
             game.core_name = "fbneo".into();
         }
     }
@@ -50,7 +57,7 @@ fn main() {
 
     save_state(&initial);
     {
-        let mut state = STATE.lock().unwrap();
+        let mut state = lock_state();
         *state = initial;
     }
 
@@ -59,7 +66,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            let state = STATE.lock().unwrap();
+            let state = lock_state();
             if state.settings.kiosk_mode {
                 let handle = app.handle();
                 if let Some(window) = handle.get_webview_window("main") {
@@ -69,31 +76,47 @@ fn main() {
             }
             drop(state);
 
+            // Auto-check de actualizaciones de emuladores cada 4 días (no intrusivo)
+            let update_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                crate::commands::updates::maybe_auto_check_updates(&update_handle);
+            });
+
             // Resuelve en segundo plano cualquier carátula faltante
             let app_handle = app.handle().clone();
             std::thread::spawn(move || {
                 let (games_to_check, meta_conn) = {
-                    let state = STATE.lock().unwrap();
+                    let state = lock_state();
                     let games = state.games.clone();
                     let meta_conn = metadata::libretro::get_metadata_connection();
                     (games, meta_conn)
                 };
 
                 let steamgrid_key = {
-                    let state = STATE.lock().unwrap();
+                    let state = lock_state();
                     let profile_name = &state.settings.current_profile;
-                    state.settings.profiles.iter()
+                    state
+                        .settings
+                        .profiles
+                        .iter()
                         .find(|p| &p.name == profile_name)
-                        .and_then(|p| p.steamgriddb_api_key.clone())
+                        .and_then(|p| crate::state::secrets::reveal_opt(&p.steamgriddb_api_key))
                 };
 
                 let mut updated = false;
                 let mut new_games = Vec::with_capacity(games_to_check.len());
 
                 for mut g in games_to_check {
-                    let has_valid_cover = g.cover_path.as_ref().map(|cp| Path::new(cp).exists()).unwrap_or(false);
+                    let has_valid_cover = g
+                        .cover_path
+                        .as_ref()
+                        .map(|cp| Path::new(cp).exists())
+                        .unwrap_or(false);
                     let path = Path::new(&g.rom_path);
-                    let rom_name = path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| g.name.clone());
+                    let rom_name = path
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_else(|| g.name.clone());
 
                     let new_display_name = if g.display_name.is_none() {
                         platforms::arcade_display_name(&rom_name).map(|s| s.to_string())
@@ -124,7 +147,7 @@ fn main() {
 
                 if updated {
                     {
-                        let mut state = STATE.lock().unwrap();
+                        let mut state = lock_state();
                         state.games = new_games;
                         save_state(&state);
                     }
@@ -142,11 +165,13 @@ fn main() {
             commands::check_core,
             commands::check_retroarch,
             commands::check_rpcs3,
+            commands::check_azahar,
             commands::get_cover_data_uri,
             commands::get_favorites_list,
             commands::get_settings,
             commands::save_settings,
             commands::set_kiosk_mode,
+            commands::set_auto_update_check,
             commands::update_game_core,
             commands::create_profile,
             commands::delete_profile,
@@ -202,7 +227,11 @@ fn main() {
             commands::in_game_save_state,
             commands::in_game_load_state,
             commands::in_game_set_volume,
-            commands::in_game_quit
+            commands::in_game_quit,
+            commands::get_emulator_versions,
+            commands::check_emulator_updates,
+            commands::update_emulator,
+            commands::update_all_cores
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

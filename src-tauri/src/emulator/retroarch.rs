@@ -1,9 +1,9 @@
+use crate::state::lock_state;
+use crate::state::models::volume_to_db;
+use crate::state::storage::{get_binaries_dir, get_data_dir};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use crate::state::models::volume_to_db;
-use crate::state::storage::{get_binaries_dir, get_data_dir};
-use crate::state::STATE;
 
 pub fn get_retroarch_exe() -> PathBuf {
     get_binaries_dir().join("RetroArch").join("retroarch.exe")
@@ -28,17 +28,17 @@ fn detect_system_retroarch_language() -> u32 {
         let lang_id = unsafe { GetUserDefaultUILanguage() };
         let primary_lang = lang_id & 0x03FF;
         match primary_lang {
-            0x0a => 3, // Spanish (Español)
-            0x09 => 0, // English
-            0x0c => 2, // French (Français)
-            0x07 => 4, // German (Deutsch)
-            0x10 => 5, // Italian (Italiano)
-            0x16 => 7, // Portuguese (Português)
-            0x19 => 9, // Russian (Русский)
+            0x0a => 3,  // Spanish (Español)
+            0x09 => 0,  // English
+            0x0c => 2,  // French (Français)
+            0x07 => 4,  // German (Deutsch)
+            0x10 => 5,  // Italian (Italiano)
+            0x16 => 7,  // Portuguese (Português)
+            0x19 => 9,  // Russian (Русский)
             0x12 => 10, // Korean (한국어)
             0x04 => 12, // Chinese Simplified
-            0x11 => 1, // Japanese (日本語)
-            _ => 3, // Default to Spanish
+            0x11 => 1,  // Japanese (日本語)
+            _ => 3,     // Default to Spanish
         }
     }
     #[cfg(not(target_os = "windows"))]
@@ -58,7 +58,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     let states_dir = get_data_dir().join("states").join(&safe_profile);
 
     let all_bios_folders = {
-        let state = STATE.lock().unwrap();
+        let state = lock_state();
         let mut folders = state.settings.bios_folders.clone();
         if folders.is_empty() {
             if let Some(ref b) = state.settings.bios_folder {
@@ -71,7 +71,11 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     let default_system_dir = get_binaries_dir().join("RetroArch").join("system");
     let system_dir = if all_bios_folders.len() == 1 {
         let p = PathBuf::from(&all_bios_folders[0]);
-        if p.exists() { p } else { default_system_dir }
+        if p.exists() {
+            p
+        } else {
+            default_system_dir
+        }
     } else if all_bios_folders.len() > 1 {
         let _ = fs::create_dir_all(&default_system_dir);
         for b_folder in &all_bios_folders {
@@ -118,7 +122,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     fs::create_dir_all(&saves_dir).map_err(|e| e.to_string())?;
     fs::create_dir_all(&states_dir).map_err(|e| e.to_string())?;
     fs::create_dir_all(&system_dir).map_err(|e| e.to_string())?;
-    
+
     // Auto-organizar subcarpeta pcsx2/bios si el usuario colocó bios en la raíz de su carpeta de BIOS
     let pcsx2_bios_dir = system_dir.join("pcsx2").join("bios");
     let _ = fs::create_dir_all(&pcsx2_bios_dir);
@@ -128,7 +132,11 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
             if path.is_file() {
                 let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
                 let name_lower = name.to_lowercase();
-                if name_lower.ends_with(".bin") || name_lower.ends_with(".rom") || name_lower.ends_with(".mec") || name_lower.ends_with(".nvm") {
+                if name_lower.ends_with(".bin")
+                    || name_lower.ends_with(".rom")
+                    || name_lower.ends_with(".mec")
+                    || name_lower.ends_with(".nvm")
+                {
                     let dest = pcsx2_bios_dir.join(name);
                     if !dest.exists() {
                         let _ = fs::copy(&path, &dest);
@@ -148,11 +156,24 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     let config_dir = ra_dir.join("config");
     let config_dir_str = config_dir.to_string_lossy().replace('\\', "/");
 
-    let (audio_driver_str, audio_device_str, audio_latency_val, audio_vol_db, video_smooth, video_scale_integer, aspect_ratio_str, all_core_options) = {
-        let state = STATE.lock().unwrap();
+    let (
+        audio_driver_str,
+        audio_device_str,
+        audio_latency_val,
+        audio_vol_db,
+        video_smooth,
+        video_scale_integer,
+        aspect_ratio_str,
+        all_core_options,
+    ) = {
+        let state = lock_state();
         let s = &state.settings.graphics;
         let smooth = if s.video_smooth { "true" } else { "false" };
-        let integer = if s.video_scale_integer { "true" } else { "false" };
+        let integer = if s.video_scale_integer {
+            "true"
+        } else {
+            "false"
+        };
         let aspect = match s.aspect_ratio.as_str() {
             "4:3" => "aspect_ratio_index = \"0\"\n",
             "16:9" => "aspect_ratio_index = \"1\"\n",
@@ -169,8 +190,16 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
         } else {
             s.audio_device.clone()
         };
-        let latency = if s.audio_latency > 0 { s.audio_latency } else { 64 };
-        let vol_pct = if s.audio_volume > 0 { s.audio_volume } else { 100 };
+        let latency = if s.audio_latency > 0 {
+            s.audio_latency
+        } else {
+            64
+        };
+        let vol_pct = if s.audio_volume > 0 {
+            s.audio_volume
+        } else {
+            100
+        };
         let vol_db = volume_to_db(vol_pct);
 
         let mut opts = HashMap::new();
@@ -195,16 +224,90 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
                 opts.insert(lrps2_key, v.clone());
             }
         }
-        (audio_drv, dev, latency, vol_db, smooth, integer, aspect, opts)
+        (
+            audio_drv, dev, latency, vol_db, smooth, integer, aspect, opts,
+        )
     };
 
     let mut full_cfg = format!(
-        "menu_driver = \"null\"\n\
-         input_menu_toggle = \"nul\"\n\
-         input_menu_toggle_gamepad_combo = \"0\"\n\
+        "menu_driver = \"ozone\"\n\
+         input_menu_toggle = \"escape\"\n\
+         input_menu_toggle_gamepad_combo = \"2\"\n\
          input_quit_gamepad_combo = \"0\"\n\
          input_enable_hotkey = \"\"\n\
          input_exit_emulator = \"nul\"\n\
+         quit_press_twice = \"true\"\n\
+         quit_on_close_content = \"2\"\n\
+         load_dummy_on_core_shutdown = \"false\"\n\
+         menu_pause_libretro = \"true\"\n\
+         ozone_menu_color_theme = \"1\"\n\
+         menu_framebuffer_opacity = \"0.90\"\n\
+         menu_wallpaper_opacity = \"0.85\"\n\
+         menu_linear_filter = \"false\"\n\
+         quick_menu_show_resume_content = \"true\"\n\
+         quick_menu_show_restart_content = \"true\"\n\
+         quick_menu_show_close_content = \"true\"\n\
+         quick_menu_show_save_load_state = \"true\"\n\
+         quick_menu_show_savestate_submenu = \"true\"\n\
+         quick_menu_show_controls = \"true\"\n\
+         quick_menu_show_options = \"false\"\n\
+         quick_menu_show_core_options_flush = \"false\"\n\
+         quick_menu_show_cheats = \"false\"\n\
+         quick_menu_show_shaders = \"false\"\n\
+         quick_menu_show_add_to_favorites = \"false\"\n\
+         quick_menu_show_add_to_playlist = \"false\"\n\
+         quick_menu_show_set_core_association = \"false\"\n\
+         quick_menu_show_reset_core_association = \"false\"\n\
+         quick_menu_show_download_thumbnails = \"false\"\n\
+         quick_menu_show_save_core_overrides = \"false\"\n\
+         quick_menu_show_save_game_overrides = \"false\"\n\
+         quick_menu_show_save_content_dir_overrides = \"false\"\n\
+         quick_menu_show_information = \"false\"\n\
+         quick_menu_show_start_recording = \"false\"\n\
+         quick_menu_show_start_streaming = \"false\"\n\
+         quick_menu_show_take_screenshot = \"false\"\n\
+         quick_menu_show_undo_save_load_state = \"false\"\n\
+         quick_menu_show_replay = \"false\"\n\
+         menu_show_load_core = \"false\"\n\
+         menu_show_load_content = \"false\"\n\
+         menu_show_load_disc = \"false\"\n\
+         menu_show_dump_disc = \"false\"\n\
+         menu_show_online_updater = \"false\"\n\
+         menu_show_core_updater = \"false\"\n\
+         menu_show_information = \"false\"\n\
+         menu_show_configurations = \"false\"\n\
+         menu_show_help = \"false\"\n\
+         menu_show_quit_retroarch = \"true\"\n\
+         menu_show_restart_retroarch = \"false\"\n\
+         menu_show_reboot = \"false\"\n\
+         menu_show_shutdown = \"false\"\n\
+         content_show_favorites = \"false\"\n\
+         content_show_images = \"false\"\n\
+         content_show_music = \"false\"\n\
+         content_show_video = \"false\"\n\
+         content_show_netplay = \"false\"\n\
+         content_show_history = \"false\"\n\
+         content_show_explore = \"false\"\n\
+         content_show_playlists = \"false\"\n\
+         settings_show_drivers = \"false\"\n\
+         settings_show_video = \"false\"\n\
+         settings_show_audio = \"false\"\n\
+         settings_show_input = \"false\"\n\
+         settings_show_latency = \"false\"\n\
+         settings_show_core = \"false\"\n\
+         settings_show_configuration = \"false\"\n\
+         settings_show_saving = \"false\"\n\
+         settings_show_logging = \"false\"\n\
+         settings_show_frame_throttle = \"false\"\n\
+         settings_show_recording = \"false\"\n\
+         settings_show_onscreen_display = \"false\"\n\
+         settings_show_user_interface = \"false\"\n\
+         settings_show_ai_service = \"false\"\n\
+         settings_show_accessibility = \"false\"\n\
+         settings_show_power_management = \"false\"\n\
+         settings_show_network = \"false\"\n\
+         settings_show_playlists = \"false\"\n\
+         settings_show_achievements = \"false\"\n\
          network_cmd_enable = \"true\"\n\
          network_cmd_port = \"55355\"\n\
          pause_nonactive = \"false\"\n\
@@ -231,8 +334,13 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          audio_mixer_volume = \"0.0\"\n\
          audio_mute_enable = \"false\"\n\
          audio_mixer_mute_enable = \"false\"\n\
-         savestate_auto_load = \"true\"\n\
-         savestate_auto_save = \"true\"\n\
+         savestate_auto_load = \"false\"\n\
+         savestate_auto_save = \"false\"\n\
+         savestate_file_compression = \"false\"\n\
+         savestate_thumbnail_enable = \"false\"\n\
+         save_file_compression = \"false\"\n\
+         autosave_interval = \"10\"\n\
+         block_sram_overwrite = \"true\"\n\
          savefiles_in_content_dir = \"false\"\n\
          savestates_in_content_dir = \"false\"\n\
          sort_savefiles_enable = \"true\"\n\
@@ -246,7 +354,15 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          system_directory = \"{}\"\n\
          savefile_directory = \"{}\"\n\
          savestate_directory = \"{}\"\n",
-        audio_driver_str, audio_device_str, audio_latency_val, audio_vol_db, core_opts_str_path, config_dir_str, system_str, saves_str, states_str
+        audio_driver_str,
+        audio_device_str,
+        audio_latency_val,
+        audio_vol_db,
+        core_opts_str_path,
+        config_dir_str,
+        system_str,
+        saves_str,
+        states_str
     );
 
     full_cfg.push_str(&format!(
@@ -257,10 +373,22 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     ));
 
     let cheevos_cfg = {
-        let state = STATE.lock().unwrap();
-        if let Some(profile) = state.settings.profiles.iter().find(|p| p.name == profile_name) {
-            if let (Some(username), Some(token)) = (&profile.ra_username, &profile.ra_token) {
-                let hardcore = if profile.cheevos_hardcore { "true" } else { "false" };
+        let state = lock_state();
+        if let Some(profile) = state
+            .settings
+            .profiles
+            .iter()
+            .find(|p| p.name == profile_name)
+        {
+            // Nota: RetroArch exige el token en su cfg para los logros; queda en
+            // binaries/RetroArch/retroarch.cfg (no versionado, solo disco local).
+            let token = crate::state::secrets::reveal_opt(&profile.ra_token);
+            if let (Some(username), Some(token)) = (&profile.ra_username, token.as_ref()) {
+                let hardcore = if profile.cheevos_hardcore {
+                    "true"
+                } else {
+                    "false"
+                };
                 Some(format!(
                     "cheevos_enable = \"true\"\n\
                      cheevos_username = \"{}\"\n\
@@ -281,7 +409,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
             None
         }
     };
-    
+
     if let Some(cheevos) = cheevos_cfg {
         full_cfg.push_str(&cheevos);
     }
@@ -298,14 +426,21 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     // Write global retroarch-core-options.cfg in root and config folder
     let _ = fs::write(&core_opts_path, &core_opts_content);
     let _ = fs::create_dir_all(&config_dir);
-    let _ = fs::write(config_dir.join("retroarch-core-options.cfg"), &core_opts_content);
+    let _ = fs::write(
+        config_dir.join("retroarch-core-options.cfg"),
+        &core_opts_content,
+    );
 
     // Write per-core options files so RetroArch will load them regardless of core options mode
     let core_folders = [
         ("Citra", "Citra", true),
         ("Citra", "citra", true),
         ("Citra Canario", "Citra Canario", true),
-        ("Citra Canary/Experimental", "Citra Canary/Experimental", true),
+        (
+            "Citra Canary/Experimental",
+            "Citra Canary/Experimental",
+            true,
+        ),
         ("Citra", "citra_libretro", true),
         ("citra_libretro", "citra_libretro", true),
         ("PCSX2", "PCSX2", false),

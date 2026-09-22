@@ -1,11 +1,11 @@
-use std::collections::{HashMap, HashSet};
+use crate::state::lock_state;
 use crate::state::models::Profile;
 use crate::state::storage::save_state;
-use crate::state::STATE;
+use std::collections::{HashMap, HashSet};
 
 #[tauri::command]
 pub fn create_profile(name: String) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     if state.settings.profiles.iter().any(|p| p.name == name) {
         return Err("Profile already exists".into());
     }
@@ -30,7 +30,7 @@ pub fn create_profile(name: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn delete_profile(name: String) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     if state.settings.profiles.len() <= 1 {
         return Err("Cannot delete the last profile".into());
     }
@@ -46,12 +46,13 @@ pub fn delete_profile(name: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn switch_profile(name: String) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
-    let (theme, layout_style) = if let Some(p) = state.settings.profiles.iter().find(|p| p.name == name) {
-        (p.theme.clone(), p.layout_style.clone())
-    } else {
-        return Err("Profile not found".into());
-    };
+    let mut state = lock_state();
+    let (theme, layout_style) =
+        if let Some(p) = state.settings.profiles.iter().find(|p| p.name == name) {
+            (p.theme.clone(), p.layout_style.clone())
+        } else {
+            return Err("Profile not found".into());
+        };
     state.settings.current_profile = name;
     state.settings.theme = theme;
     state.settings.layout_style = layout_style;

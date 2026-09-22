@@ -1,18 +1,19 @@
+use crate::platforms;
+use crate::state::storage::get_binaries_dir;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Write;
 use std::path::Path;
 use std::sync::{LazyLock, Mutex};
-use crate::platforms;
-use crate::state::storage::get_binaries_dir;
 
 pub static SHARED_META_CONN: LazyLock<Mutex<Option<Connection>>> = LazyLock::new(|| {
     let db_path = get_binaries_dir().join("libretrodb.sqlite");
     let conn = Connection::open_with_flags(
         &db_path,
         rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_SHARED_CACHE,
-    ).ok();
+    )
+    .ok();
     Mutex::new(conn)
 });
 
@@ -21,7 +22,8 @@ pub fn get_metadata_connection() -> Option<Connection> {
     Connection::open_with_flags(
         &db_path,
         rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_SHARED_CACHE,
-    ).ok()
+    )
+    .ok()
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -61,14 +63,20 @@ pub fn db_platform_name(platform: &str) -> Option<&'static str> {
 }
 
 pub fn base_title(name: &str) -> String {
-    let stem = Path::new(name).file_stem().and_then(|s| s.to_str()).unwrap_or(name);
+    let stem = Path::new(name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(name);
     let no_paren = stem.split(" (").next().unwrap_or(stem);
     let no_bracket = no_paren.split(" [").next().unwrap_or(no_paren);
     no_bracket.trim().to_lowercase()
 }
 
 pub fn canonical_title(name: &str) -> String {
-    let stem = Path::new(name).file_stem().and_then(|s| s.to_str()).unwrap_or(name);
+    let stem = Path::new(name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(name);
     let no_paren = stem.split(" (").next().unwrap_or(stem);
     let no_bracket = no_paren.split(" [").next().unwrap_or(no_paren);
     let mut lower = no_bracket.trim().to_lowercase();
@@ -96,12 +104,26 @@ pub fn canonical_title(name: &str) -> String {
 }
 
 pub fn sequel_number(s: &str) -> Option<&'static str> {
-    let s_lower = s.to_lowercase();
+    // Extraer solo el título base para evitar que tokens de versión como '(Rev 2)', 'v1.2' o '[v2]' se interpreten como secuela
+    let title = base_title(s);
+    let s_lower = title.to_lowercase();
     let words: Vec<&str> = s_lower
         .split(|c: char| !c.is_alphanumeric())
         .filter(|w| !w.is_empty())
         .collect();
-    for w in words {
+    for (i, &w) in words.iter().enumerate() {
+        // Si la palabra previa es 'rev', 'v', 'ver' o 'revision', ignorar este número
+        if i > 0 {
+            let prev = words[i - 1];
+            if prev == "rev"
+                || prev == "v"
+                || prev == "ver"
+                || prev == "revision"
+                || prev == "build"
+            {
+                continue;
+            }
+        }
         match w {
             "2" | "ii" | "2nd" => return Some("2"),
             "3" | "iii" | "3rd" => return Some("3"),
@@ -208,7 +230,10 @@ pub fn is_stop_word(w: &str) -> bool {
             | "los"
             | "las"
             | "edition"
+            | "edicion"
+            | "edición"
             | "version"
+            | "versione"
             | "portable"
             | "classic"
             | "pocket"
@@ -221,6 +246,7 @@ pub fn is_stop_word(w: &str) -> bool {
             | "usa"
             | "europe"
             | "japan"
+            | "spain"
     )
 }
 
@@ -235,7 +261,12 @@ pub fn plausible_match(rom_name: &str, display_name: &str) -> bool {
         return true;
     }
 
-    let squash = |s: &str| s.to_lowercase().chars().filter(|c| c.is_alphanumeric()).collect::<String>();
+    let squash = |s: &str| {
+        s.to_lowercase()
+            .chars()
+            .filter(|c| c.is_alphanumeric())
+            .collect::<String>()
+    };
     let (r, d) = (squash(rom_name), squash(display_name));
     if r.len() < 3 || d.len() < 3 {
         return r == d;
@@ -286,7 +317,10 @@ pub fn plausible_match(rom_name: &str, display_name: &str) -> bool {
     // Coincidencia estricta de subcadena solo si la longitud es muy representativa (>= 75% del total)
     let min_len = r.len().min(d.len());
     let max_len = r.len().max(d.len());
-    if min_len >= 5 && (min_len as f32 / max_len as f32) >= 0.75 && (r.contains(&d) || d.contains(&r)) {
+    if min_len >= 5
+        && (min_len as f32 / max_len as f32) >= 0.75
+        && (r.contains(&d) || d.contains(&r))
+    {
         return true;
     }
 
@@ -300,12 +334,22 @@ pub fn find_rom_serial(conn: &Connection, rom_name: &str, rom_path: &Path) -> Op
         if normalized != rom_name {
             patterns.push(normalized);
         }
-        let bare = rom_name.split(" (").next().unwrap_or(rom_name).trim_end().to_string();
+        let bare = rom_name
+            .split(" (")
+            .next()
+            .unwrap_or(rom_name)
+            .trim_end()
+            .to_string();
         if bare != rom_name && !bare.is_empty() {
             patterns.push(bare);
         }
-        let mut allowed_exts: Option<Vec<String>> = platforms::detect_platform(&rom_path.to_string_lossy())
-            .map(|info| platforms::platform_extensions(info.platform).iter().map(|e| e.to_string()).collect());
+        let mut allowed_exts: Option<Vec<String>> =
+            platforms::detect_platform(&rom_path.to_string_lossy()).map(|info| {
+                platforms::platform_extensions(info.platform)
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect()
+            });
         if let Some(exts) = &mut allowed_exts {
             exts.push("bin".into());
         }
@@ -355,12 +399,17 @@ pub fn find_rom_serial(conn: &Connection, rom_name: &str, rom_path: &Path) -> Op
                             |r| r.get(0),
                         )
                         .ok();
-                    if !db_plat.map_or(true, |p| p == expected || p.starts_with(&format!("{} (", expected))) {
+                    if !db_plat.map_or(true, |p| {
+                        p == expected || p.starts_with(&format!("{} (", expected))
+                    }) {
                         continue;
                     }
                 }
 
-                let db_stem = Path::new(&db_name).file_stem().and_then(|s| s.to_str()).unwrap_or(&db_name);
+                let db_stem = Path::new(&db_name)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or(&db_name);
                 let db_base = base_title(db_stem);
                 let db_sequel = sequel_number(&db_base);
 
@@ -399,16 +448,21 @@ pub fn find_rom_serial(conn: &Connection, rom_name: &str, rom_path: &Path) -> Op
     None
 }
 
-pub fn query_metadata_by_serial(conn: &Connection, serial: &str, rom_name: &str) -> Option<GameMetadata> {
+pub fn query_metadata_by_serial(
+    conn: &Connection,
+    serial: &str,
+    rom_name: &str,
+) -> Option<GameMetadata> {
     let clean = serial.replace(['-', '_', '.', ' '], "");
     let clean_upper = clean.to_uppercase();
     let upper = serial.to_uppercase();
 
-    let with_hyphen = if clean_upper.len() >= 8 && clean_upper[..4].chars().all(|c| c.is_ascii_alphabetic()) {
-        format!("{}-{}", &clean_upper[..4], &clean_upper[4..])
-    } else {
-        clean_upper.clone()
-    };
+    let with_hyphen =
+        if clean_upper.len() >= 8 && clean_upper[..4].chars().all(|c| c.is_ascii_alphabetic()) {
+            format!("{}-{}", &clean_upper[..4], &clean_upper[4..])
+        } else {
+            clean_upper.clone()
+        };
 
     let hex_clean = clean_upper
         .as_bytes()
@@ -446,23 +500,33 @@ pub fn query_metadata_by_serial(conn: &Connection, serial: &str, rom_name: &str)
         ORDER BY (g.developer_id IS NOT NULL) DESC, (g.genre_id IS NOT NULL) DESC, (g.publisher_id IS NOT NULL) DESC, g.release_year ASC
         LIMIT 1
     ";
-    let meta = conn.query_row(
-        query,
-        rusqlite::params![serial, clean, clean_upper, with_hyphen, hex_clean, hex_orig, hex_hyphen],
-        |row| {
-            Ok(GameMetadata {
-                display_name: row.get(0)?,
-                release_year: row.get(1)?,
-                release_month: row.get(2)?,
-                developer: row.get(3)?,
-                publisher: row.get(4)?,
-                genre: row.get(5)?,
-                franchise: row.get(6)?,
-                region: row.get(7)?,
-                rating: row.get(8)?,
-            })
-        },
-    ).ok()?;
+    let meta = conn
+        .query_row(
+            query,
+            rusqlite::params![
+                serial,
+                clean,
+                clean_upper,
+                with_hyphen,
+                hex_clean,
+                hex_orig,
+                hex_hyphen
+            ],
+            |row| {
+                Ok(GameMetadata {
+                    display_name: row.get(0)?,
+                    release_year: row.get(1)?,
+                    release_month: row.get(2)?,
+                    developer: row.get(3)?,
+                    publisher: row.get(4)?,
+                    genre: row.get(5)?,
+                    franchise: row.get(6)?,
+                    region: row.get(7)?,
+                    rating: row.get(8)?,
+                })
+            },
+        )
+        .ok()?;
 
     if !rom_name.is_empty() {
         let base_rom = base_title(rom_name);
@@ -481,11 +545,21 @@ pub fn query_metadata_by_serial(conn: &Connection, serial: &str, rom_name: &str)
 
 fn metadata_completeness(meta: &GameMetadata) -> (usize, i32) {
     let mut count = 0;
-    if meta.developer.is_some() { count += 1; }
-    if meta.publisher.is_some() { count += 1; }
-    if meta.genre.is_some() { count += 1; }
-    if meta.release_year.is_some() { count += 1; }
-    if meta.rating.is_some() { count += 1; }
+    if meta.developer.is_some() {
+        count += 1;
+    }
+    if meta.publisher.is_some() {
+        count += 1;
+    }
+    if meta.genre.is_some() {
+        count += 1;
+    }
+    if meta.release_year.is_some() {
+        count += 1;
+    }
+    if meta.rating.is_some() {
+        count += 1;
+    }
     let year = meta.release_year.unwrap_or(9999);
     (count, year)
 }
@@ -506,7 +580,8 @@ pub fn query_game_metadata_comprehensive(
     }
 
     let file_base = base_title(rom_name);
-    if file_base == "eboot" || file_base == "boot" || file_base == "default" || file_base.is_empty() {
+    if file_base == "eboot" || file_base == "boot" || file_base == "default" || file_base.is_empty()
+    {
         return None;
     }
     let canon_base = canonical_title(rom_name);
@@ -521,6 +596,8 @@ pub fn query_game_metadata_comprehensive(
     } else {
         like_base.clone()
     };
+
+    let mut direct_plat_meta: Option<GameMetadata> = None;
 
     // 2. Búsqueda directa en tabla `games` para la misma plataforma
     if let Some(plat_name) = expected_db_plat {
@@ -548,7 +625,14 @@ pub fn query_game_metadata_comprehensive(
         let like_plat = format!("{}%", plat_name);
         if let Ok(mut stmt) = conn.prepare(query_plat) {
             if let Ok(rows) = stmt.query_map(
-                rusqlite::params![plat_name, like_plat, like_base, like_canon, like_no_the, like_inverted],
+                rusqlite::params![
+                    plat_name,
+                    like_plat,
+                    like_base,
+                    like_canon,
+                    like_no_the,
+                    like_inverted
+                ],
                 |row| {
                     Ok(GameMetadata {
                         display_name: row.get(0)?,
@@ -580,8 +664,12 @@ pub fn query_game_metadata_comprehensive(
                         title_score = 250;
                     } else if file_base == db_base {
                         title_score = 200;
-                    } else if (db_base.starts_with(&file_base) || file_base.starts_with(&db_base) || db_canon.starts_with(&canon_base) || canon_base.starts_with(&db_canon))
-                        && canon_base.len() >= 4 && db_canon.len() >= 4
+                    } else if (db_base.starts_with(&file_base)
+                        || file_base.starts_with(&db_base)
+                        || db_canon.starts_with(&canon_base)
+                        || canon_base.starts_with(&db_canon))
+                        && canon_base.len() >= 4
+                        && db_canon.len() >= 4
                     {
                         title_score = 50;
                     }
@@ -631,9 +719,17 @@ pub fn query_game_metadata_comprehensive(
                     }
                 }
                 if let Some((score, meta)) = best {
-                    if score >= 100 {
+                    // Si la coincidencia tiene score alto y ya tiene género O desarrollador O año, es suficiente y retornamos
+                    if score >= 100
+                        && (meta.genre.is_some()
+                            || meta.developer.is_some()
+                            || meta.release_year.is_some())
+                    {
                         return Some(meta);
                     }
+                    // Si el score es muy alto (>= 200 coincidencia exacta) pero carece de metadatos descriptivos,
+                    // guardamos esta meta para fusionar con lo que encuentre la búsqueda cruzada
+                    direct_plat_meta = Some(meta);
                 }
             }
         }
@@ -739,15 +835,37 @@ pub fn query_game_metadata_comprehensive(
                     best = Some((score, meta));
                 }
             }
-            if let Some((score, meta)) = best {
+            if let Some((score, cross_meta)) = best {
                 if score >= 100 {
-                    return Some(meta);
+                    if let Some(mut direct) = direct_plat_meta {
+                        // Conservar nombre y región del direct match, pero enriquecer metadatos descriptivos
+                        if direct.genre.is_none() {
+                            direct.genre = cross_meta.genre;
+                        }
+                        if direct.developer.is_none() {
+                            direct.developer = cross_meta.developer;
+                        }
+                        if direct.publisher.is_none() {
+                            direct.publisher = cross_meta.publisher;
+                        }
+                        if direct.release_year.is_none() {
+                            direct.release_year = cross_meta.release_year;
+                        }
+                        if direct.franchise.is_none() {
+                            direct.franchise = cross_meta.franchise;
+                        }
+                        if direct.rating.is_none() {
+                            direct.rating = cross_meta.rating;
+                        }
+                        return Some(direct);
+                    }
+                    return Some(cross_meta);
                 }
             }
         }
     }
 
-    None
+    direct_plat_meta
 }
 
 static HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {

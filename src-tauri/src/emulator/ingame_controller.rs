@@ -74,7 +74,7 @@ pub fn send_retroarch_command(cmd: &str) -> Result<(), String> {
 
 /// Sets RetroArch audio volume percentage (0 - 100)
 pub fn set_retroarch_volume(pct: u32) -> Result<(), String> {
-    let mut state = crate::state::STATE.lock().unwrap();
+    let mut state = crate::state::lock_state();
     state.settings.graphics.audio_volume = pct.clamp(0, 100);
     crate::state::storage::save_state(&state);
     Ok(())
@@ -82,6 +82,7 @@ pub fn set_retroarch_volume(pct: u32) -> Result<(), String> {
 
 /// Captures the primary screen into a standard Windows BMP file and returns its path
 #[cfg(target_os = "windows")]
+#[allow(dead_code)]
 pub fn capture_screen_to_bmp() -> Result<String, String> {
     use std::fs::File;
     use std::io::Write;
@@ -212,67 +213,19 @@ pub fn capture_screen_to_bmp() -> Result<String, String> {
 }
 
 #[cfg(not(target_os = "windows"))]
+#[allow(dead_code)]
 pub fn capture_screen_to_bmp() -> Result<String, String> {
     Err("Captura de pantalla no soportada en esta plataforma".into())
 }
 
-/// Starts the global hotkey and controller listener thread while a game is running
-pub fn start_global_hotkey_listener(app: AppHandle, stop_flag: Arc<AtomicBool>) {
-    std::thread::spawn(move || {
-        #[cfg(target_os = "windows")]
-        {
-            use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_ESCAPE};
-            use windows::Win32::UI::Input::XboxController::{
-                XInputGetState, XINPUT_GAMEPAD_LEFT_THUMB, XINPUT_GAMEPAD_RIGHT_THUMB,
-                XINPUT_STATE,
-            };
-
-            let mut was_pressed = false;
-            let mut last_toggle = std::time::Instant::now() - Duration::from_secs(1);
-
-            while !stop_flag.load(Ordering::Relaxed) {
-                // Check if Escape key is pressed (bit 15 indicates key is down)
-                let state = unsafe { GetAsyncKeyState(VK_ESCAPE.0 as i32) };
-                let is_esc_down = (state as u16 & 0x8000) != 0;
-
-                // Check L3 + R3 thumbsticks on any connected XInput gamepad (0..4)
-                let mut is_gamepad_combo_down = false;
-                for i in 0..4 {
-                    let mut xs = XINPUT_STATE::default();
-                    let ret = unsafe { XInputGetState(i, &mut xs) };
-                    if ret == 0 {
-                        let btns = xs.Gamepad.wButtons.0;
-                        let combo = XINPUT_GAMEPAD_LEFT_THUMB.0 | XINPUT_GAMEPAD_RIGHT_THUMB.0;
-                        if (btns & combo) == combo {
-                            is_gamepad_combo_down = true;
-                            break;
-                        }
-                    }
-                }
-
-                let is_down = is_esc_down || is_gamepad_combo_down;
-
-                if is_down && !was_pressed && last_toggle.elapsed() > Duration::from_millis(350) {
-                    last_toggle = std::time::Instant::now();
-                    let is_running = GAME_RUNNING.load(Ordering::Relaxed);
-                    if is_running {
-                        let is_overlay = OVERLAY_OPEN.load(Ordering::Relaxed);
-                        if is_overlay {
-                            let _ = resume_in_game(&app);
-                        } else {
-                            let _ = pause_in_game(&app);
-                        }
-                    }
-                }
-
-                was_pressed = is_down;
-                std::thread::sleep(Duration::from_millis(30));
-            }
-        }
-    });
+/// Global hotkey listener is deprecated in favor of RetroArch's native Ozone Quick Menu
+#[allow(dead_code)]
+pub fn start_global_hotkey_listener(_app: AppHandle, _stop_flag: Arc<AtomicBool>) {
+    // Native RetroArch Ozone menu handles Escape and L3+R3 directly
 }
 
 /// Pauses RetroArch, captures a frame screenshot, hides RetroArch window, and shows NewGame+ pause cards
+#[allow(dead_code)]
 pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
     // 1. Pause RetroArch emulation
     let _ = send_retroarch_command("PAUSE_TOGGLE");
@@ -324,7 +277,9 @@ pub fn resume_in_game(app: &AppHandle) -> Result<(), String> {
     // 2. Restore and elevate RetroArch window
     #[cfg(target_os = "windows")]
     {
-        use windows::Win32::UI::WindowsAndMessaging::{SetForegroundWindow, ShowWindow, SW_RESTORE, SW_SHOW};
+        use windows::Win32::UI::WindowsAndMessaging::{
+            SetForegroundWindow, ShowWindow, SW_RESTORE, SW_SHOW,
+        };
         if let Some(hwnd) = get_retroarch_hwnd() {
             unsafe {
                 let _ = ShowWindow(hwnd, SW_SHOW);
@@ -358,4 +313,3 @@ pub fn quit_in_game(app: &AppHandle) -> Result<(), String> {
     let _ = app.emit("in-game-pause-close", ());
     Ok(())
 }
-

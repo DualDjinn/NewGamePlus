@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { Game } from "../types";
 import { launchGame, getCoverUrl } from "../lib/tauri";
 import { getFranchiseGames } from "../lib/franchises";
@@ -21,6 +22,7 @@ export default function HeroBanner({
   onFavoriteChanged,
   layoutStyle = "classic",
 }: Props) {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState(0);
   const featured = useMemo(() => games.slice(0, 7), [games]);
 
@@ -92,7 +94,7 @@ export default function HeroBanner({
                     </span>
                     {g.genre && <span className="hero-genre-badge">{g.genre}</span>}
                     {g.release_year && <span className="hero-year-badge">{g.release_year}</span>}
-                    {g.favorite && <span className="hero-fav-badge">♥ Favorito</span>}
+                    {g.favorite && <span className="hero-fav-badge">♥ {t("hero.favorite")}</span>}
                   </div>
                   {g.logo_path ? (
                     <div className="hero-logo-wrap" title={g.display_name || g.name}>
@@ -114,7 +116,7 @@ export default function HeroBanner({
                         handlePlay(g.rom_path);
                       }}
                     >
-                      ▶ Jugar
+                      ▶ {t("hero.playNow")}
                     </button>
                     <button
                       type="button"
@@ -124,7 +126,7 @@ export default function HeroBanner({
                         onSelect?.(g);
                       }}
                     >
-                      Detalles
+                      {t("hero.details")}
                     </button>
                   </div>
                 </div>
@@ -145,7 +147,7 @@ export default function HeroBanner({
                   </span>
                   {currentGame.genre && <span className="hero-genre-badge">{currentGame.genre}</span>}
                   {currentGame.release_year && <span className="hero-year-badge">{currentGame.release_year}</span>}
-                  {currentGame.favorite && <span className="hero-fav-badge">♥ Favorito</span>}
+                  {currentGame.favorite && <span className="hero-fav-badge">♥ {t("hero.favorite")}</span>}
                 </div>
                 {currentGame.logo_path ? (
                   <div className="hero-logo-wrap" title={currentGame.display_name || currentGame.name}>
@@ -164,14 +166,14 @@ export default function HeroBanner({
                     className="hero-btn hero-btn-play"
                     onClick={() => handlePlay(currentGame.rom_path)}
                   >
-                    ▶ Jugar
+                    ▶ {t("hero.playNow")}
                   </button>
                   <button
                     type="button"
                     className="hero-btn hero-btn-info"
                     onClick={() => onSelect?.(currentGame)}
                   >
-                    Detalles
+                    {t("hero.details")}
                   </button>
                 </div>
               </div>

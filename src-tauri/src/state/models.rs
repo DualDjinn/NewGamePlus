@@ -118,6 +118,10 @@ pub fn default_music_volume() -> f32 {
     0.15
 }
 
+pub fn default_auto_update_check() -> bool {
+    true
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AppSettings {
     pub folders: Vec<String>,
@@ -140,6 +144,10 @@ pub struct AppSettings {
     pub music_volume: f32,
     #[serde(default)]
     pub music_folders: Vec<String>,
+    #[serde(default)]
+    pub last_emulator_check_secs: u64,
+    #[serde(default = "default_auto_update_check")]
+    pub auto_update_check: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -186,6 +194,8 @@ impl Default for AppState {
                 graphics: GraphicsSettings::default(),
                 music_volume: default_music_volume(),
                 music_folders: Vec::new(),
+                last_emulator_check_secs: 0,
+                auto_update_check: default_auto_update_check(),
             },
         }
     }

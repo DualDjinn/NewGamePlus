@@ -29,14 +29,19 @@ pub fn find_7z_binary() -> Option<PathBuf> {
 
     // 3. LocalAppData de usuario
     if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-        let p = PathBuf::from(local_app_data).join("Programs").join("7-Zip").join("7z.exe");
+        let p = PathBuf::from(local_app_data)
+            .join("Programs")
+            .join("7-Zip")
+            .join("7z.exe");
         if p.exists() {
             return Some(p);
         }
     }
 
     // 4. Directorio de binarios de la aplicación
-    let bundled = crate::state::storage::get_binaries_dir().join("7z").join("7z.exe");
+    let bundled = crate::state::storage::get_binaries_dir()
+        .join("7z")
+        .join("7z.exe");
     if bundled.exists() {
         return Some(bundled);
     }
@@ -94,7 +99,10 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
 
 /// Extrae una ISO de PS3, normaliza la estructura y borra la ISO de forma segura.
 /// Retorna la ruta al nuevo `EBOOT.BIN` si tiene éxito.
-pub fn extract_and_cleanup_ps3_iso(iso_path: &Path, root_scan_folder: &Path) -> Result<PathBuf, String> {
+pub fn extract_and_cleanup_ps3_iso(
+    iso_path: &Path,
+    root_scan_folder: &Path,
+) -> Result<PathBuf, String> {
     let seven_zip = find_7z_binary().ok_or_else(|| {
         "No se encontró 7-Zip (7z.exe). Por favor instala 7-Zip para extraer ISOs de PS3 automáticamente.".to_string()
     })?;
@@ -115,8 +123,13 @@ pub fn extract_and_cleanup_ps3_iso(iso_path: &Path, root_scan_folder: &Path) -> 
     };
 
     if !target_dir.exists() {
-        fs::create_dir_all(&target_dir)
-            .map_err(|e| format!("No se pudo crear carpeta destino {}: {}", target_dir.display(), e))?;
+        fs::create_dir_all(&target_dir).map_err(|e| {
+            format!(
+                "No se pudo crear carpeta destino {}: {}",
+                target_dir.display(),
+                e
+            )
+        })?;
     }
 
     // Ejecutar 7-Zip

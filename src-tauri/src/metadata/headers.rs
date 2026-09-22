@@ -69,6 +69,50 @@ pub fn read_nds_header(path: &Path) -> Option<RomHeaderInfo> {
     }
 }
 
+/// Lee la cabecera NCSD o NCCH de un archivo de Nintendo 3DS (.3ds, .cci, .cxi)
+/// Offset 0x100 contiene la cabecera NCCH (o la primera partición de NCSD)
+/// El código de producto (ej. CTR-P-AGSE) se ubica en el offset 0x150..0x160
+pub fn read_3ds_header(path: &Path) -> Option<RomHeaderInfo> {
+    let mut file = File::open(path).ok()?;
+    // Intentar leer desde 0x100 (NCCH en archivos NCSD .3ds/.cci o .cxi directo)
+    file.seek(SeekFrom::Start(0x100)).ok()?;
+    let mut magic = [0u8; 4];
+    file.read_exact(&mut magic).ok()?;
+
+    // Si no es NCCH en 0x100, verificar si el archivo es un NCCH puro que empieza en 0x00
+    let ncch_offset = if &magic == b"NCCH" {
+        0x100
+    } else {
+        file.seek(SeekFrom::Start(0x00)).ok()?;
+        file.read_exact(&mut magic).ok()?;
+        if &magic == b"NCCH" {
+            0x00
+        } else {
+            return None;
+        }
+    };
+
+    // El product code está en ncch_offset + 0x50, longitud 16 bytes
+    file.seek(SeekFrom::Start(ncch_offset + 0x50)).ok()?;
+    let mut prod_buf = [0u8; 16];
+    file.read_exact(&mut prod_buf).ok()?;
+    let prod_code = clean_ascii_str(&prod_buf);
+
+    if let Some(code) = prod_code {
+        let serial = if code.starts_with("CTR-") || code.starts_with("KTR-") {
+            code
+        } else {
+            format!("CTR-P-{}", code)
+        };
+        Some(RomHeaderInfo {
+            internal_title: None,
+            serial: Some(serial),
+        })
+    } else {
+        None
+    }
+}
+
 /// Lee la cabecera de Game Boy / Game Boy Color (offset 0x0134)
 pub fn read_gb_header(path: &Path) -> Option<RomHeaderInfo> {
     let mut file = File::open(path).ok()?;
@@ -157,7 +201,11 @@ pub fn read_playstation_serial_from_slice(bytes: &[u8]) -> Option<String> {
                         let clean_serial = raw_serial.replace(['_', '.', '-'], "").to_uppercase();
                         if clean_serial.len() >= 8 {
                             if clean_serial[..4].chars().all(|c| c.is_ascii_alphabetic()) {
-                                return Some(format!("{}-{}", &clean_serial[..4], &clean_serial[4..]));
+                                return Some(format!(
+                                    "{}-{}",
+                                    &clean_serial[..4],
+                                    &clean_serial[4..]
+                                ));
                             }
                             return Some(clean_serial);
                         }
@@ -173,17 +221,19 @@ pub fn read_playstation_serial_from_slice(bytes: &[u8]) -> Option<String> {
 pub fn extract_serial_from_str(s: &str) -> Option<String> {
     let upper = s.to_uppercase();
     let prefixes = [
-        "SCES", "SLES", "SLUS", "SCUS", "SCPS", "SLPS", "SLED", "SLKA", "SCED",
-        "ULUS", "ULES", "UCUS", "UCES", "ULJS", "UCJS", "ULKS",
-        "BLES", "BLUS", "BCES", "BCUS", "BLJS", "BCJS", "BLAS", "BCAS",
-        "NPUB", "NPEB", "NPHB", "NPJJ",
+        "SCES", "SLES", "SLUS", "SCUS", "SCPS", "SLPS", "SLED", "SLKA", "SCED", "ULUS", "ULES",
+        "UCUS", "UCES", "ULJS", "UCJS", "ULKS", "BLES", "BLUS", "BCES", "BCUS", "BLJS", "BCJS",
+        "BLAS", "BCAS", "NPUB", "NPEB", "NPHB", "NPJJ",
     ];
 
     for prefix in &prefixes {
         if let Some(pos) = upper.find(prefix) {
             let rest = &upper[pos + prefix.len()..];
             let rest_trimmed = rest.trim_start_matches(['-', '_', '.', ' ']);
-            let digits: String = rest_trimmed.chars().take_while(|c| c.is_ascii_digit()).collect();
+            let digits: String = rest_trimmed
+                .chars()
+                .take_while(|c| c.is_ascii_digit())
+                .collect();
             if digits.len() == 4 || digits.len() == 5 {
                 return Some(format!("{}-{}", prefix, digits));
             }
@@ -219,7 +269,11 @@ pub fn read_m3u_header(path: &Path) -> Option<RomHeaderInfo> {
 
         let disc_path = parent.join(trimmed);
         if disc_path.exists() {
-            let ext = disc_path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+            let ext = disc_path
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
             if ext == "cue" {
                 if let Some(serial) = extract_serial_from_str(&disc_path.to_string_lossy()) {
                     return Some(RomHeaderInfo {
@@ -233,8 +287,10 @@ pub fn read_m3u_header(path: &Path) -> Option<RomHeaderInfo> {
                         if cue_trimmed.to_uppercase().starts_with("FILE") {
                             if let Some(first_q) = cue_trimmed.find('"') {
                                 if let Some(second_q) = cue_trimmed[first_q + 1..].find('"') {
-                                    let bin_name = &cue_trimmed[first_q + 1..first_q + 1 + second_q];
-                                    let bin_path = disc_path.parent().unwrap_or(parent).join(bin_name);
+                                    let bin_name =
+                                        &cue_trimmed[first_q + 1..first_q + 1 + second_q];
+                                    let bin_path =
+                                        disc_path.parent().unwrap_or(parent).join(bin_name);
                                     if bin_path.exists() {
                                         if let Some(hdr) = read_psx_header(&bin_path) {
                                             return Some(hdr);
@@ -282,8 +338,12 @@ pub fn read_psx_header(path: &Path) -> Option<RomHeaderInfo> {
 
 /// Lee la información de un juego PS3 a partir de PARAM.SFO
 pub fn read_ps3_header(path: &Path) -> Option<RomHeaderInfo> {
-    let sfo_path = if path.file_name().map_or(false, |f| f.to_string_lossy().eq_ignore_ascii_case("eboot.bin")) {
-        path.parent().and_then(|u| u.parent()).map(|p| p.join("PARAM.SFO"))
+    let sfo_path = if path.file_name().map_or(false, |f| {
+        f.to_string_lossy().eq_ignore_ascii_case("eboot.bin")
+    }) {
+        path.parent()
+            .and_then(|u| u.parent())
+            .map(|p| p.join("PARAM.SFO"))
     } else if path.is_dir() {
         let direct = path.join("PARAM.SFO");
         if direct.exists() {
@@ -297,7 +357,11 @@ pub fn read_ps3_header(path: &Path) -> Option<RomHeaderInfo> {
 
     if let Some(sfo) = sfo_path.filter(|p| p.exists()) {
         if let Some((title, title_id)) = crate::platforms::parse_param_sfo(&sfo) {
-            let serial = if !title_id.is_empty() { Some(title_id) } else { None };
+            let serial = if !title_id.is_empty() {
+                Some(title_id)
+            } else {
+                None
+            };
             let internal_title = if !title.is_empty() { Some(title) } else { None };
             return Some(RomHeaderInfo {
                 internal_title,
@@ -340,10 +404,15 @@ pub fn read_cue_header(path: &Path) -> Option<RomHeaderInfo> {
 
 /// Estrategia de cabecera según la plataforma
 pub fn extract_rom_header(platform: &str, path: &Path) -> Option<RomHeaderInfo> {
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
     match platform {
         "GBA" => read_gba_header(path),
         "NDS" => read_nds_header(path),
+        "3DS" => read_3ds_header(path),
         "GB" | "GBC" => read_gb_header(path),
         "N64" => read_n64_header(path),
         "SNES" => read_snes_header(path),
@@ -397,4 +466,3 @@ mod tests {
         assert_eq!(serial_ps1, Some("SLES-00925".to_string()));
     }
 }
-

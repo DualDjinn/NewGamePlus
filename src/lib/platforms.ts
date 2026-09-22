@@ -25,9 +25,13 @@ export const PLATFORM_COLORS: Record<string, string> = {
   LYNX: "#d4ac0d",
   WSWAN: "#2e86c1",
   COLECOVISION: "#6c3483",
+  PC: "#00a4ef",
 };
 
 export const PLATFORM_COMPANIES: Record<string, string> = {
+  // PC / Windows
+  PC: "PC",
+
   // Nintendo
   NES: "Nintendo",
   SNES: "Nintendo",
@@ -98,6 +102,7 @@ export const PLATFORM_NAMES: Record<string, string> = {
   LYNX: "Atari Lynx",
   WSWAN: "WonderSwan",
   COLECOVISION: "ColecoVision",
+  PC: "Juegos de PC",
 };
 
 export function getPlatformDisplayName(platform: string): string {

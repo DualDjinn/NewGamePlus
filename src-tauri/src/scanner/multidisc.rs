@@ -1,7 +1,7 @@
+use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use regex::Regex;
 
 /// Información sobre un archivo que es parte de un juego multidisco
 #[derive(Debug, Clone)]
@@ -18,7 +18,9 @@ pub fn parse_disc_info(file_path: &Path) -> Option<DiscFileInfo> {
     let stem = file_path.file_stem()?.to_str()?;
 
     // Regex para detectar patrones de disco como [CD1], (Disc 2), (Disk 3), - CD 4, etc.
-    let re_disc = Regex::new(r"(?i)(?:^|[\s_\-\(\[])(?:disc|disk|cd|disco)\s*0*([0-9]+)(?:[\s_\-\)\]]|$)").ok()?;
+    let re_disc =
+        Regex::new(r"(?i)(?:^|[\s_\-\(\[])(?:disc|disk|cd|disco)\s*0*([0-9]+)(?:[\s_\-\)\]]|$)")
+            .ok()?;
     let caps = re_disc.captures(stem)?;
     let disc_num: u32 = caps.get(1)?.as_str().parse().ok()?;
 
@@ -30,7 +32,9 @@ pub fn parse_disc_info(file_path: &Path) -> Option<DiscFileInfo> {
         base_clean = re_serial.replace_all(&base_clean, " ").to_string();
     }
     // Quitar etiquetas comunes iniciales como (PS1) o [PS1]
-    if let Ok(re_tag) = Regex::new(r"(?i)^\s*[\(\[]\s*(?:ps[1-3]|playstation(?:\s*[1-3])?)\s*[\)\]]\s*") {
+    if let Ok(re_tag) =
+        Regex::new(r"(?i)^\s*[\(\[]\s*(?:ps[1-3]|playstation(?:\s*[1-3])?)\s*[\)\]]\s*")
+    {
         base_clean = re_tag.replace_all(&base_clean, " ").to_string();
     }
 
@@ -66,7 +70,10 @@ pub fn process_multidisc_games(dir: &Path) -> HashSet<PathBuf> {
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
             let p = entry.path();
-            if p.is_file() && p.extension().map_or(false, |ext| ext.eq_ignore_ascii_case("m3u")) {
+            if p.is_file()
+                && p.extension()
+                    .map_or(false, |ext| ext.eq_ignore_ascii_case("m3u"))
+            {
                 // Leer las líneas del m3u para ignorar los archivos que referencia
                 if let Ok(content) = fs::read_to_string(&p) {
                     for line in content.lines() {
@@ -91,7 +98,11 @@ pub fn process_multidisc_games(dir: &Path) -> HashSet<PathBuf> {
             if !p.is_file() {
                 continue;
             }
-            let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+            let ext = p
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
             if !valid_disc_exts.contains(&ext.as_str()) {
                 continue;
             }
@@ -110,7 +121,11 @@ pub fn process_multidisc_games(dir: &Path) -> HashSet<PathBuf> {
     }
 
     // 3. Agrupar candidatos por título base
-    let folder_name = dir.file_name().and_then(|f| f.to_str()).unwrap_or("").to_string();
+    let folder_name = dir
+        .file_name()
+        .and_then(|f| f.to_str())
+        .unwrap_or("")
+        .to_string();
     let is_generic_folder = folder_name.eq_ignore_ascii_case("ps1")
         || folder_name.eq_ignore_ascii_case("ps2")
         || folder_name.eq_ignore_ascii_case("roms")
@@ -129,7 +144,9 @@ pub fn process_multidisc_games(dir: &Path) -> HashSet<PathBuf> {
         if let Ok(re_serial) = Regex::new(r"(?i)\[\s*S[A-Z]{3}[-_]\d+\s*\]") {
             clean_folder = re_serial.replace_all(&clean_folder, " ").to_string();
         }
-        if let Ok(re_tag) = Regex::new(r"(?i)^\s*[\(\[]\s*(?:ps[1-3]|playstation(?:\s*[1-3])?)\s*[\)\]]\s*") {
+        if let Ok(re_tag) =
+            Regex::new(r"(?i)^\s*[\(\[]\s*(?:ps[1-3]|playstation(?:\s*[1-3])?)\s*[\)\]]\s*")
+        {
             clean_folder = re_tag.replace_all(&clean_folder, " ").to_string();
         }
         let clean_folder = clean_folder
@@ -152,7 +169,10 @@ pub fn process_multidisc_games(dir: &Path) -> HashSet<PathBuf> {
         }
     } else {
         for disc in disc_candidates {
-            groups.entry(disc.base_title.clone()).or_default().push(disc);
+            groups
+                .entry(disc.base_title.clone())
+                .or_default()
+                .push(disc);
         }
     }
 
