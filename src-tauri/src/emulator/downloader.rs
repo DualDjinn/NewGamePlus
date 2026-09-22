@@ -1,8 +1,8 @@
+use crate::platforms;
+use crate::state::storage::get_binaries_dir;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use crate::platforms;
-use crate::state::storage::get_binaries_dir;
 
 pub fn get_http_client() -> &'static reqwest::blocking::Client {
     static CLIENT: std::sync::OnceLock<reqwest::blocking::Client> = std::sync::OnceLock::new();
@@ -17,7 +17,10 @@ pub fn get_http_client() -> &'static reqwest::blocking::Client {
 
 pub fn download_file(url: &str, dest: &Path) -> Result<(), String> {
     let client = get_http_client();
-    let resp = client.get(url).send().map_err(|e| format!("HTTP error: {}", e))?;
+    let resp = client
+        .get(url)
+        .send()
+        .map_err(|e| format!("HTTP error: {}", e))?;
     if !resp.status().is_success() {
         return Err(format!("HTTP {}: {}", resp.status(), url));
     }
@@ -32,12 +35,24 @@ pub fn extract_core_zip(zip_path: &Path, dest_dir: &Path) -> Result<PathBuf, Str
     let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Invalid zip: {}", e))?;
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
-        if entry.name().ends_with(".dll") {
-            let out_path = dest_dir.join(entry.name());
-            let mut out_file = fs::File::create(&out_path).map_err(|e| e.to_string())?;
-            std::io::copy(&mut entry, &mut out_file).map_err(|e| e.to_string())?;
-            return Ok(out_path);
+        if entry.is_symlink() || entry.is_dir() {
+            continue;
         }
+        let name = entry.name().replace('\\', "/");
+        // Solo el nombre base: sin rutas, sin .., sin absolutos. El buildbot
+        // trae "<core>_libretro.dll" plano; cualquier otra cosa se omite.
+        let base = Path::new(&name)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .filter(|n| n.ends_with(".dll"));
+        let Some(base) = base else { continue };
+        if name != base {
+            continue;
+        }
+        let out_path = dest_dir.join(base);
+        let mut out_file = fs::File::create(&out_path).map_err(|e| e.to_string())?;
+        std::io::copy(&mut entry, &mut out_file).map_err(|e| e.to_string())?;
+        return Ok(out_path);
     }
     Err("No .dll found in zip".into())
 }
@@ -55,11 +70,31 @@ pub fn ensure_core(core_name: &str) -> Result<PathBuf, String> {
     if core_path.exists() {
         return Ok(core_path);
     }
+    let lower_name = core_name.to_lowercase();
+    let lower_path = get_binaries_dir().join(platforms::core_dll_name(&lower_name));
+    if lower_path.exists() {
+        return Ok(lower_path);
+    }
+
     let url = platforms::core_zip_url(core_name);
     let tmp_zip = std::env::temp_dir().join(format!("gameflix_core_{}.zip", core_name));
     let tmp_dir = std::env::temp_dir().join(format!("gameflix_core_{}", core_name));
     fs::create_dir_all(&tmp_dir).map_err(|e| e.to_string())?;
-    download_file(&url, &tmp_zip)?;
+
+    let dl_res = download_file(&url, &tmp_zip).or_else(|err| {
+        let fallback_url = format!(
+            "https://buildbot.libretro.com/nightly/windows/x86_64/latest/{}_libretro.dll.zip",
+            lower_name
+        );
+        if fallback_url != url {
+            download_file(&fallback_url, &tmp_zip)
+        } else {
+            Err(err)
+        }
+    });
+
+    dl_res?;
+
     let dll_path = extract_core_zip(&tmp_zip, &tmp_dir)?;
     let dest = get_binaries_dir().join(platforms::core_dll_name(core_name));
     fs::copy(&dll_path, &dest).map_err(|e| e.to_string())?;
