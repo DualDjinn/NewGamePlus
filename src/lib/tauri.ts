@@ -1,6 +1,6 @@
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Game, ScanResult, AppSettings, GameMetadata, GameAchievementProgress, SGDBHero, SGDBLogo, SGDBGrid, FixMatchCandidate, MusicTrack } from "../types";
+import type { Game, ScanResult, AppSettings, GameMetadata, GameAchievementProgress, SGDBHero, SGDBLogo, SGDBGrid, FixMatchCandidate, MusicTrack, EmulatorInfo } from "../types";
 
 export function getCoverUrl(path: string | null | undefined): string {
   if (!path) return "";
@@ -84,6 +84,10 @@ export async function checkRpcs3(): Promise<boolean> {
   return invoke<boolean>("check_rpcs3");
 }
 
+export async function checkAzahar(): Promise<boolean> {
+  return invoke<boolean>("check_azahar");
+}
+
 export async function getSettings(): Promise<AppSettings> {
   return invoke<AppSettings>("get_settings");
 }
@@ -94,6 +98,10 @@ export async function saveSettings(folders: string[], kioskMode?: boolean): Prom
 
 export async function setKioskMode(enabled: boolean): Promise<void> {
   return invoke<void>("set_kiosk_mode", { enabled });
+}
+
+export async function setAutoUpdateCheck(enabled: boolean): Promise<void> {
+  return invoke<void>("set_auto_update_check", { enabled });
 }
 
 export async function setTheme(theme: string): Promise<void> {
@@ -183,8 +191,8 @@ export async function saveRACredentials(username: string, password: string, apiK
   return invoke<void>("save_ra_credentials", { username, password, apiKey });
 }
 
-export async function getRACredentials(): Promise<[string, string] | null> {
-  return invoke<[string, string] | null>("get_ra_credentials");
+export async function getRACredentials(): Promise<string | null> {
+  return invoke<string | null>("get_ra_credentials");
 }
 
 export async function clearRACredentials(): Promise<void> {
@@ -207,8 +215,8 @@ export async function saveSteamGridDBKey(apiKey: string): Promise<void> {
   return invoke<void>("save_steamgriddb_key", { apiKey });
 }
 
-export async function getSteamGridDBKey(): Promise<string | null> {
-  return invoke<string | null>("get_steamgriddb_key");
+export async function getSteamGridDBKey(): Promise<boolean> {
+  return invoke<boolean>("get_steamgriddb_key");
 }
 
 export async function clearSteamGridDBKey(): Promise<void> {
@@ -443,5 +451,26 @@ export function onInGamePauseOpen(cb: (screenshotPath: string | null) => void) {
 
 export function onInGamePauseClose(cb: () => void) {
   return listen("in-game-pause-close", () => cb());
+}
+
+// Emuladores: versiones y actualizaciones
+export async function getEmulatorVersions(): Promise<EmulatorInfo[]> {
+  return invoke<EmulatorInfo[]>("get_emulator_versions");
+}
+
+export async function checkEmulatorUpdates(): Promise<EmulatorInfo[]> {
+  return invoke<EmulatorInfo[]>("check_emulator_updates");
+}
+
+export async function updateEmulator(id: string): Promise<string> {
+  return invoke<string>("update_emulator", { id });
+}
+
+export async function updateAllCores(): Promise<string[]> {
+  return invoke<string[]>("update_all_cores");
+}
+
+export function onEmulatorUpdates(cb: (infos: EmulatorInfo[]) => void) {
+  return listen<EmulatorInfo[]>("emulator-updates-available", (e) => cb(e.payload));
 }
 

@@ -1,10 +1,27 @@
+use crate::state::lock_state;
+use crate::state::models::Game;
+use crate::state::secrets;
+use crate::state::storage::{get_data_dir, get_thumbnails_dir, save_state};
+use crate::steamgriddb::{self, FixMatchCandidate, SGDBGrid, SGDBHero, SGDBLogo};
 use std::fs;
 use std::path::Path;
 use tauri::Emitter;
-use crate::state::models::Game;
-use crate::state::storage::{get_data_dir, get_thumbnails_dir, save_state};
-use crate::state::STATE;
-use crate::steamgriddb::{self, FixMatchCandidate, SGDBGrid, SGDBHero, SGDBLogo};
+
+/// Key del perfil activo, descifrada. Unico punto de lectura.
+fn active_sgdb_key() -> Result<String, String> {
+    let state = lock_state();
+    let profile_name = &state.settings.current_profile;
+    state
+        .settings
+        .profiles
+        .iter()
+        .find(|p| &p.name == profile_name)
+        .and_then(|p| secrets::reveal_opt(&p.steamgriddb_api_key))
+        .filter(|k| !k.trim().is_empty())
+        .ok_or_else(|| {
+            "No hay API Key de SteamGridDB configurada. Agrégala en Configuración.".into()
+        })
+}
 
 #[tauri::command]
 pub fn save_steamgriddb_key(api_key: String) -> Result<(), String> {
@@ -12,28 +29,36 @@ pub fn save_steamgriddb_key(api_key: String) -> Result<(), String> {
     if !valid {
         return Err("API Key de SteamGridDB inválida. Verificá tu clave en steamgriddb.com/profile/preferences/api".into());
     }
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     let profile_name = state.settings.current_profile.clone();
-    if let Some(profile) = state.settings.profiles.iter_mut().find(|p| p.name == profile_name) {
-        profile.steamgriddb_api_key = Some(api_key.trim().to_string());
+    if let Some(profile) = state
+        .settings
+        .profiles
+        .iter_mut()
+        .find(|p| p.name == profile_name)
+    {
+        profile.steamgriddb_api_key = Some(secrets::protect(api_key.trim())?);
     }
     save_state(&state);
     Ok(())
 }
 
 #[tauri::command]
-pub fn get_steamgriddb_key() -> Result<Option<String>, String> {
-    let state = STATE.lock().unwrap();
-    let profile_name = &state.settings.current_profile;
-    let profile = state.settings.profiles.iter().find(|p| &p.name == profile_name);
-    Ok(profile.and_then(|p| p.steamgriddb_api_key.clone()))
+pub fn get_steamgriddb_key() -> Result<bool, String> {
+    // Solo presencia: la key nunca sale al frontend.
+    Ok(active_sgdb_key().is_ok())
 }
 
 #[tauri::command]
 pub fn clear_steamgriddb_key() -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     let profile_name = state.settings.current_profile.clone();
-    if let Some(profile) = state.settings.profiles.iter_mut().find(|p| p.name == profile_name) {
+    if let Some(profile) = state
+        .settings
+        .profiles
+        .iter_mut()
+        .find(|p| p.name == profile_name)
+    {
         profile.steamgriddb_api_key = None;
     }
     save_state(&state);
@@ -42,21 +67,28 @@ pub fn clear_steamgriddb_key() -> Result<(), String> {
 
 #[tauri::command]
 pub fn search_steamgriddb_heroes(game_name: String) -> Result<Vec<SGDBHero>, String> {
-    let api_key = {
-        let state = STATE.lock().unwrap();
-        let profile_name = &state.settings.current_profile;
-        let profile = state.settings.profiles.iter().find(|p| &p.name == profile_name);
-        match profile.and_then(|p| p.steamgriddb_api_key.as_ref()) {
-            Some(k) if !k.trim().is_empty() => k.clone(),
-            _ => return Err("No hay API Key de SteamGridDB configurada. Agrégala en Configuración.".into()),
-        }
-    };
+    let api_key = active_sgdb_key()?;
 
     steamgriddb::search_heroes(&api_key, &game_name)
 }
 
+/// Solo arte remoto por HTTPS: el WebView muestra estas imágenes y el
+/// backend las descarga a disco. Sin http://, file:// ni data:.
+fn require_https_art(url: &str) -> Result<(), String> {
+    let u = url.trim();
+    if u.len() > 2048 {
+        return Err("URL de imagen demasiado larga".into());
+    }
+    if u.to_ascii_lowercase().starts_with("https://") {
+        Ok(())
+    } else {
+        Err("Solo se permiten imágenes remotas por HTTPS".into())
+    }
+}
+
 #[tauri::command]
 pub fn set_game_hero(game_id: String, hero_url: String) -> Result<String, String> {
+    require_https_art(&hero_url)?;
     let heroes_dir = steamgriddb::get_heroes_dir(&get_data_dir());
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -68,7 +100,7 @@ pub fn set_game_hero(game_id: String, hero_url: String) -> Result<String, String
 
     let hero_path_str = dest_path.to_string_lossy().to_string();
     {
-        let mut state = STATE.lock().unwrap();
+        let mut state = lock_state();
         if let Some(game) = state.games.iter_mut().find(|g| g.id == game_id) {
             game.hero_path = Some(hero_path_str.clone());
         }
@@ -79,7 +111,10 @@ pub fn set_game_hero(game_id: String, hero_url: String) -> Result<String, String
         for entry in entries.flatten() {
             let p = entry.path();
             if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
-                if (name == format!("{}.png", game_id) || name.starts_with(&format!("{}_", game_id))) && p != dest_path {
+                if (name == format!("{}.png", game_id)
+                    || name.starts_with(&format!("{}_", game_id)))
+                    && p != dest_path
+                {
                     let _ = fs::remove_file(&p);
                 }
             }
@@ -91,7 +126,7 @@ pub fn set_game_hero(game_id: String, hero_url: String) -> Result<String, String
 
 #[tauri::command]
 pub fn remove_game_hero(game_id: String) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     if let Some(game) = state.games.iter_mut().find(|g| g.id == game_id) {
         if let Some(path_str) = &game.hero_path {
             let p = Path::new(path_str);
@@ -104,7 +139,9 @@ pub fn remove_game_hero(game_id: String) -> Result<(), String> {
             for entry in entries.flatten() {
                 let p = entry.path();
                 if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
-                    if name == format!("{}.png", game_id) || name.starts_with(&format!("{}_", game_id)) {
+                    if name == format!("{}.png", game_id)
+                        || name.starts_with(&format!("{}_", game_id))
+                    {
                         let _ = fs::remove_file(&p);
                     }
                 }
@@ -118,21 +155,14 @@ pub fn remove_game_hero(game_id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn search_steamgriddb_logos(game_name: String) -> Result<Vec<SGDBLogo>, String> {
-    let api_key = {
-        let state = STATE.lock().unwrap();
-        let profile_name = &state.settings.current_profile;
-        let profile = state.settings.profiles.iter().find(|p| &p.name == profile_name);
-        match profile.and_then(|p| p.steamgriddb_api_key.as_ref()) {
-            Some(k) if !k.trim().is_empty() => k.clone(),
-            _ => return Err("No hay API Key de SteamGridDB configurada. Agrégala en Configuración.".into()),
-        }
-    };
+    let api_key = active_sgdb_key()?;
 
     steamgriddb::search_logos(&api_key, &game_name)
 }
 
 #[tauri::command]
 pub fn set_game_logo(game_id: String, logo_url: String) -> Result<String, String> {
+    require_https_art(&logo_url)?;
     let logos_dir = steamgriddb::get_logos_dir(&get_data_dir());
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -144,7 +174,7 @@ pub fn set_game_logo(game_id: String, logo_url: String) -> Result<String, String
 
     let logo_path_str = dest_path.to_string_lossy().to_string();
     {
-        let mut state = STATE.lock().unwrap();
+        let mut state = lock_state();
         if let Some(game) = state.games.iter_mut().find(|g| g.id == game_id) {
             game.logo_path = Some(logo_path_str.clone());
         }
@@ -155,7 +185,10 @@ pub fn set_game_logo(game_id: String, logo_url: String) -> Result<String, String
         for entry in entries.flatten() {
             let p = entry.path();
             if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
-                if (name == format!("{}.png", game_id) || name.starts_with(&format!("{}_", game_id))) && p != dest_path {
+                if (name == format!("{}.png", game_id)
+                    || name.starts_with(&format!("{}_", game_id)))
+                    && p != dest_path
+                {
                     let _ = fs::remove_file(&p);
                 }
             }
@@ -167,7 +200,7 @@ pub fn set_game_logo(game_id: String, logo_url: String) -> Result<String, String
 
 #[tauri::command]
 pub fn remove_game_logo(game_id: String) -> Result<(), String> {
-    let mut state = STATE.lock().unwrap();
+    let mut state = lock_state();
     if let Some(game) = state.games.iter_mut().find(|g| g.id == game_id) {
         if let Some(path_str) = &game.logo_path {
             let p = Path::new(path_str);
@@ -180,7 +213,9 @@ pub fn remove_game_logo(game_id: String) -> Result<(), String> {
             for entry in entries.flatten() {
                 let p = entry.path();
                 if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
-                    if name == format!("{}.png", game_id) || name.starts_with(&format!("{}_", game_id)) {
+                    if name == format!("{}.png", game_id)
+                        || name.starts_with(&format!("{}_", game_id))
+                    {
                         let _ = fs::remove_file(&p);
                     }
                 }
@@ -193,8 +228,8 @@ pub fn remove_game_logo(game_id: String) -> Result<(), String> {
 }
 
 fn platform_db_name(platform: &str) -> Option<&'static str> {
-    crate::metadata::libretro::db_platform_name(platform)
-        .or_else(|| match platform.to_uppercase().as_str() {
+    crate::metadata::libretro::db_platform_name(platform).or_else(|| {
+        match platform.to_uppercase().as_str() {
             "GBA" | "GAME BOY ADVANCE" => Some("Game Boy Advance"),
             "SNES" | "SUPER NINTENDO" => Some("Super Nintendo Entertainment System"),
             "NES" => Some("Nintendo Entertainment System"),
@@ -212,7 +247,8 @@ fn platform_db_name(platform: &str) -> Option<&'static str> {
             "SMS" => Some("Master System - Mark III"),
             "GAME_GEAR" => Some("Game Gear"),
             _ => None,
-        })
+        }
+    })
 }
 
 fn platform_to_thumb_dirs(plat: &str) -> &'static [&'static str] {
@@ -264,18 +300,46 @@ fn run_libretro_query(
             let dev_name: Option<String> = row.get(6)?;
             let pub_name: Option<String> = row.get(7)?;
             let reg_name: Option<String> = row.get(8)?;
-            Ok((id, display_name, full_name, rel_year, plat_name, genre_name, dev_name, pub_name, reg_name))
+            Ok((
+                id,
+                display_name,
+                full_name,
+                rel_year,
+                plat_name,
+                genre_name,
+                dev_name,
+                pub_name,
+                reg_name,
+            ))
         }) {
             for item in rows.flatten() {
-                let (id, display_name, full_name, rel_year, plat_name, genre_name, dev_name, pub_name, reg_name) = item;
+                let (
+                    id,
+                    display_name,
+                    full_name,
+                    rel_year,
+                    plat_name,
+                    genre_name,
+                    dev_name,
+                    pub_name,
+                    reg_name,
+                ) = item;
                 let display_str = display_name.as_deref().unwrap_or("");
                 let full_str = full_name.as_deref().unwrap_or(display_str);
-                let target_name = if !full_str.is_empty() { full_str } else { display_str };
+                let target_name = if !full_str.is_empty() {
+                    full_str
+                } else {
+                    display_str
+                };
 
                 let target_plat = plat_name.as_deref().or(platform).unwrap_or("");
                 let thumb_dirs = platform_to_thumb_dirs(target_plat);
                 let cover_url = thumb_dirs.first().map(|dir| {
-                    crate::platforms::thumbnail_url_with_category_and_dir(dir, target_name, "Named_Boxarts")
+                    crate::platforms::thumbnail_url_with_category_and_dir(
+                        dir,
+                        target_name,
+                        "Named_Boxarts",
+                    )
                 });
 
                 let mut score = base_score;
@@ -291,12 +355,18 @@ fn run_libretro_query(
                         score += 15;
                     }
                 }
-                if target_name.eq_ignore_ascii_case(clean) || display_str.eq_ignore_ascii_case(clean) {
+                if target_name.eq_ignore_ascii_case(clean)
+                    || display_str.eq_ignore_ascii_case(clean)
+                {
                     score += 40;
                 }
                 // Boost candidates that have richer metadata
-                if genre_name.is_some() { score += 5; }
-                if dev_name.is_some() { score += 5; }
+                if genre_name.is_some() {
+                    score += 5;
+                }
+                if dev_name.is_some() {
+                    score += 5;
+                }
 
                 let cand = FixMatchCandidate {
                     id,
@@ -311,7 +381,8 @@ fn run_libretro_query(
                     region: reg_name,
                 };
 
-                candidates_map.entry(id)
+                candidates_map
+                    .entry(id)
                     .and_modify(|(existing, s)| {
                         // Keep the entry with richer metadata
                         let new_richer = cand.genre.is_some() && existing.genre.is_none();
@@ -328,7 +399,11 @@ fn run_libretro_query(
     }
 }
 
-fn search_libretro_fix_match(title: &str, platform: Option<&str>, year: Option<i32>) -> Vec<FixMatchCandidate> {
+fn search_libretro_fix_match(
+    title: &str,
+    platform: Option<&str>,
+    year: Option<i32>,
+) -> Vec<FixMatchCandidate> {
     let clean = title.trim();
     if clean.is_empty() {
         return Vec::new();
@@ -348,10 +423,12 @@ fn search_libretro_fix_match(title: &str, platform: Option<&str>, year: Option<i
         .filter(|w| w.len() >= 2)
         .collect();
 
-    let mut candidates_map: std::collections::HashMap<u64, (FixMatchCandidate, i32)> = std::collections::HashMap::new();
+    let mut candidates_map: std::collections::HashMap<u64, (FixMatchCandidate, i32)> =
+        std::collections::HashMap::new();
 
     // Base SQL con JOINs de metadata completa
-    const METADATA_SELECT: &str = "SELECT g.id, g.display_name, g.full_name, g.release_year, p.name, \
+    const METADATA_SELECT: &str =
+        "SELECT g.id, g.display_name, g.full_name, g.release_year, p.name, \
          gn.name, d.name, pb.name, r.name \
          FROM games g \
          LEFT JOIN platforms p ON g.platform_id = p.id \
@@ -365,9 +442,12 @@ fn search_libretro_fix_match(title: &str, platform: Option<&str>, year: Option<i
     run_libretro_query(
         &conn,
         &mut candidates_map,
-        &format!("{} WHERE (g.display_name LIKE ?1 OR g.full_name LIKE ?1) \
+        &format!(
+            "{} WHERE (g.display_name LIKE ?1 OR g.full_name LIKE ?1) \
                   ORDER BY (d.name IS NOT NULL) DESC, (gn.name IS NOT NULL) DESC \
-                  LIMIT 30", METADATA_SELECT),
+                  LIMIT 30",
+            METADATA_SELECT
+        ),
         &[&pattern],
         100,
         platform,
@@ -381,7 +461,11 @@ fn search_libretro_fix_match(title: &str, platform: Option<&str>, year: Option<i
         let mut conditions = Vec::new();
         let mut param_values: Vec<String> = Vec::new();
         for (i, tok) in tokens.iter().enumerate() {
-            conditions.push(format!("(g.display_name LIKE ?{} OR g.full_name LIKE ?{})", i + 1, i + 1));
+            conditions.push(format!(
+                "(g.display_name LIKE ?{} OR g.full_name LIKE ?{})",
+                i + 1,
+                i + 1
+            ));
             param_values.push(format!("%{}%", tok));
         }
         let sql = format!(
@@ -391,7 +475,10 @@ fn search_libretro_fix_match(title: &str, platform: Option<&str>, year: Option<i
             METADATA_SELECT,
             conditions.join(" AND ")
         );
-        let params_refs: Vec<&dyn rusqlite::ToSql> = param_values.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+        let params_refs: Vec<&dyn rusqlite::ToSql> = param_values
+            .iter()
+            .map(|s| s as &dyn rusqlite::ToSql)
+            .collect();
         run_libretro_query(
             &conn,
             &mut candidates_map,
@@ -407,7 +494,8 @@ fn search_libretro_fix_match(title: &str, platform: Option<&str>, year: Option<i
 
     // Estrategia 3: Si hay pocos resultados, buscar por tokens individuales
     if candidates_map.len() < 5 && !tokens.is_empty() {
-        let sig_tokens: Vec<&String> = tokens.iter()
+        let sig_tokens: Vec<&String> = tokens
+            .iter()
             .filter(|t| t.len() >= 3 && !matches!(t.as_str(), "edition" | "edicion" | "version"))
             .collect();
         for tok in sig_tokens {
@@ -415,9 +503,12 @@ fn search_libretro_fix_match(title: &str, platform: Option<&str>, year: Option<i
             run_libretro_query(
                 &conn,
                 &mut candidates_map,
-                &format!("{} WHERE (g.display_name LIKE ?1 OR g.full_name LIKE ?1) \
+                &format!(
+                    "{} WHERE (g.display_name LIKE ?1 OR g.full_name LIKE ?1) \
                           ORDER BY (d.name IS NOT NULL) DESC, (gn.name IS NOT NULL) DESC \
-                          LIMIT 20", METADATA_SELECT),
+                          LIMIT 20",
+                    METADATA_SELECT
+                ),
                 &[&pat],
                 40,
                 platform,
@@ -433,6 +524,53 @@ fn search_libretro_fix_match(title: &str, platform: Option<&str>, year: Option<i
     ranked.into_iter().take(30).map(|(c, _)| c).collect()
 }
 
+fn search_steam_fix_match(title: &str, year: Option<i32>) -> Vec<FixMatchCandidate> {
+    let results = crate::scanner::pc::search_steam_store(title);
+    if results.is_empty() {
+        return Vec::new();
+    }
+
+    let mut candidates = Vec::new();
+    for item in results.into_iter().take(10) {
+        let appid = item.id;
+        let details = crate::scanner::pc::fetch_steam_raw_details(appid);
+
+        let cand_year = details.as_ref().and_then(|d| d.release_year);
+        if let (Some(target_y), Some(y)) = (year, cand_year) {
+            if (target_y - y).abs() > 1 && !item.name.eq_ignore_ascii_case(title) {
+                continue;
+            }
+        }
+
+        let cover_thumb = format!(
+            "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{}/library_600x900.jpg",
+            appid
+        );
+        let cover_url = format!(
+            "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{}/library_600x900_2x.jpg",
+            appid
+        );
+
+        candidates.push(FixMatchCandidate {
+            id: appid as u64,
+            name: details
+                .as_ref()
+                .and_then(|d| d.name.clone())
+                .unwrap_or(item.name),
+            release_year: cand_year,
+            cover_thumb: Some(cover_thumb),
+            cover_url: Some(cover_url),
+            genre: details.as_ref().and_then(|d| d.genre.clone()),
+            developer: details.as_ref().and_then(|d| d.developer.clone()),
+            publisher: details.as_ref().and_then(|d| d.publisher.clone()),
+            platform: Some("PC".into()),
+            region: None,
+        });
+    }
+
+    candidates
+}
+
 #[tauri::command]
 pub fn fix_match_search(
     title: String,
@@ -440,7 +578,21 @@ pub fn fix_match_search(
     agent: Option<String>,
     platform: Option<String>,
 ) -> Result<Vec<FixMatchCandidate>, String> {
-    let chosen_agent = agent.unwrap_or_else(|| "steamgriddb".into());
+    let chosen_agent = agent.unwrap_or_else(|| {
+        if platform.as_deref() == Some("PC") {
+            "steam".into()
+        } else {
+            "steamgriddb".into()
+        }
+    });
+
+    if chosen_agent == "steam" {
+        let candidates = search_steam_fix_match(&title, year);
+        if candidates.is_empty() {
+            return Err("No se encontraron coincidencias en la tienda de Steam.".into());
+        }
+        return Ok(candidates);
+    }
 
     if chosen_agent == "libretro" {
         let candidates = search_libretro_fix_match(&title, platform.as_deref(), year);
@@ -451,10 +603,14 @@ pub fn fix_match_search(
     }
 
     let api_key = {
-        let state = STATE.lock().unwrap();
+        let state = lock_state();
         let profile_name = &state.settings.current_profile;
-        let profile = state.settings.profiles.iter().find(|p| &p.name == profile_name);
-        profile.and_then(|p| p.steamgriddb_api_key.clone())
+        let profile = state
+            .settings
+            .profiles
+            .iter()
+            .find(|p| &p.name == profile_name);
+        profile.and_then(|p| secrets::reveal_opt(&p.steamgriddb_api_key))
     };
 
     if let Some(key) = api_key {
@@ -506,15 +662,7 @@ pub fn fix_match_search(
 
 #[tauri::command]
 pub fn fix_match_get_covers(game_id: u64) -> Result<Vec<SGDBGrid>, String> {
-    let api_key = {
-        let state = STATE.lock().unwrap();
-        let profile_name = &state.settings.current_profile;
-        let profile = state.settings.profiles.iter().find(|p| &p.name == profile_name);
-        match profile.and_then(|p| p.steamgriddb_api_key.as_ref()) {
-            Some(k) if !k.trim().is_empty() => k.clone(),
-            _ => return Err("Se requiere API Key de SteamGridDB para obtener variantes de carátulas.".into()),
-        }
-    };
+    let api_key = active_sgdb_key()?;
 
     steamgriddb::get_grids_for_game(&api_key, game_id)
 }
@@ -539,9 +687,11 @@ pub fn apply_fix_match(
     if apply_cover {
         if let Some(ref url) = cover_url {
             if !url.trim().is_empty() {
+                require_https_art(url)?;
                 let thumb_dir = get_thumbnails_dir();
                 let title_to_slug = new_title.as_deref().unwrap_or(&game_id);
-                let safe_title = title_to_slug.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
+                let safe_title =
+                    title_to_slug.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
                 let timestamp = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .map(|d| d.as_millis())
@@ -557,14 +707,20 @@ pub fn apply_fix_match(
     let updated_game: Game;
 
     {
-        let mut state = STATE.lock().unwrap();
+        let mut state = lock_state();
         let api_key_opt = {
             let profile_name = &state.settings.current_profile;
-            state.settings.profiles.iter()
+            state
+                .settings
+                .profiles
+                .iter()
                 .find(|p| &p.name == profile_name)
-                .and_then(|p| p.steamgriddb_api_key.clone())
+                .and_then(|p| secrets::reveal_opt(&p.steamgriddb_api_key))
         };
-        let game = state.games.iter_mut().find(|g| g.id == game_id)
+        let game = state
+            .games
+            .iter_mut()
+            .find(|g| g.id == game_id)
             .ok_or_else(|| format!("Juego con ID {} no encontrado", game_id))?;
 
         if apply_metadata {
@@ -603,16 +759,45 @@ pub fn apply_fix_match(
                 game.cover_path = Some(c_path);
             }
 
-            // Si se aplica carátula y hay api key, intentar también obtener o actualizar el logo
-            if let Some(key) = api_key_opt {
-                let lookup_name = title_for_logo
-                    .as_deref()
-                    .or(game.display_name.as_deref())
-                    .unwrap_or(&game.name);
-                let logos_dir = steamgriddb::get_logos_dir(&get_data_dir());
-                let logo_dest = logos_dir.join(format!("{}.png", game_id));
-                if let Some(saved) = steamgriddb::fetch_steamgrid_logo(&key, lookup_name, &logo_dest) {
-                    game.logo_path = Some(saved);
+            // Si la carátula viene de Steam, intentar descargar también hero y logo oficiales de Steam
+            if let Some(ref url) = cover_url {
+                if let Ok(re) = regex::Regex::new(r"apps/(\d+)/") {
+                    if let Some(caps) = re.captures(url) {
+                        if let Some(m) = caps.get(1) {
+                            if let Ok(appid) = m.as_str().parse::<u32>() {
+                                let heroes_dir = steamgriddb::get_heroes_dir(&get_data_dir());
+                                let hero_dest = heroes_dir.join(format!("{}.png", game_id));
+                                let hero_url = format!("https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{}/library_hero.jpg", appid);
+                                if crate::scanner::pc::download_file_to(&hero_url, &hero_dest) {
+                                    game.hero_path = Some(hero_dest.to_string_lossy().to_string());
+                                }
+
+                                let logos_dir = steamgriddb::get_logos_dir(&get_data_dir());
+                                let logo_dest = logos_dir.join(format!("{}.png", game_id));
+                                let logo_url = format!("https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{}/logo.png", appid);
+                                if crate::scanner::pc::download_file_to(&logo_url, &logo_dest) {
+                                    game.logo_path = Some(logo_dest.to_string_lossy().to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Si aún no tiene logo y hay API Key de SteamGridDB, intentar obtenerlo de SGDB
+            if game.logo_path.is_none() {
+                if let Some(key) = api_key_opt {
+                    let lookup_name = title_for_logo
+                        .as_deref()
+                        .or(game.display_name.as_deref())
+                        .unwrap_or(&game.name);
+                    let logos_dir = steamgriddb::get_logos_dir(&get_data_dir());
+                    let logo_dest = logos_dir.join(format!("{}.png", game_id));
+                    if let Some(saved) =
+                        steamgriddb::fetch_steamgrid_logo(&key, lookup_name, &logo_dest)
+                    {
+                        game.logo_path = Some(saved);
+                    }
                 }
             }
         }

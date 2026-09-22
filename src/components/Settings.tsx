@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { changeAppLanguage } from "../i18n";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   saveSettings,
@@ -28,10 +30,12 @@ import {
   getMusicVolume,
   saveMusicFolders,
   getMusicFolders,
+  onEmulatorUpdates,
 } from "../lib/tauri";
 import { PLATFORM_CORES } from "../lib/cores";
-import type { SortKey, Game } from "../types";
+import type { SortKey, Game, SettingsTab, GraphicsConsole } from "../types";
 import { TrophyIcon } from "./icons";
+import EmulatorsTab from "./EmulatorsTab";
 import "./Settings.css";
 
 interface Props {
@@ -56,10 +60,11 @@ interface Props {
   onThemeChange?: (theme: string) => void;
   layoutStyle?: "classic" | "immersive";
   onLayoutStyleChange?: (style: "classic" | "immersive") => void;
+  activeTab?: SettingsTab;
+  onActiveTabChange?: (tab: SettingsTab) => void;
+  activeGraphicsConsole?: GraphicsConsole;
+  onActiveGraphicsConsoleChange?: (c: GraphicsConsole) => void;
 }
-
-type SettingsTab = "library" | "appearance" | "graphics" | "sound" | "emulation" | "integrations" | "profiles" | "system";
-type GraphicsConsole = "global" | "citra" | "pcsx2" | "dolphin" | "ppsspp" | "ps1" | "n64" | "nds";
 
 const THEMES = [
   {
@@ -126,9 +131,25 @@ export default function Settings({
   onThemeChange,
   layoutStyle = "classic",
   onLayoutStyleChange,
+  activeTab: propActiveTab,
+  onActiveTabChange,
+  activeGraphicsConsole: propActiveGraphicsConsole,
+  onActiveGraphicsConsoleChange,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("library");
-  const [activeGraphicsConsole, setActiveGraphicsConsole] = useState<GraphicsConsole>("citra");
+  const { t, i18n } = useTranslation();
+  const [internalTab, setInternalTab] = useState<SettingsTab>("library");
+  const activeTab = propActiveTab ?? internalTab;
+  const setActiveTab = (tab: SettingsTab) => {
+    setInternalTab(tab);
+    onActiveTabChange?.(tab);
+  };
+
+  const [internalGraphicsConsole, setInternalGraphicsConsole] = useState<GraphicsConsole>("citra");
+  const activeGraphicsConsole = propActiveGraphicsConsole ?? internalGraphicsConsole;
+  const setActiveGraphicsConsole = (c: GraphicsConsole) => {
+    setInternalGraphicsConsole(c);
+    onActiveGraphicsConsoleChange?.(c);
+  };
   const [newProfileName, setNewProfileName] = useState("");
   const [errorLogs, setErrorLogs] = useState<string | null>(null);
   const [copiedLog, setCopiedLog] = useState(false);
@@ -158,6 +179,15 @@ export default function Settings({
 
   // BIOS folders state (múltiples carpetas)
   const [biosFolders, setBiosFolders] = useState<string[]>([]);
+
+  // Badge de actualizaciones de emuladores (evento del backend, auto-check cada 4 días)
+  const [emulatorUpdatesCount, setEmulatorUpdatesCount] = useState(0);
+  useEffect(() => {
+    const unlisten = onEmulatorUpdates((infos) => {
+      setEmulatorUpdatesCount(infos.filter((i) => i.update_available).length);
+    });
+    return () => { unlisten.then((fn) => fn()); };
+  }, []);
 
   // Music folders state (carpetas adicionales de música)
   const [musicFolders, setMusicFolders] = useState<string[]>([]);
@@ -247,15 +277,14 @@ export default function Settings({
       if (devs) setAudioDevices(devs);
     }).catch(console.error);
 
-    getRACredentials().then((creds) => {
-      if (creds) {
-        setRaLinkedUser(creds[0]);
+    getRACredentials().then((username) => {
+      if (username) {
+        setRaLinkedUser(username);
       }
     });
-    getSteamGridDBKey().then((key) => {
-      if (key) {
+    getSteamGridDBKey().then((linked) => {
+      if (linked) {
         setSgdbLinked(true);
-        setSgdbApiKey(key);
       }
     });
     getBiosFolders().then((folders) => {
@@ -339,7 +368,7 @@ export default function Settings({
       GBA: "mgba",
       GBC: "gambatte",
       GB: "gambatte",
-      NDS: "melonDS",
+      NDS: "melonds",
       "3DS": "citra",
       GAMECUBE: "dolphin",
       VB: "mednafen_vb",
@@ -644,8 +673,7 @@ export default function Settings({
       {/* Sidebar Navigation */}
       <aside className="settings-sidebar">
         <div className="settings-sidebar-header">
-          <h2>Configuración</h2>
-          <span className="settings-badge">Ajustes</span>
+          <h2>{t("settings.title")}</h2>
         </div>
 
         <nav className="settings-nav">
@@ -655,7 +683,7 @@ export default function Settings({
             onClick={() => setActiveTab("library")}
           >
             <span className="settings-nav-icon">📂</span>
-            <span className="settings-nav-text">Biblioteca</span>
+            <span className="settings-nav-text">{t("settings.tabs.library")}</span>
           </button>
 
           <button
@@ -664,7 +692,7 @@ export default function Settings({
             onClick={() => setActiveTab("appearance")}
           >
             <span className="settings-nav-icon">🎨</span>
-            <span className="settings-nav-text">Apariencia</span>
+            <span className="settings-nav-text">{t("settings.tabs.appearance")}</span>
           </button>
 
           <button
@@ -673,7 +701,7 @@ export default function Settings({
             onClick={() => setActiveTab("graphics")}
           >
             <span className="settings-nav-icon">🖼️</span>
-            <span className="settings-nav-text">Gráficos HD</span>
+            <span className="settings-nav-text">{t("settings.tabs.graphics")}</span>
           </button>
 
           <button
@@ -682,7 +710,7 @@ export default function Settings({
             onClick={() => setActiveTab("sound")}
           >
             <span className="settings-nav-icon">🔊</span>
-            <span className="settings-nav-text">Sonido</span>
+            <span className="settings-nav-text">{t("settings.tabs.sound")}</span>
           </button>
 
           <button
@@ -691,7 +719,17 @@ export default function Settings({
             onClick={() => setActiveTab("emulation")}
           >
             <span className="settings-nav-icon">🕹️</span>
-            <span className="settings-nav-text">Emulación</span>
+            <span className="settings-nav-text">{t("settings.tabs.emulation")}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`settings-nav-item ${activeTab === "emulators" ? "active" : ""}`}
+            onClick={() => setActiveTab("emulators")}
+          >
+            <span className="settings-nav-icon">🎮</span>
+            <span className="settings-nav-text">{t("settings.tabs.emulators")}</span>
+            {emulatorUpdatesCount > 0 && <span className="settings-pill-dot" />}
           </button>
 
           <button
@@ -700,7 +738,7 @@ export default function Settings({
             onClick={() => setActiveTab("integrations")}
           >
             <span className="settings-nav-icon">🌐</span>
-            <span className="settings-nav-text">Cuentas</span>
+            <span className="settings-nav-text">{t("settings.tabs.integrations")}</span>
             {(raLinkedUser || sgdbLinked) && <span className="settings-pill-dot" />}
           </button>
 
@@ -710,7 +748,7 @@ export default function Settings({
             onClick={() => setActiveTab("profiles")}
           >
             <span className="settings-nav-icon">👤</span>
-            <span className="settings-nav-text">Perfiles</span>
+            <span className="settings-nav-text">{t("settings.tabs.profiles")}</span>
           </button>
 
           <button
@@ -719,7 +757,7 @@ export default function Settings({
             onClick={() => setActiveTab("system")}
           >
             <span className="settings-nav-icon">🛠️</span>
-            <span className="settings-nav-text">Sistema</span>
+            <span className="settings-nav-text">{t("settings.tabs.system")}</span>
           </button>
         </nav>
       </aside>
@@ -735,7 +773,7 @@ export default function Settings({
             </div>
 
             {/* Escaneo Principal */}
-            <section className="settings-card highlight">
+            <section className="settings-card highlight" id="settings-scan">
               <div className="settings-card-header">
                 <div>
                   <h3>Escanear Biblioteca</h3>
@@ -773,7 +811,7 @@ export default function Settings({
             </section>
 
             {/* Carpetas de ROMs */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-rom-folders">
               <div className="settings-card-header">
                 <div>
                   <h3>Carpetas de ROMs</h3>
@@ -800,7 +838,7 @@ export default function Settings({
             </section>
 
             {/* Carpetas de BIOS */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-bios-folders">
               <div className="settings-card-header">
                 <div>
                   <h3>Carpetas de BIOS / System</h3>
@@ -834,7 +872,7 @@ export default function Settings({
             </section>
 
             {/* Preferencias de Biblioteca */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-library-prefs">
               <h3>Preferencias de Biblioteca</h3>
               
               <div className="settings-row-option">
@@ -890,7 +928,7 @@ export default function Settings({
             </section>
 
             {/* Copias de Seguridad */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-backup">
               <h3>Respaldo y Copias de Seguridad</h3>
               <p className="settings-hint">Exporta o importa el registro de tus juegos, favoritos e historial.</p>
               <div className="settings-row" style={{ marginTop: '12px' }}>
@@ -910,15 +948,39 @@ export default function Settings({
         {activeTab === "appearance" && (
           <div className="settings-tab-panel">
             <div className="settings-panel-header">
-              <h2>Apariencia & Interfaz</h2>
-              <p>Personaliza el estilo visual, temas cromáticos y comportamiento de pantalla.</p>
+              <h2>{t("settings.tabs.appearance")}</h2>
+              <p>{i18n.language.startsWith("en") ? "Customize interface language, visual layout, and theme colors." : "Personaliza el idioma, estilo visual y temas cromáticos de la interfaz."}</p>
             </div>
 
-            {/* Selector de Estilos de Diseño */}
-            <section className="settings-card">
-              <h3>Estilo de Diseño (Layout)</h3>
+            {/* Selector de Idioma */}
+            <section className="settings-card" id="settings-language">
+              <h3>{t("settings.appearance.language")}</h3>
               <p className="settings-hint" style={{ marginBottom: '16px' }}>
-                Elige la estructura y disposición visual de la pantalla principal.
+                {t("settings.appearance.languageSubtitle")}
+              </p>
+              <div className="settings-sort-group">
+                <button
+                  type="button"
+                  className={`settings-sort-btn ${i18n.language.startsWith("es") ? "active" : ""}`}
+                  onClick={() => changeAppLanguage("es")}
+                >
+                  🇪🇸 {t("settings.appearance.languageEs")}
+                </button>
+                <button
+                  type="button"
+                  className={`settings-sort-btn ${i18n.language.startsWith("en") ? "active" : ""}`}
+                  onClick={() => changeAppLanguage("en")}
+                >
+                  🇺🇸 {t("settings.appearance.languageEn")}
+                </button>
+              </div>
+            </section>
+
+            {/* Selector de Estilos de Diseño */}
+            <section className="settings-card" id="settings-layout">
+              <h3>{t("settings.appearance.layoutStyle")}</h3>
+              <p className="settings-hint" style={{ marginBottom: '16px' }}>
+                {i18n.language.startsWith("en") ? "Choose the home screen structure and layout." : "Elige la estructura y disposición visual de la pantalla principal."}
               </p>
               <div className="settings-themes-grid">
                 <button
@@ -931,7 +993,6 @@ export default function Settings({
                   </div>
                   <div className="settings-theme-info">
                     <span className="settings-theme-name">Estilo Clásico (Cards)</span>
-                    <span className="settings-theme-desc">Hero flotante tipo tarjeta, barra lateral expandible y buscador en la cabecera.</span>
                   </div>
                 </button>
 
@@ -945,14 +1006,13 @@ export default function Settings({
                   </div>
                   <div className="settings-theme-info">
                     <span className="settings-theme-name">Estilo Inmersivo (Edge-to-Edge)</span>
-                    <span className="settings-theme-desc">Hero panorámico sin bordes, buscador embebido, barra fija y reproductor flotante en navbar.</span>
                   </div>
                 </button>
               </div>
             </section>
 
             {/* Selector de Temas */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-themes">
               <h3>Temas Visuales</h3>
               <p className="settings-hint" style={{ marginBottom: '16px' }}>
                 Selecciona la paleta de iluminación y acento para toda la interfaz.
@@ -971,7 +1031,6 @@ export default function Settings({
                     </div>
                     <div className="settings-theme-info">
                       <span className="settings-theme-name">{t.name}</span>
-                      <span className="settings-theme-desc">{t.description}</span>
                     </div>
                   </button>
                 ))}
@@ -979,7 +1038,7 @@ export default function Settings({
             </section>
 
             {/* Modo Kiosko */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-kiosk">
               <div className="settings-row-option">
                 <div>
                   <span className="settings-option-title">Modo Kiosko / Consola</span>
@@ -1071,7 +1130,7 @@ export default function Settings({
 
             {/* --- CITRA (3DS) --- */}
             {activeGraphicsConsole === "citra" && (
-              <section className="settings-card">
+              <section className="settings-card" id="settings-graphics-citra">
                 <div className="settings-card-header">
                   <div>
                     <h3>Nintendo 3DS (Core Citra)</h3>
@@ -1175,7 +1234,7 @@ export default function Settings({
 
             {/* --- PCSX2 (PS2) --- */}
             {activeGraphicsConsole === "pcsx2" && (
-              <section className="settings-card">
+              <section className="settings-card" id="settings-graphics-pcsx2">
                 <div className="settings-card-header">
                   <div>
                     <h3>PlayStation 2 (Core PCSX2 / LRPS2)</h3>
@@ -1242,7 +1301,7 @@ export default function Settings({
 
             {/* --- DOLPHIN (GameCube / Wii) --- */}
             {activeGraphicsConsole === "dolphin" && (
-              <section className="settings-card">
+              <section className="settings-card" id="settings-graphics-dolphin">
                 <div className="settings-card-header">
                   <div>
                     <h3>Nintendo GameCube / Wii (Core Dolphin)</h3>
@@ -1307,7 +1366,7 @@ export default function Settings({
 
             {/* --- PPSSPP (PSP) --- */}
             {activeGraphicsConsole === "ppsspp" && (
-              <section className="settings-card">
+              <section className="settings-card" id="settings-graphics-ppsspp">
                 <div className="settings-card-header">
                   <div>
                     <h3>PlayStation Portable (Core PPSSPP)</h3>
@@ -1356,7 +1415,7 @@ export default function Settings({
 
             {/* --- PS1 --- */}
             {activeGraphicsConsole === "ps1" && (
-              <section className="settings-card">
+              <section className="settings-card" id="settings-graphics-ps1">
                 <div className="settings-card-header">
                   <div>
                     <h3>PlayStation 1 (Core PCSX-ReARMed / Beetle PSX)</h3>
@@ -1400,7 +1459,7 @@ export default function Settings({
 
             {/* --- N64 --- */}
             {activeGraphicsConsole === "n64" && (
-              <section className="settings-card">
+              <section className="settings-card" id="settings-graphics-n64">
                 <div className="settings-card-header">
                   <div>
                     <h3>Nintendo 64 (Core Mupen64Plus-Next)</h3>
@@ -1429,7 +1488,7 @@ export default function Settings({
 
             {/* --- NDS --- */}
             {activeGraphicsConsole === "nds" && (
-              <section className="settings-card">
+              <section className="settings-card" id="settings-graphics-nds">
                 <div className="settings-card-header">
                   <div>
                     <h3>Nintendo DS (Core MelonDS)</h3>
@@ -1458,7 +1517,7 @@ export default function Settings({
 
             {/* --- GLOBALES --- */}
             {activeGraphicsConsole === "global" && (
-              <section className="settings-card">
+              <section className="settings-card" id="settings-graphics-global">
                 <div className="settings-card-header">
                   <div>
                     <h3>Opciones Gráficas Globales</h3>
@@ -1552,7 +1611,7 @@ export default function Settings({
             </div>
 
             {/* Dispositivo de Salida */}
-            <section className="settings-card highlight">
+            <section className="settings-card highlight" id="settings-audio-device">
               <div className="settings-card-header">
                 <div>
                   <h3>Dispositivo de Salida de Audio</h3>
@@ -1606,7 +1665,7 @@ export default function Settings({
             </section>
 
             {/* Volumen Master */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-emulation-volume">
               <h3>Volumen de Emulación</h3>
               <div className="settings-row-option" style={{ marginTop: '12px' }}>
                 <div>
@@ -1633,7 +1692,7 @@ export default function Settings({
             </section>
 
             {/* Controlador de Audio (Driver) */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-audio-driver">
               <h3>Controlador de Audio (Driver de Emulación)</h3>
               
               <div className="settings-row-option" style={{ marginTop: '12px' }}>
@@ -1674,7 +1733,7 @@ export default function Settings({
             </section>
 
             {/* Volumen de Interfaz, Música y Efectos */}
-            <section className="settings-card highlight">
+            <section className="settings-card highlight" id="settings-sound-volume">
               <h3>Volumen de la Interfaz & Música</h3>
               <p style={{ marginTop: '4px', fontSize: '0.9rem', color: 'var(--text-muted, #9ca3af)' }}>
                 Configura los niveles de sonido para la música de fondo y los efectos interactivos de la aplicación.
@@ -1736,7 +1795,7 @@ export default function Settings({
             </section>
 
             {/* Música de Fondo & Reproductor Vinilo */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-music-player">
               <div className="settings-card-header">
                 <div>
                   <h3>Música de Fondo (Reproductor Vinilo)</h3>
@@ -1779,7 +1838,7 @@ export default function Settings({
             </section>
 
             {/* Carpetas de Música Personalizadas */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-music-folders">
               <div className="settings-card-header">
                 <div>
                   <h3>Carpetas de Música</h3>
@@ -1828,7 +1887,7 @@ export default function Settings({
             </div>
 
             {/* Detección de Gamepad */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-gamepads">
               <h3>Mandos y Gamepads Conectados</h3>
               <div className="settings-gamepad-box">
                 {connectedGamepads.length > 0 ? (
@@ -1855,7 +1914,7 @@ export default function Settings({
 
             {/* Asignación de Cores */}
             {uniquePlatforms.length > 0 ? (
-              <section className="settings-card">
+              <section className="settings-card" id="settings-platform-cores">
                 <h3>Cores por Plataforma</h3>
                 <p className="settings-hint" style={{ marginBottom: '16px' }}>
                   Core por defecto que se usará al lanzar juegos de cada consola.
@@ -1881,13 +1940,16 @@ export default function Settings({
                 </div>
               </section>
             ) : (
-              <section className="settings-card">
+              <section className="settings-card" id="settings-platform-cores">
                 <h3>Cores por Plataforma</h3>
                 <p className="settings-hint">Escanea tu biblioteca de juegos para configurar los cores de cada plataforma.</p>
               </section>
             )}
           </div>
         )}
+
+        {/* ================= TAB: EMULADORES ================= */}
+        {activeTab === "emulators" && <EmulatorsTab />}
 
         {/* ================= TAB 5: CUENTAS & INTEGRACIONES ================= */}
         {activeTab === "integrations" && (
@@ -1898,7 +1960,7 @@ export default function Settings({
             </div>
 
             {/* RetroAchievements */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-retroachievements">
               <div className="settings-card-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <TrophyIcon />
@@ -1986,7 +2048,7 @@ export default function Settings({
             </section>
 
             {/* SteamGridDB */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-steamgriddb">
               <div className="settings-card-header">
                 <div>
                   <h3>🎨 SteamGridDB (Heroes & Banners)</h3>
@@ -2053,7 +2115,7 @@ export default function Settings({
             </div>
 
             {/* Perfil Actual y Switch */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-profiles">
               <h3>Perfil Activo</h3>
               <div className="settings-profile-row">
                 <select
@@ -2098,7 +2160,7 @@ export default function Settings({
             </section>
 
             {/* Estadísticas del Perfil */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-stats">
               <h3>Estadísticas de este Perfil</h3>
               <div className="settings-stats-grid">
                 <div className="settings-stat-item">
@@ -2131,7 +2193,7 @@ export default function Settings({
             </div>
 
             {/* Log de Errores */}
-            <section className="settings-card">
+            <section className="settings-card" id="settings-logs">
               <div className="settings-card-header">
                 <div>
                   <h3>Registro de Errores (Logs)</h3>
@@ -2155,7 +2217,7 @@ export default function Settings({
             </section>
 
             {/* Acerca de */}
-            <section className="settings-card settings-about">
+            <section className="settings-card settings-about" id="settings-about">
               <h3>Acerca de GameFlix</h3>
               <div className="settings-about-box">
                 <div className="settings-about-header">

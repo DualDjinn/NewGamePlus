@@ -38,9 +38,54 @@ pub fn load_state() -> AppState {
             AppState::default()
         }
     };
+    // Migración automática: secretos legacy en texto plano -> DPAPI (idempotente)
+    for profile in &mut state.settings.profiles {
+        super::secrets::migrate_profile_secrets(profile);
+    }
     // Migración automática: XAudio2 es el motor más estable y universal para auriculares USB/Bluetooth y parlantes en Windows
-    if state.settings.graphics.audio_driver.is_empty() || state.settings.graphics.audio_driver == "wasapi" {
+    if state.settings.graphics.audio_driver.is_empty()
+        || state.settings.graphics.audio_driver == "wasapi"
+    {
         state.settings.graphics.audio_driver = "xaudio".into();
+    }
+    // Filtrar juegos y asignaciones de cores de TeknoParrot
+    state
+        .games
+        .retain(|g| g.platform != "TEKNOPARROT" && g.core_name != "teknoparrot");
+    state.settings.platform_cores.remove("TEKNOPARROT");
+
+    // Migración automática: 3DS pasa del core libretro de Citra a Azahar standalone
+    for game in &mut state.games {
+        if game.platform == "3DS" || game.core_name == "citra" {
+            game.core_name = "azahar".into();
+        }
+        if game.core_name == "melonDS" {
+            game.core_name = "melonds".into();
+        }
+        // Enriquecimiento automático instantáneo si faltan metadatos
+        if game.genre.is_none() || game.developer.is_none() || game.release_year.is_none() {
+            if let Some(curated) =
+                crate::metadata::curated::find_curated_catalog_metadata(&game.name, &game.platform)
+            {
+                if game.genre.is_none() {
+                    game.genre = curated.genre;
+                }
+                if game.developer.is_none() {
+                    game.developer = curated.developer;
+                }
+                if game.publisher.is_none() {
+                    game.publisher = curated.publisher;
+                }
+                if game.release_year.is_none() {
+                    game.release_year = curated.release_year;
+                }
+            }
+        }
+    }
+    if let Some(core) = state.settings.platform_cores.get_mut("NDS") {
+        if *core == "melonDS" {
+            *core = "melonds".into();
+        }
     }
     state
 }
@@ -121,7 +166,10 @@ pub fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
 }
 
 pub fn migrate_legacy_saves(target_profile: &str, retroarch_exe: &Path) {
-    let ra_dir = retroarch_exe.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+    let ra_dir = retroarch_exe
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_default();
     let legacy_saves = ra_dir.join("saves");
     let legacy_states = ra_dir.join("states");
 

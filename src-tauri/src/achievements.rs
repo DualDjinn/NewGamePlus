@@ -56,14 +56,16 @@ pub fn get_achievements_cache_dir() -> PathBuf {
     dir
 }
 
-/// Autentica con RetroAchievements y devuelve un token de sesión para cheevos_token
+/// Autentica con RetroAchievements y devuelve un token de sesión para cheevos_token.
+/// POST con formulario: la contraseña nunca viaja en la URL (ni a logs/proxy).
+/// El password solo vive en este frame: no se persiste (ver save_ra_credentials).
 pub fn ra_login(username: &str, password: &str) -> Result<String, String> {
-    let url = format!(
-        "https://retroachievements.org/dorequest.php?r=login&u={}&p={}",
-        urlencoding::encode(username),
-        urlencoding::encode(password)
-    );
-    let resp = reqwest::blocking::get(&url).map_err(|e| e.to_string())?;
+    let client = crate::emulator::downloader::get_http_client();
+    let resp = client
+        .post("https://retroachievements.org/dorequest.php")
+        .form(&[("r", "login"), ("u", username), ("p", password)])
+        .send()
+        .map_err(|e| e.to_string())?;
 
     #[derive(Deserialize)]
     #[allow(non_snake_case)]
@@ -72,37 +74,66 @@ pub fn ra_login(username: &str, password: &str) -> Result<String, String> {
         Token: Option<String>,
     }
 
-    let data: LoginResp = resp.json().map_err(|e| format!("Error al parsear respuesta de login: {}", e))?;
+    let data: LoginResp = resp
+        .json()
+        .map_err(|e| format!("Error al parsear respuesta de login: {}", e))?;
     if data.Success {
-        data.Token.ok_or_else(|| "Login exitoso pero no se recibió token".into())
+        data.Token
+            .ok_or_else(|| "Login exitoso pero no se recibió token".into())
     } else {
         Err("Usuario o contraseña incorrectos".into())
     }
 }
 
 pub fn ra_resolve_game_id(hash: &str) -> Result<u32, String> {
-    let url = format!("https://retroachievements.org/dorequest.php?r=gameid&m={}", hash);
+    let url = format!(
+        "https://retroachievements.org/dorequest.php?r=gameid&m={}",
+        hash
+    );
     let resp = reqwest::blocking::get(&url).map_err(|e| e.to_string())?;
-    
+
     #[derive(Deserialize)]
     #[allow(non_snake_case)]
     struct Resp {
         Success: bool,
         GameID: u32,
     }
-    
+
     let data: Resp = resp.json().map_err(|e| e.to_string())?;
     if data.Success && data.GameID > 0 {
-        Ok(data.GameID)
+        // Normalización: RetroAchievements utiliza prefijos de 10 dígitos (>= 1_000_000_000)
+        // para ROMs no soportadas oficialmente ("Unsupported Game Version" como 1100000724 para Pokémon Rojo)
+        // o subconjuntos/variantes (como 1000000762 para Final Fantasy I & II).
+        // En la Web API de logros, estos IDs devuelven listas vacías porque los logros residen en el ID base:
+        // base_id = id % 1_000_000.
+        let resolved = if data.GameID >= 1_000_000_000 {
+            let base = data.GameID % 1_000_000;
+            if base > 0 {
+                base
+            } else {
+                data.GameID
+            }
+        } else {
+            data.GameID
+        };
+        Ok(resolved)
     } else {
         Err("Game not found".into())
     }
 }
 
-pub fn ra_get_game_progress(username: &str, api_key: &str, ra_game_id: u32, target_user: &str) -> Result<RAGameProgress, String> {
-    let url = format!("https://retroachievements.org/API/API_GetGameInfoAndUserProgress.php?z={}&y={}&g={}&u={}", username, api_key, ra_game_id, target_user);
+pub fn ra_get_game_progress(
+    username: &str,
+    api_key: &str,
+    ra_game_id: u32,
+    target_user: &str,
+) -> Result<RAGameProgress, String> {
+    let url = format!(
+        "https://retroachievements.org/API/API_GetGameInfoAndUserProgress.php?z={}&y={}&g={}&u={}",
+        username, api_key, ra_game_id, target_user
+    );
     let resp = reqwest::blocking::get(&url).map_err(|e| e.to_string())?;
-    
+
     #[derive(Deserialize)]
     #[allow(non_snake_case)]
     struct ApiAch {
@@ -114,7 +145,7 @@ pub fn ra_get_game_progress(username: &str, api_key: &str, ra_game_id: u32, targ
         DateEarned: Option<String>,
         DateEarnedHardcore: Option<String>,
     }
-    
+
     #[derive(Deserialize)]
     #[allow(non_snake_case)]
     struct ApiResp {
@@ -128,9 +159,9 @@ pub fn ra_get_game_progress(username: &str, api_key: &str, ra_game_id: u32, targ
         UserCompletion: String,
         Achievements: HashMap<String, ApiAch>,
     }
-    
+
     let data: ApiResp = resp.json().map_err(|e| e.to_string())?;
-    
+
     let mut achievements = Vec::new();
     for (_, ach) in data.Achievements {
         achievements.push(RAAchievement {
@@ -143,9 +174,13 @@ pub fn ra_get_game_progress(username: &str, api_key: &str, ra_game_id: u32, targ
             date_earned_hardcore: ach.DateEarnedHardcore,
         });
     }
-    
-    let completion_pct: f32 = data.UserCompletion.trim_end_matches('%').parse().unwrap_or(0.0);
-    
+
+    let completion_pct: f32 = data
+        .UserCompletion
+        .trim_end_matches('%')
+        .parse()
+        .unwrap_or(0.0);
+
     Ok(RAGameProgress {
         ra_game_id: data.ID,
         game_title: data.Title,
@@ -160,11 +195,14 @@ pub fn ra_get_game_progress(username: &str, api_key: &str, ra_game_id: u32, targ
 }
 
 pub fn ra_validate_credentials(username: &str, api_key: &str) -> Result<bool, String> {
-    let url = format!("https://retroachievements.org/API/API_GetUserSummary.php?z={}&y={}&u={}&g=0&a=0", username, api_key, username);
+    let url = format!(
+        "https://retroachievements.org/API/API_GetUserSummary.php?z={}&y={}&u={}&g=0&a=0",
+        username, api_key, username
+    );
     let resp = reqwest::blocking::get(&url).map_err(|e| e.to_string())?;
-    
+
     let json_val: serde_json::Value = resp.json().map_err(|e| e.to_string())?;
-    
+
     if json_val.get("TotalPoints").is_some() || json_val.get("UserPic").is_some() {
         Ok(true)
     } else {
@@ -202,7 +240,10 @@ pub fn ra_is_supported_platform(platform: &str) -> bool {
 
 pub fn ra_hash_rom(path: &Path, platform: &str) -> Result<String, String> {
     if !ra_is_supported_platform(platform) {
-        return Err(format!("Plataforma '{}' no soportada por RetroAchievements", platform));
+        return Err(format!(
+            "Plataforma '{}' no soportada por RetroAchievements",
+            platform
+        ));
     }
 
     let mut file = fs::File::open(path).map_err(|e| e.to_string())?;
@@ -269,7 +310,12 @@ pub fn ra_hash_rom(path: &Path, platform: &str) -> Result<String, String> {
     // RetroAchievements no hashea la imagen ISO/BIN completa (usa seriales o pistas específicas).
     // Hashear gigabytes en disco satura el I/O y causa congelamientos. Omitir para ir directo a la resolución inteligente.
     let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);
-    if file_size > 64 * 1024 * 1024 || matches!(plat_lower.as_str(), "ps1" | "ps2" | "psp" | "gamecube" | "dreamcast") {
+    if file_size > 64 * 1024 * 1024
+        || matches!(
+            plat_lower.as_str(),
+            "ps1" | "ps2" | "psp" | "gamecube" | "dreamcast"
+        )
+    {
         return Err("Omitiendo hash completo de archivo grande/disco para usar resolución por título/consola".into());
     }
 
@@ -297,7 +343,7 @@ pub fn ra_hash_rom(path: &Path, platform: &str) -> Result<String, String> {
 pub fn get_cached_progress(ra_game_id: u32) -> Option<RAGameProgress> {
     let cache_dir = get_achievements_cache_dir();
     let file_path = cache_dir.join(format!("{}.json", ra_game_id));
-    
+
     if file_path.exists() {
         if let Ok(metadata) = fs::metadata(&file_path) {
             if let Ok(modified) = metadata.modified() {
@@ -319,7 +365,7 @@ pub fn get_cached_progress(ra_game_id: u32) -> Option<RAGameProgress> {
 pub fn save_progress_cache(ra_game_id: u32, progress: &RAGameProgress) {
     let cache_dir = get_achievements_cache_dir();
     let file_path = cache_dir.join(format!("{}.json", ra_game_id));
-    
+
     if let Ok(json) = serde_json::to_string(progress) {
         let _ = fs::write(file_path, json);
     }
@@ -371,7 +417,11 @@ pub struct RAGameListItem {
 }
 
 /// Obtiene y cachea localmente la lista de juegos de una consola en RetroAchievements (validez 7 días)
-pub fn ra_get_console_games(username: &str, api_key: &str, console_id: u32) -> Result<Vec<RAGameListItem>, String> {
+pub fn ra_get_console_games(
+    username: &str,
+    api_key: &str,
+    console_id: u32,
+) -> Result<Vec<RAGameListItem>, String> {
     let cache_dir = get_achievements_cache_dir();
     let cache_file = cache_dir.join(format!("console_{}.json", console_id));
 
@@ -382,7 +432,8 @@ pub fn ra_get_console_games(username: &str, api_key: &str, console_id: u32) -> R
                 if let Ok(duration) = SystemTime::now().duration_since(modified) {
                     if duration.as_secs() < 7 * 24 * 3600 {
                         if let Ok(content) = fs::read_to_string(&cache_file) {
-                            if let Ok(list) = serde_json::from_str::<Vec<RAGameListItem>>(&content) {
+                            if let Ok(list) = serde_json::from_str::<Vec<RAGameListItem>>(&content)
+                            {
                                 return Ok(list);
                             }
                         }
@@ -397,7 +448,9 @@ pub fn ra_get_console_games(username: &str, api_key: &str, console_id: u32) -> R
         username, api_key, console_id
     );
     let resp = reqwest::blocking::get(&url).map_err(|e| e.to_string())?;
-    let list: Vec<RAGameListItem> = resp.json().map_err(|e| format!("Error parseando lista de juegos: {}", e))?;
+    let list: Vec<RAGameListItem> = resp
+        .json()
+        .map_err(|e| format!("Error parseando lista de juegos: {}", e))?;
 
     if let Ok(json) = serde_json::to_string(&list) {
         let _ = fs::write(&cache_file, json);
@@ -425,9 +478,17 @@ fn clean_title_for_match(s: &str) -> String {
     for c in s_norm.chars() {
         match c {
             '(' => in_paren += 1,
-            ')' => if in_paren > 0 { in_paren -= 1 },
+            ')' => {
+                if in_paren > 0 {
+                    in_paren -= 1
+                }
+            }
             '[' => in_bracket += 1,
-            ']' => if in_bracket > 0 { in_bracket -= 1 },
+            ']' => {
+                if in_bracket > 0 {
+                    in_bracket -= 1
+                }
+            }
             _ => {
                 if in_paren == 0 && in_bracket == 0 {
                     if c.is_alphanumeric() {
