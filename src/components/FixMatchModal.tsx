@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import type { Game, FixMatchCandidate, SGDBGrid } from "../types";
 import { fixMatchSearch, fixMatchGetCovers, applyFixMatch, getSteamGridDBKey } from "../lib/tauri";
 import "./FixMatchModal.css";
@@ -18,12 +19,15 @@ function cleanTitle(name: string): string {
 }
 
 export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) {
+  const trapRef = useFocusTrap<HTMLDivElement>();
   const [title, setTitle] = useState(
     game.display_name || cleanTitle(game.name)
   );
   const [year, setYear] = useState<string>("");
   const [selectedPlatform, setSelectedPlatform] = useState<string>(game.platform || "");
-  const [agent, setAgent] = useState<"steamgriddb" | "libretro">("steamgriddb");
+  const [agent, setAgent] = useState<"steamgriddb" | "libretro" | "steam">(
+    game.platform === "PC" ? "steam" : "steamgriddb"
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<FixMatchCandidate[]>([]);
@@ -133,7 +137,15 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
 
   return (
     <div className="fixmatch-overlay" onClick={onClose}>
-      <div className="fixmatch-dialog" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="fixmatch-dialog"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Corregir Coincidencia"
+        tabIndex={-1}
+        ref={trapRef}
+      >
         {/* Encabezado Plex style */}
         <div className="fixmatch-header">
           <div className="fixmatch-title-wrap">
@@ -196,8 +208,9 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                     id="fixmatch-select-agent"
                     className="fixmatch-select"
                     value={agent}
-                    onChange={(e) => setAgent(e.target.value as "steamgriddb" | "libretro")}
+                    onChange={(e) => setAgent(e.target.value as "steamgriddb" | "libretro" | "steam")}
                   >
+                    <option value="steam">Steam Store (PC)</option>
                     <option value="steamgriddb">SteamGridDB (Carátulas HD)</option>
                     <option value="libretro">Libretro (Repositorio Libre)</option>
                   </select>
@@ -257,7 +270,7 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                     <path d="M9 18h6"/>
                     <path d="M10 22h4"/>
                   </svg>
-                  <span><strong>Nota:</strong> No has configurado tu API Key de SteamGridDB. Puedes agregar una clave gratuita en <em>Configuración</em> para acceder a miles de carátulas HD de la comunidad, o cambiar el agente a <strong>Libretro</strong>.</span>
+                  <span><strong>Nota:</strong> No has configurado tu API Key de SteamGridDB. Puedes agregar una clave gratuita en <em>Configuración</em> para acceder a miles de carátulas HD de la comunidad, o cambiar el agente a <strong>Steam Store</strong> o <strong>Libretro</strong>.</span>
                 </div>
               )}
 

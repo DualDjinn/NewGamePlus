@@ -1,5 +1,7 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import type { Game, Section, SortKey, LayoutStyle } from "./types";
+﻿import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import type { Game, Section, SortKey, LayoutStyle, SettingsTab, GraphicsConsole } from "./types";
+import { searchSettingsOptions, SETTINGS_OPTIONS, type SettingsSearchOption } from "./lib/settingsSearch";
 import {
   getGames,
   getSettings,
@@ -8,6 +10,7 @@ import {
   onRetroarchExited,
   onScanProgress,
   onSetupStatus,
+  onEmulatorUpdates,
   onCoversUpdated,
   savePlatformCores,
   switchProfile,
@@ -18,21 +21,16 @@ import {
   setLayoutStyle,
   isWindowFullscreen,
   toggleWindowFullscreen,
-  onInGamePauseOpen,
-  onInGamePauseClose,
-  getActiveLaunchedRomPath,
 } from "./lib/tauri";
 import HeroBanner from "./components/HeroBanner";
 import CategoryRow from "./components/CategoryRow";
 import GameCard from "./components/GameCard";
 import GameDetailModal from "./components/GameDetailModal";
-import InGameOverlayModal from "./components/InGameOverlayModal";
 import Settings from "./components/Settings";
 import Sidebar from "./components/Sidebar";
 import CastModal from "./components/CastModal";
-import { VinylPlayer } from "./components/VinylPlayer";
+import AppHeader from "./components/AppHeader";
 import { MusicProvider } from "./context/MusicContext";
-import { GearIcon, SearchIcon, CloseIcon, CastIcon, MaximizeIcon, MinimizeIcon } from "./components/icons";
 import { useGamepad } from "./hooks/useGamepad";
 import { getPlatformCompany, getPlatformDisplayName, PLATFORM_COLORS } from "./lib/platforms";
 import { getGenreTheme } from "./lib/genreThemes";
@@ -45,7 +43,11 @@ function nameMatches(g: Game, q: string): boolean {
   );
 }
 
+// Sentinela independiente del idioma para la categoría "sin género".
+const OTHER_TITLES = "___other___";
+
 function App() {
+  const { t, i18n } = useTranslation();
   const [section, setSection] = useState<Section>("home");
   const [games, setGames] = useState<Game[]>([]);
   const [folders, setFolders] = useState<string[]>([]);
@@ -72,38 +74,47 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("library");
+  const [settingsGraphicsConsole, setSettingsGraphicsConsole] = useState<GraphicsConsole>("citra");
+  const [settingsSearchQuery, setSettingsSearchQuery] = useState("");
+  const [settingsSearchDropdownOpen, setSettingsSearchDropdownOpen] = useState(false);
+  const settingsSearchInputRef = useRef<HTMLInputElement>(null);
+
+  const filteredSettingsOptions = useMemo(() => {
+    if (!settingsSearchQuery.trim()) {
+      return SETTINGS_OPTIONS.slice(0, 8);
+    }
+    return searchSettingsOptions(settingsSearchQuery);
+  }, [settingsSearchQuery]);
+
+  const handleSelectSettingsOption = useCallback((item: SettingsSearchOption) => {
+    setSettingsTab(item.tab);
+    if (item.graphicsConsole) {
+      setSettingsGraphicsConsole(item.graphicsConsole);
+    }
+    setSettingsSearchDropdownOpen(false);
+    setSettingsSearchQuery("");
+    settingsSearchInputRef.current?.blur();
+
+    if (item.targetId) {
+      setTimeout(() => {
+        const el = document.getElementById(item.targetId!);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.remove("settings-card-highlight-pulse");
+          void el.offsetWidth;
+          el.classList.add("settings-card-highlight-pulse");
+          setTimeout(() => el.classList.remove("settings-card-highlight-pulse"), 2200);
+        }
+      }, 90);
+    }
+  }, []);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [randomHomeCategories, setRandomHomeCategories] = useState<string[]>([]);
   const [castModalOpen, setCastModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [inGamePauseOpen, setInGamePauseOpen] = useState(false);
-  const [gameInPause, setGameInPause] = useState<Game | null>(null);
-  const [pauseScreenshot, setPauseScreenshot] = useState<string | null>(null);
   const prevSectionRef = useRef<Section>(section);
-
-  // In-Game pause overlay event listeners
-  useEffect(() => {
-    const unlistenOpen = onInGamePauseOpen((screenshotPath) => {
-      setPauseScreenshot(screenshotPath);
-      const activeRom = getActiveLaunchedRomPath();
-      if (activeRom) {
-        const found = games.find((g) => g.rom_path === activeRom);
-        setGameInPause(found || null);
-      }
-      setInGamePauseOpen(true);
-    });
-
-    const unlistenClose = onInGamePauseClose(() => {
-      setInGamePauseOpen(false);
-      setPauseScreenshot(null);
-    });
-
-    return () => {
-      unlistenOpen.then((fn) => fn());
-      unlistenClose.then((fn) => fn());
-    };
-  }, [games]);
 
   // Sync and toggle fullscreen
   const handleToggleFullscreen = useCallback(async () => {
@@ -140,7 +151,7 @@ function App() {
 
   // Close search dropdown and clear search query on outside click
   useEffect(() => {
-    if (!searchDropdownOpen && !searchQuery) return;
+    if (!searchDropdownOpen && !searchQuery && !settingsSearchDropdownOpen && !settingsSearchQuery) return;
     const handleOutsideClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target?.closest(".app-navbar-search")) {
@@ -150,11 +161,14 @@ function App() {
         if (section === "search") {
           setSection("home");
         }
+        setSettingsSearchDropdownOpen(false);
+        setSettingsSearchQuery("");
+        settingsSearchInputRef.current?.blur();
       }
     };
     window.addEventListener("click", handleOutsideClick);
     return () => window.removeEventListener("click", handleOutsideClick);
-  }, [searchDropdownOpen, searchQuery, section]);
+  }, [searchDropdownOpen, searchQuery, section, settingsSearchDropdownOpen, settingsSearchQuery]);
 
   // W5: Global error toast via custom event
   useEffect(() => {
@@ -177,6 +191,15 @@ function App() {
   // Listen for setup progress
   useEffect(() => {
     const unlisten = onSetupStatus((msg) => setSetupStatus(msg));
+    return () => { unlisten.then((fn) => fn()); };
+  }, []);
+
+  // Badge no intrusivo cuando el auto-check (cada 4 días) encuentra updates
+  const [emulatorUpdates, setEmulatorUpdates] = useState(false);
+  useEffect(() => {
+    const unlisten = onEmulatorUpdates((infos) => {
+      setEmulatorUpdates(infos.some((i) => i.update_available));
+    });
     return () => { unlisten.then((fn) => fn()); };
   }, []);
 
@@ -261,10 +284,10 @@ function App() {
       setScanProgress(Math.round(pct));
       setScanMessage(
         data.phase === "scan"
-          ? `Escaneando ${data.label}…`
+          ? t("scan.scanning", { label: data.label })
           : data.phase === "roms"
-            ? `Procesando ${data.current}/${data.total}: ${data.label}`
-            : `Descargando core: ${data.label}`
+            ? t("scan.processing", { current: data.current, total: data.total, label: data.label })
+            : t("scan.downloadingCore", { label: data.label })
       );
     });
     return () => { unlisten.then((fn) => fn()); };
@@ -344,7 +367,7 @@ function App() {
         }
         map[g.genre].count += 1;
 
-        // Prioridad de imagen: si aún no tiene o si encontramos uno con hero_path
+        // Prioridad de imagen: si aÃºn no tiene o si encontramos uno con hero_path
         const currentImg = map[g.genre].imagePath;
         const candidateImg = g.hero_path || g.cover_path;
 
@@ -372,7 +395,7 @@ function App() {
     return sortGames(list);
   }, [games, selectedGenre, effectiveCompany, sortGames]);
 
-  // Agrupación de juegos del género seleccionado por plataforma
+  // AgrupaciÃ³n de juegos del gÃ©nero seleccionado por plataforma
   const activeGenreSections = useMemo(() => {
     const map = new Map<string, Game[]>();
     for (const game of activeGenreGames) {
@@ -429,6 +452,7 @@ function App() {
     const priority = [
       "PlayStation",
       "Nintendo",
+      "PC",
       "Sega",
       "Arcade",
       "SNK",
@@ -443,7 +467,7 @@ function App() {
       .concat(Array.from(set).filter((c) => !priority.includes(c)));
   }, [games]);
 
-  // Biblioteca plana: todos los juegos filtrados por compañia y buscador
+  // Biblioteca plana: todos los juegos filtrados por compaÃ±ia y buscador
   const libraryGames = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     let list = games;
@@ -456,7 +480,7 @@ function App() {
     return sortGames(list);
   }, [games, selectedCompany, searchQuery, sortGames]);
 
-  // Agrupación de la biblioteca por plataforma/consola
+  // AgrupaciÃ³n de la biblioteca por plataforma/consola
   const librarySections = useMemo(() => {
     const map = new Map<string, Game[]>();
     for (const game of libraryGames) {
@@ -493,10 +517,10 @@ function App() {
 
     let candidates = Array.from(genreCounts.keys());
     if (noGenreCount > 0 && candidates.length < 8) {
-      candidates.push("Otros títulos");
+      candidates.push(OTHER_TITLES);
     }
 
-    // Fallback si la biblioteca no tuviera géneros detectados
+    // Fallback si la biblioteca no tuviera gÃ©neros detectados
     if (candidates.length === 0) {
       const platSet = new Set(games.map((g) => g.platform).filter(Boolean));
       candidates = Array.from(platSet);
@@ -520,24 +544,25 @@ function App() {
   const homeRows = useMemo(() => {
     const rows: { id: string; title: string; games: Game[] }[] = [];
     if (recentlyPlayed.length > 0) {
-      rows.push({ id: "recent", title: "Jugados recientemente", games: recentlyPlayed });
+      rows.push({ id: "recent", title: t("library.recent"), games: recentlyPlayed });
     }
 
     for (const cat of randomHomeCategories) {
-      const catGames = cat === "Otros títulos"
+      const isOther = cat === OTHER_TITLES;
+      const catGames = isOther
         ? games.filter((g) => !g.genre || !g.genre.trim())
         : games.filter((g) => g.genre?.trim() === cat);
 
       if (catGames.length > 0) {
         rows.push({
           id: `cat-${cat}`,
-          title: cat,
+          title: isOther ? t("library.otherTitles") : cat,
           games: sortGames(catGames),
         });
       }
     }
     return rows;
-  }, [recentlyPlayed, randomHomeCategories, games, sortGames]);
+  }, [recentlyPlayed, randomHomeCategories, games, sortGames, t, i18n.language]);
 
   const currentFocusedGame = useMemo((): Game | null => {
     if (section === "home") {
@@ -863,7 +888,7 @@ function App() {
       {loaded === null && (
         <div className="app-welcome">
           <div className="spinner" />
-          <p className="loading-text">Cargando...</p>
+          <p className="loading-text">{t("common.loading")}</p>
         </div>
       )}
 
@@ -884,176 +909,38 @@ function App() {
         onOpenCast={() => setCastModalOpen(true)}
         isFullscreen={isFullscreen}
         onToggleFullscreen={handleToggleFullscreen}
+        settingsBadge={emulatorUpdates && section !== "settings"}
       />
 
       <div className="app-main">
-        <header className="app-header">
-          <div className="app-header-left" />
-
-          <div className="app-header-center">
-            <div className="app-navbar-search">
-              <div className="app-navbar-search-box">
-                <span className="app-navbar-search-icon">
-                  <SearchIcon />
-                </span>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  className="app-navbar-search-input"
-                  placeholder="Buscar juego en tu colección..."
-                  value={searchQuery}
-                  onFocus={() => setSearchDropdownOpen(true)}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setSearchDropdownOpen(true);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") {
-                      setSearchQuery("");
-                      setSearchDropdownOpen(false);
-                    } else if (e.key === "Enter" && navbarSearchResults.length > 0) {
-                      setSelectedGame(navbarSearchResults[0]);
-                      setSearchQuery("");
-                      setSearchDropdownOpen(false);
-                    }
-                  }}
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    className="app-navbar-search-clear"
-                    aria-label="Limpiar búsqueda"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSearchQuery("");
-                      setSearchDropdownOpen(false);
-                    }}
-                  >
-                    <CloseIcon />
-                  </button>
-                )}
-              </div>
-
-              {searchQuery.trim().length > 0 && searchDropdownOpen && (
-                <div className="app-navbar-search-dropdown" role="listbox">
-                  {navbarSearchResults.length > 0 ? (
-                    navbarSearchResults.map((game) => {
-                      const coverSrc = getCoverUrl(game.cover_path);
-                      const title = game.display_name || game.name;
-                      return (
-                        <div
-                          key={game.id}
-                          className="app-navbar-search-item"
-                          role="option"
-                          onClick={() => {
-                            setSelectedGame(game);
-                            setSearchQuery("");
-                            setSearchDropdownOpen(false);
-                          }}
-                        >
-                          <div className="app-navbar-search-item-thumb">
-                            {coverSrc ? (
-                              <img src={coverSrc} alt={title} className="app-navbar-search-item-img" />
-                            ) : (
-                              <div className="app-navbar-search-item-placeholder">
-                                {(title[0] || "?").toUpperCase()}
-                              </div>
-                            )}
-                          </div>
-                          <div className="app-navbar-search-item-info">
-                            <span className="app-navbar-search-item-title">{title}</span>
-                            <span className="app-navbar-search-item-meta">
-                              <span className="app-navbar-search-item-plat">{game.platform}</span>
-                              {game.release_year && (
-                                <span className="app-navbar-search-item-year">{game.release_year}</span>
-                              )}
-                              {game.genre && (
-                                <span className="app-navbar-search-item-genre">{game.genre}</span>
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="app-navbar-search-no-results">
-                      No se encontraron juegos para "{searchQuery}"
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="app-header-right">
-            {layoutStyle === "immersive" ? (
-              <VinylPlayer games={games} mode="navbar" />
-            ) : (
-              <div className="app-header-actions">
-                <button
-                  type="button"
-                  className="app-fullscreen-btn"
-                  onClick={handleToggleFullscreen}
-                  title={isFullscreen ? "Salir de pantalla completa (F11)" : "Pantalla completa (F11)"}
-                  aria-label="Pantalla completa"
-                >
-                  {isFullscreen ? <MinimizeIcon /> : <MaximizeIcon />}
-                </button>
-
-                <button
-                  type="button"
-                  className="app-cast-btn"
-                  onClick={() => setCastModalOpen(true)}
-                  title="Transmitir a TV / Dispositivo"
-                  aria-label="Transmitir a TV"
-                >
-                  <CastIcon />
-                  <span className="app-cast-btn-label">Transmitir</span>
-                </button>
-
-                <div className="app-profile-wrap">
-                  <div
-                    className="app-profile"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setProfileDropdownOpen((v) => !v);
-                    }}
-                    title={`Perfil: ${currentProfile}`}
-                  >
-                    {currentProfile.charAt(0).toUpperCase()}
-                  </div>
-                  {profileDropdownOpen && (
-                    <div className="app-profile-dropdown" onClick={(e) => e.stopPropagation()}>
-                      <div className="app-profile-dropdown-header">Perfil actual</div>
-                      {profiles.map((p) => (
-                        <button
-                          key={p}
-                          className={`app-profile-dropdown-item ${p === currentProfile ? "active" : ""}`}
-                          onClick={() => {
-                            handleProfileSwitch(p);
-                            setProfileDropdownOpen(false);
-                          }}
-                        >
-                          {p === currentProfile ? "● " : ""}{p}
-                        </button>
-                      ))}
-                      <div className="app-profile-dropdown-divider" />
-                      <button
-                        className="app-profile-dropdown-item"
-                        onClick={() => {
-                          setSection("settings");
-                          setProfileDropdownOpen(false);
-                        }}
-                      >
-                        <GearIcon /> Configuración
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </header>
+        <AppHeader
+          section={section}
+          setSection={setSection}
+          layoutStyle={layoutStyle}
+          games={games}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          searchDropdownOpen={searchDropdownOpen}
+          setSearchDropdownOpen={setSearchDropdownOpen}
+          navbarSearchResults={navbarSearchResults}
+          searchInputRef={searchInputRef}
+          setSelectedGame={setSelectedGame}
+          settingsSearchQuery={settingsSearchQuery}
+          setSettingsSearchQuery={setSettingsSearchQuery}
+          settingsSearchDropdownOpen={settingsSearchDropdownOpen}
+          setSettingsSearchDropdownOpen={setSettingsSearchDropdownOpen}
+          filteredSettingsOptions={filteredSettingsOptions}
+          handleSelectSettingsOption={handleSelectSettingsOption}
+          settingsSearchInputRef={settingsSearchInputRef}
+          isFullscreen={isFullscreen}
+          handleToggleFullscreen={handleToggleFullscreen}
+          setCastModalOpen={setCastModalOpen}
+          currentProfile={currentProfile}
+          profiles={profiles}
+          handleProfileSwitch={handleProfileSwitch}
+          profileDropdownOpen={profileDropdownOpen}
+          setProfileDropdownOpen={setProfileDropdownOpen}
+        />
 
         <main className="app-content">
         {section === "settings" && (
@@ -1079,6 +966,10 @@ function App() {
             onThemeChange={handleThemeChange}
             layoutStyle={layoutStyle}
             onLayoutStyleChange={handleLayoutStyleChange}
+            activeTab={settingsTab}
+            onActiveTabChange={setSettingsTab}
+            activeGraphicsConsole={settingsGraphicsConsole}
+            onActiveGraphicsConsoleChange={setSettingsGraphicsConsole}
           />
         )}
 
@@ -1108,7 +999,7 @@ function App() {
               <div style={{ padding: "0 48px 48px" }}>
                 {searchResults.length > 0 ? (
                   <CategoryRow
-                    title={`Resultados de búsqueda (${searchResults.length})`}
+                    title={`Resultados de bÃºsqueda (${searchResults.length})`}
                     games={searchResults}
                     onSelect={setSelectedGame}
                     onFavoriteChanged={handleFavoriteChanged}
@@ -1224,7 +1115,7 @@ function App() {
               />
             ) : (
               <p style={{ color: "#555", padding: "48px", textAlign: "center" }}>
-                No hay favoritos aún
+                No hay favoritos aÃºn
               </p>
             )}
           </div>
@@ -1255,7 +1146,7 @@ function App() {
                 type="button"
                 className="genre-back-btn"
                 onClick={() => setSection("genres")}
-                aria-label="Volver a géneros"
+                aria-label="Volver a gÃ©neros"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -1270,12 +1161,12 @@ function App() {
                   <line x1="19" y1="12" x2="5" y2="12" />
                   <polyline points="12 19 5 12 12 5" />
                 </svg>
-                <span>Volver a Géneros</span>
+                <span>Volver a GÃ©neros</span>
               </button>
 
               <div className="genre-view-title-wrap">
                 <h2 className="genre-view-title">
-                  {effectiveCompany !== "all" ? `${selectedGenre} • ${effectiveCompany}` : selectedGenre}
+                  {effectiveCompany !== "all" ? `${selectedGenre} â€¢ ${effectiveCompany}` : selectedGenre}
                 </h2>
                 <span className="genre-view-count">
                   {activeGenreGames.length} {activeGenreGames.length === 1 ? "juego" : "juegos"}
@@ -1321,7 +1212,7 @@ function App() {
               </div>
             ) : (
               <p style={{ color: "#555", textAlign: "center", padding: "48px" }}>
-                No hay juegos en este género {effectiveCompany !== "all" ? `para ${effectiveCompany}` : ""}
+                No hay juegos en este gÃ©nero {effectiveCompany !== "all" ? `para ${effectiveCompany}` : ""}
               </p>
             )}
           </div>
@@ -1332,11 +1223,11 @@ function App() {
             <div className="genres-header">
               <div className="genres-header-info">
                 <h1 className="genres-title">
-                  Explorar Géneros
+                  Explorar GÃ©neros
                   {effectiveCompany !== "all" && <span className="genres-company-badge">{effectiveCompany}</span>}
                 </h1>
                 <p className="genres-subtitle">
-                  Descubrí tus juegos organizados por categorías y temáticas
+                  DescubrÃ­ tus juegos organizados por categorÃ­as y temÃ¡ticas
                 </p>
               </div>
             </div>
@@ -1391,7 +1282,7 @@ function App() {
               </div>
             ) : (
               <p style={{ color: "#777", textAlign: "center", padding: "60px 0" }}>
-                No hay géneros disponibles {effectiveCompany !== "all" ? `para ${effectiveCompany}` : ""}
+                No hay gÃ©neros disponibles {effectiveCompany !== "all" ? `para ${effectiveCompany}` : ""}
               </p>
             )}
           </div>
@@ -1434,12 +1325,6 @@ function App() {
         onClose={() => setCastModalOpen(false)}
       />
 
-      <InGameOverlayModal
-        isOpen={inGamePauseOpen}
-        game={gameInPause}
-        screenshotPath={pauseScreenshot}
-        onClose={() => setInGamePauseOpen(false)}
-      />
       </div>
     </MusicProvider>
   );

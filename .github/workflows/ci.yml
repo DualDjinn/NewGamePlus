@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  backend:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: fmt
+        run: cargo fmt --check --manifest-path src-tauri/Cargo.toml
+      - name: clippy
+        # ponytail: sin -D warnings hasta limpiar los 39 warnings preexistentes; CI no debe fallar por deuda vieja
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets
+      - name: unit tests (herméticos; integración = #[ignore])
+        run: cargo test --manifest-path src-tauri/Cargo.toml

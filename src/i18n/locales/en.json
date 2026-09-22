@@ -1,0 +1,200 @@
+{
+  "common": {
+    "save": "Save",
+    "saved": "Saved!",
+    "cancel": "Cancel",
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "scan": "Scan",
+    "scanning": "Scanning...",
+    "loading": "Loading...",
+    "search": "Search",
+    "delete": "Delete",
+    "edit": "Edit",
+    "open": "Open",
+    "active": "Active",
+    "inactive": "Inactive",
+    "ready": "Ready",
+    "error": "Error",
+    "success": "Success",
+    "understood": "Got it",
+    "hours": "hours",
+    "mins": "minutes",
+    "minsShort": "min",
+    "never": "Never"
+  },
+  "sidebar": {
+    "home": "Home",
+    "library": "Library",
+    "favorites": "Favorites",
+    "genres": "Genres",
+    "cast": "Cast",
+    "settings": "Settings",
+    "music": "Music",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar"
+  },
+  "search": {
+    "gamesPlaceholder": "Search games or franchises...",
+    "settingsPlaceholder": "Search settings (e.g. volume, theme, bios)...",
+    "noResults": "No results found for \"{{query}}\"",
+    "quickResults": "Search results",
+    "goToOption": "Go to option",
+    "optionsFound": "options found",
+    "optionFound": "option found"
+  },
+  "hero": {
+    "playNow": "Play Now",
+    "details": "View Details",
+    "favorite": "Favorite",
+    "unfavorite": "Favorited",
+    "lastPlayed": "Last played",
+    "timePlayed": "Time played",
+    "neverPlayed": "Not played yet"
+  },
+  "library": {
+    "title": "Your Collection",
+    "allGames": "All Games",
+    "totalGames": "{{count}} game",
+    "totalGames_other": "{{count}} games",
+    "sortBy": "Sort by:",
+    "sortName": "Name (A-Z)",
+    "sortPlatform": "Platform",
+    "sortLastPlayed": "Recently played",
+    "emptyLibrary": "Your library is empty",
+    "emptyLibraryHint": "Go to Settings to add your game folders and start scanning.",
+    "filterPlatform": "All platforms",
+    "filterGenre": "All genres",
+    "recent": "Continue Playing",
+    "favorites": "Your Favorites",
+    "newlyAdded": "Recently Added",
+    "otherTitles": "Other Titles"
+  },
+  "scan": {
+    "scanning": "Scanning {{label}}…",
+    "processing": "Processing {{current}}/{{total}}: {{label}}",
+    "downloadingCore": "Downloading core: {{label}}"
+  },
+  "gameDetail": {
+    "play": "Launch Game",
+    "resume": "Resume Game",
+    "platform": "Platform",
+    "core": "Core / Emulator",
+    "developer": "Developer",
+    "publisher": "Publisher",
+    "releaseDate": "Release Date",
+    "genre": "Genre",
+    "region": "Region",
+    "timePlayed": "Time played",
+    "lastPlayed": "Last played",
+    "fixMatch": "Identify Cover / Fix Match",
+    "openFolder": "Open Location",
+    "retroAchievements": "RetroAchievements",
+    "noAchievements": "No achievements available for this game.",
+    "achievementsUnlocked": "{{unlocked}} of {{total}} achievements unlocked ({{pct}}%)",
+    "achievementsHardcore": "Hardcore Mode"
+  },
+  "settings": {
+    "title": "Settings",
+    "searchAjustes": "Search in settings...",
+    "tabs": {
+      "library": "Library",
+      "appearance": "Appearance & UI",
+      "graphics": "Graphics & Display",
+      "sound": "Sound & Music",
+      "emulation": "Emulation & Cores",
+      "emulators": "Emulators",
+      "integrations": "Integrations & Accounts",
+      "profiles": "Profiles",
+      "system": "System"
+    },
+    "appearance": {
+      "language": "Application Language",
+      "languageSubtitle": "Select interface language",
+      "languageEs": "Español",
+      "languageEn": "English",
+      "theme": "Visual Theme",
+      "layoutStyle": "Library Layout"
+    },
+    "librarySection": {
+      "romFolders": "Game Folders (ROMs)",
+      "addFolder": "Add Folder",
+      "rescan": "Scan Games Now",
+      "noFolders": "No game folders configured yet."
+    },
+    "sound": {
+      "musicVolume": "Background Music Volume",
+      "sfxVolume": "Sound Effects (SFX)",
+      "tracks": "Available Tracks"
+    },
+    "system": {
+      "kioskMode": "Kiosk Mode / Lock",
+      "kioskDesc": "Hides direct settings access to prevent unintended modifications.",
+      "version": "Version"
+    },
+    "emulators": {
+      "subtitle": "Installed versions and updates for RetroArch, cores and external emulators.",
+      "checkNow": "Check for updates",
+      "checking": "Checking...",
+      "lastCheck": "Last check",
+      "neverChecked": "not checked yet",
+      "autoCheck": "Automatic notice every 4 days",
+      "autoCheckDesc": "Background check on startup if more than 4 days passed.",
+      "upToDate": "Up to date",
+      "updateAvailable": "Update available",
+      "notInstalled": "Not installed",
+      "unknownVersion": "Unknown",
+      "installed": "Installed",
+      "latest": "Latest",
+      "update": "Update",
+      "updating": "Updating...",
+      "updatedTo": "Updated to",
+      "alreadyLatest": "is already up to date",
+      "updateCores": "Update libretro cores",
+      "updatingCores": "Updating cores...",
+      "coresUpdated": "cores updated",
+      "closeGameFirst": "A game is running. Close it before updating.",
+      "updatesFound": "Emulator updates are available"
+    }
+  },
+  "cast": {
+    "title": "Cast to Device",
+    "subtitle": "Play on your Smart TV, Xiaomi TV Stick or Fire TV with ultra-low latency",
+    "localNetwork": "Local Network:",
+    "localIp": "Your Local IP:",
+    "searchDevices": "Scan devices",
+    "searching": "Scanning...",
+    "tabs": {
+      "devices": "📺 Devices & Displays",
+      "controller": "🎮 Controller & Latency",
+      "help": "💡 Setup Guide"
+    },
+    "moonlightCard": {
+      "title": "Smart TV / TV Stick (Moonlight)",
+      "badge": "Recommended (60 FPS)",
+      "activeBadge": "● Server Active",
+      "protocol": "Ultra-Low Latency streaming with Moonlight (Fire TV, Android TV, webOS, iOS and PC)",
+      "statusRunning": "Streaming Server is ACTIVE",
+      "statusReady": "Sunshine Portable ready to launch",
+      "statusNotInstalled": "Sunshine Portable not downloaded",
+      "btnStart": "▶ Start Streaming to TV",
+      "btnStop": "⏹ Stop Server",
+      "btnDownload": "⚡ Download Sunshine Portable (1-Click)",
+      "step1": "Click \"▶ Start Streaming to TV\" above (starts background server).",
+      "step2": "Open the Moonlight app on your TV; it will detect your PC ({{ip}}). It will show a 4-digit PIN.",
+      "step3": "Enter that PIN below and click Pair Device:",
+      "pairBtn": "Pair Device",
+      "pairing": "Pairing..."
+    },
+    "miracastCard": {
+      "title": "Smart TV / Wireless Display (Miracast)",
+      "badge": "Direct Miracast",
+      "protocol": "Windows native wireless projection to any supported Smart TV (LG, Samsung, Sony, Roku, etc.)",
+      "btnProject": "Project to TV"
+    },
+    "detectedDevices": "Devices detected on your Wi-Fi network:",
+    "noDevices": "No additional multimedia receivers detected automatically. Click \"Scan devices\" to search again.",
+    "footerTip": "Tip: Keep your PC connected to your 5 GHz Wi-Fi or Ethernet cable for maximum stream stability."
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "common": {
+    "save": "Guardar",
+    "saved": "¡Guardado!",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "copy": "Copiar",
+    "copied": "¡Copiada!",
+    "scan": "Escanear",
+    "scanning": "Escaneando...",
+    "loading": "Cargando...",
+    "search": "Buscar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "open": "Abrir",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "ready": "Listo",
+    "error": "Error",
+    "success": "Éxito",
+    "understood": "Entendido",
+    "hours": "horas",
+    "mins": "minutos",
+    "minsShort": "min",
+    "never": "Nunca"
+  },
+  "sidebar": {
+    "home": "Inicio",
+    "library": "Biblioteca",
+    "favorites": "Favoritos",
+    "genres": "Géneros",
+    "cast": "Transmitir",
+    "settings": "Ajustes",
+    "music": "Música",
+    "collapse": "Colapsar menú",
+    "expand": "Expandir menú"
+  },
+  "search": {
+    "gamesPlaceholder": "Buscar juegos o sagas...",
+    "settingsPlaceholder": "Buscar en configuración (ej: volumen, tema, bios)...",
+    "noResults": "No se encontraron resultados para \"{{query}}\"",
+    "quickResults": "Resultados de búsqueda",
+    "goToOption": "Ir a la opción",
+    "optionsFound": "opciones encontradas",
+    "optionFound": "opción encontrada"
+  },
+  "hero": {
+    "playNow": "Jugar Ahora",
+    "details": "Ver Detalles",
+    "favorite": "Favorito",
+    "unfavorite": "En Favoritos",
+    "lastPlayed": "Última vez jugado",
+    "timePlayed": "Tiempo jugado",
+    "neverPlayed": "Sin jugar aún"
+  },
+  "library": {
+    "title": "Tu Colección",
+    "allGames": "Todos los juegos",
+    "totalGames": "{{count}} juego",
+    "totalGames_other": "{{count}} juegos",
+    "sortBy": "Ordenar por:",
+    "sortName": "Nombre (A-Z)",
+    "sortPlatform": "Plataforma",
+    "sortLastPlayed": "Jugado recientemente",
+    "emptyLibrary": "Tu biblioteca está vacía",
+    "emptyLibraryHint": "Ve a Ajustes para agregar tus carpetas de juegos y comenzar a escanear.",
+    "filterPlatform": "Todas las plataformas",
+    "filterGenre": "Todos los géneros",
+    "recent": "Continuar Jugando",
+    "favorites": "Tus Favoritos",
+    "newlyAdded": "Agregados Recientemente",
+    "otherTitles": "Otros títulos"
+  },
+  "scan": {
+    "scanning": "Escaneando {{label}}…",
+    "processing": "Procesando {{current}}/{{total}}: {{label}}",
+    "downloadingCore": "Descargando core: {{label}}"
+  },
+  "gameDetail": {
+    "play": "Iniciar Juego",
+    "resume": "Continuar Partida",
+    "platform": "Plataforma",
+    "core": "Núcleo / Core",
+    "developer": "Desarrollador",
+    "publisher": "Distribuidor",
+    "releaseDate": "Lanzamiento",
+    "genre": "Género",
+    "region": "Región",
+    "timePlayed": "Tiempo jugado",
+    "lastPlayed": "Última partida",
+    "fixMatch": "Identificar Carátula / Fix Match",
+    "openFolder": "Abrir Ubicación",
+    "retroAchievements": "RetroAchievements",
+    "noAchievements": "Sin logros disponibles para este juego.",
+    "achievementsUnlocked": "{{unlocked}} de {{total}} logros conseguidos ({{pct}}%)",
+    "achievementsHardcore": "Modo Hardcore"
+  },
+  "settings": {
+    "title": "Configuración",
+    "searchAjustes": "Buscar en configuración...",
+    "tabs": {
+      "library": "Biblioteca",
+      "appearance": "Apariencia & Interfaz",
+      "graphics": "Gráficos & Pantalla",
+      "sound": "Sonido & Música",
+      "emulation": "Emulación & Cores",
+      "emulators": "Emuladores",
+      "integrations": "Integraciones & Cuentas",
+      "profiles": "Perfiles",
+      "system": "Sistema"
+    },
+    "appearance": {
+      "language": "Idioma de la Aplicación",
+      "languageSubtitle": "Selecciona el idioma de la interfaz",
+      "languageEs": "Español",
+      "languageEn": "English",
+      "theme": "Tema Visual",
+      "layoutStyle": "Estilo de Biblioteca"
+    },
+    "librarySection": {
+      "romFolders": "Carpetas de Juegos (ROMs)",
+      "addFolder": "Agregar Carpeta",
+      "rescan": "Escanear Juegos Ahora",
+      "noFolders": "No has configurado ninguna carpeta de juegos todavía."
+    },
+    "sound": {
+      "musicVolume": "Volumen de Música de Fondo",
+      "sfxVolume": "Efectos de Sonido (SFX)",
+      "tracks": "Pistas Disponibles"
+    },
+    "system": {
+      "kioskMode": "Modo Kiosco / Bloqueo",
+      "kioskDesc": "Oculta el acceso directo a la configuración para evitar cambios no deseados.",
+      "version": "Versión"
+    },
+    "emulators": {
+      "subtitle": "Versiones instaladas y actualizaciones de RetroArch, cores y emuladores externos.",
+      "checkNow": "Buscar actualizaciones",
+      "checking": "Buscando...",
+      "lastCheck": "Última comprobación",
+      "neverChecked": "aún no comprobado",
+      "autoCheck": "Aviso automático cada 4 días",
+      "autoCheckDesc": "Comprueba en segundo plano al iniciar si pasaron más de 4 días.",
+      "upToDate": "Al día",
+      "updateAvailable": "Actualización disponible",
+      "notInstalled": "No instalado",
+      "unknownVersion": "Desconocida",
+      "installed": "Instalada",
+      "latest": "Última",
+      "update": "Actualizar",
+      "updating": "Actualizando...",
+      "updatedTo": "Actualizado a",
+      "alreadyLatest": "ya está al día",
+      "updateCores": "Actualizar cores libretro",
+      "updatingCores": "Actualizando cores...",
+      "coresUpdated": "cores actualizados",
+      "closeGameFirst": "Hay un juego en curso. Ciérralo antes de actualizar.",
+      "updatesFound": "Hay actualizaciones de emuladores disponibles"
+    }
+  },
+  "cast": {
+    "title": "Transmitir a Dispositivo",
+    "subtitle": "Juega en tu Smart TV, Xiaomi TV Stick o Fire TV con baja latencia",
+    "localNetwork": "Red Local:",
+    "localIp": "Tu IP Local:",
+    "searchDevices": "Buscar dispositivos",
+    "searching": "Buscando...",
+    "tabs": {
+      "devices": "📺 Dispositivos y Televisores",
+      "controller": "🎮 Control y Latencia",
+      "help": "💡 Guía de Configuración"
+    },
+    "moonlightCard": {
+      "title": "Smart TV / TV Stick (Moonlight)",
+      "badge": "Recomendado (60 FPS)",
+      "activeBadge": "● Servidor Activo",
+      "protocol": "Modo Ultra-Low Latency con Moonlight (Fire TV, Android TV, webOS, iOS y PC)",
+      "statusRunning": "Servidor de Transmisión ACTIVO",
+      "statusReady": "Sunshine Portable listo para iniciar",
+      "statusNotInstalled": "Sunshine Portable no descargado",
+      "btnStart": "▶ Iniciar Transmisión a TV",
+      "btnStop": "⏹ Detener Servidor",
+      "btnDownload": "⚡ Descargar Sunshine Portable (1 Clic)",
+      "step1": "Pulsa \"▶ Iniciar Transmisión a TV\" arriba (inicia el servidor en segundo plano).",
+      "step2": "Abre la app Moonlight en tu televisor; detectará tu PC ({{ip}}). Te mostrará un PIN de 4 dígitos.",
+      "step3": "Ingresa ese PIN aquí abajo y pulsa Vincular Dispositivo:",
+      "pairBtn": "Vincular Dispositivo",
+      "pairing": "Vinculando..."
+    },
+    "miracastCard": {
+      "title": "Smart TV / Pantalla Inalámbrica (Miracast)",
+      "badge": "Miracast Directo",
+      "protocol": "Proyección inalámbrica nativa de Windows a cualquier Smart TV compatible (LG, Samsung, Sony, Roku, etc.)",
+      "btnProject": "Proyectar a TV"
+    },
+    "detectedDevices": "Dispositivos detectados en tu red Wi-Fi:",
+    "noDevices": "No se detectaron receptores multimedia adicionales automáticamente. Pulsa \"Buscar dispositivos\" para escanear de nuevo.",
+    "footerTip": "Tip: Mantén tu PC conectada a tu red Wi-Fi de 5 GHz o por cable Ethernet para máxima estabilidad visual."
+  }
+}

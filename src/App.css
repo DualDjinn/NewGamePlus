@@ -1359,6 +1359,72 @@
   font-size: 13px;
 }
 
+/* Settings Search Styles */
+.app-settings-search-hint-header {
+  padding: 8px 12px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted, #9ca3af);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 2px;
+}
+
+.app-settings-search-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.app-settings-search-item:hover {
+  background: rgba(var(--accent-rgb, 245, 158, 11), 0.12);
+}
+
+.app-settings-search-item-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.app-settings-search-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-settings-search-badge {
+  background: rgba(var(--accent-rgb, 245, 158, 11), 0.2);
+  color: var(--accent);
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-weight: 800;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.app-settings-search-desc {
+  font-size: 11.5px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+
 .app-header-actions {
   display: flex;
   align-items: center;

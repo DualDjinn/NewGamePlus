@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import {
   getCastNetworkInfo,
   discoverLanDevices,
@@ -21,6 +23,8 @@ interface Props {
 }
 
 export default function CastModal({ isOpen, onClose }: Props) {
+  const { t } = useTranslation();
+  const trapRef = useFocusTrap<HTMLDivElement>(isOpen);
   const [networkInfo, setNetworkInfo] = useState<CastNetworkInfo | null>(null);
   const [devices, setDevices] = useState<LanDevice[]>([]);
   const [sunshineStatus, setSunshineStatus] = useState<SunshineStatus | null>(null);
@@ -150,8 +154,16 @@ export default function CastModal({ isOpen, onClose }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div className="cast-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="cast-modal-container" onClick={(e) => e.stopPropagation()}>
+    <div className="cast-modal-backdrop" onClick={onClose}>
+      <div
+        className="cast-modal-container"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("cast.title")}
+        tabIndex={-1}
+        ref={trapRef}
+      >
         {/* Cabecera */}
         <header className="cast-modal-header">
           <div className="cast-modal-header-left">
@@ -159,9 +171,9 @@ export default function CastModal({ isOpen, onClose }: Props) {
               <CastIcon />
             </div>
             <div>
-              <h2 className="cast-modal-title">Transmitir a Dispositivo</h2>
+              <h2 className="cast-modal-title">{t("cast.title")}</h2>
               <p className="cast-modal-subtitle">
-                Juega en tu Smart TV, Xiaomi TV Stick o Fire TV con baja latencia
+                {t("cast.subtitle")}
               </p>
             </div>
           </div>
@@ -169,7 +181,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
             type="button"
             className="cast-modal-close-btn"
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={t("common.close")}
           >
             <CloseIcon />
           </button>
@@ -179,20 +191,20 @@ export default function CastModal({ isOpen, onClose }: Props) {
         <div className="cast-network-bar">
           <div className="cast-network-item">
             <span className="cast-status-dot online" />
-            <span className="cast-network-label">Red Local:</span>
+            <span className="cast-network-label">{t("cast.localNetwork")}</span>
             <span className="cast-network-value">{networkInfo?.hostname || "Detectando..."}</span>
           </div>
 
           <div className="cast-network-item cast-network-ip-item">
-            <span className="cast-network-label">Tu IP Local:</span>
+            <span className="cast-network-label">{t("cast.localIp")}</span>
             <span className="cast-network-code">{networkInfo?.ip || "127.0.0.1"}</span>
             <button
               type="button"
               className="cast-copy-ip-btn"
               onClick={handleCopyIp}
-              title="Copiar dirección IP"
+              title={t("common.copy")}
             >
-              {copiedIp ? "¡Copiada!" : "Copiar"}
+              {copiedIp ? t("common.copied") : t("common.copy")}
             </button>
           </div>
 
@@ -202,7 +214,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
             onClick={scanDevices}
             disabled={loadingDevices}
           >
-            {loadingDevices ? "Buscando..." : "Buscar dispositivos"}
+            {loadingDevices ? t("cast.searching") : t("cast.searchDevices")}
           </button>
         </div>
 
@@ -213,21 +225,21 @@ export default function CastModal({ isOpen, onClose }: Props) {
             className={`cast-tab-btn ${activeTab === "devices" ? "active" : ""}`}
             onClick={() => setActiveTab("devices")}
           >
-            📺 Dispositivos y Televisores
+            {t("cast.tabs.devices")}
           </button>
           <button
             type="button"
             className={`cast-tab-btn ${activeTab === "controller" ? "active" : ""}`}
             onClick={() => setActiveTab("controller")}
           >
-            🎮 Control y Latencia
+            {t("cast.tabs.controller")}
           </button>
           <button
             type="button"
             className={`cast-tab-btn ${activeTab === "help" ? "active" : ""}`}
             onClick={() => setActiveTab("help")}
           >
-            💡 Guía de Configuración
+            {t("cast.tabs.help")}
           </button>
         </div>
 
@@ -243,16 +255,16 @@ export default function CastModal({ isOpen, onClose }: Props) {
                   </div>
                   <div className="cast-device-info">
                     <div className="cast-device-title-row">
-                      <h3 className="cast-device-name">Smart TV / TV Stick (Moonlight)</h3>
-                      <span className="cast-badge recommended">Recomendado (60 FPS)</span>
+                      <h3 className="cast-device-name">{t("cast.moonlightCard.title")}</h3>
+                      <span className="cast-badge recommended">{t("cast.moonlightCard.badge")}</span>
                       {sunshineStatus?.is_running && (
                         <span className="cast-badge status-online">
-                          ● Servidor Activo
+                          {t("cast.moonlightCard.activeBadge")}
                         </span>
                       )}
                     </div>
                     <p className="cast-device-protocol">
-                      Modo Ultra-Low Latency con <strong>Moonlight</strong> (compatible con Fire TV, Android TV, webOS, iOS y PC)
+                      {t("cast.moonlightCard.protocol")}
                     </p>
                   </div>
                 </div>
@@ -264,10 +276,10 @@ export default function CastModal({ isOpen, onClose }: Props) {
                       <span className={`cast-status-dot ${sunshineStatus?.is_running ? "online" : "offline"}`} />
                       <span className="cast-sunshine-status-text">
                         {sunshineStatus?.is_running
-                          ? "Servidor de Transmisión ACTIVO"
+                          ? t("cast.moonlightCard.statusRunning")
                           : sunshineStatus?.is_installed
-                          ? "Sunshine Portable listo para iniciar"
-                          : "Sunshine Portable no descargado"}
+                          ? t("cast.moonlightCard.statusReady")
+                          : t("cast.moonlightCard.statusNotInstalled")}
                       </span>
                     </div>
 
@@ -280,10 +292,10 @@ export default function CastModal({ isOpen, onClose }: Props) {
                           disabled={togglingServer}
                         >
                           {togglingServer
-                            ? "Procesando..."
+                            ? "..."
                             : sunshineStatus?.is_running
-                            ? "⏹ Detener Servidor"
-                            : "▶ Iniciar Transmisión a TV"}
+                            ? t("cast.moonlightCard.btnStop")
+                            : t("cast.moonlightCard.btnStart")}
                         </button>
                       ) : (
                         <button
@@ -293,8 +305,8 @@ export default function CastModal({ isOpen, onClose }: Props) {
                           disabled={downloadingSunshine}
                         >
                           {downloadingSunshine
-                            ? "Descargando Sunshine..."
-                            : "⚡ Descargar Sunshine Portable (1 Clic)"}
+                            ? "..."
+                            : t("cast.moonlightCard.btnDownload")}
                         </button>
                       )}
                     </div>
@@ -308,19 +320,19 @@ export default function CastModal({ isOpen, onClose }: Props) {
                     <div className="cast-step-item">
                       <span className="cast-step-num">1</span>
                       <span>
-                        Pulsa <strong>"▶ Iniciar Transmisión a TV"</strong> arriba (inicia el servidor en segundo plano).
+                        {t("cast.moonlightCard.step1")}
                       </span>
                     </div>
                     <div className="cast-step-item">
                       <span className="cast-step-num">2</span>
                       <span>
-                        Abre la app <strong>Moonlight</strong> en tu televisor o dispositivo; detectará tu PC (<strong>{networkInfo?.ip || "tu IP"}</strong>). Al pulsarla, te mostrará un <strong>PIN de 4 dígitos</strong>.
+                        {t("cast.moonlightCard.step2", { ip: networkInfo?.ip || "tu IP" })}
                       </span>
                     </div>
                     <div className="cast-step-item">
                       <span className="cast-step-num">3</span>
                       <span>
-                        Ingresa ese PIN aquí abajo y pulsa <strong>Vincular Dispositivo</strong>:
+                        {t("cast.moonlightCard.step3")}
                       </span>
                     </div>
                   </div>
@@ -341,7 +353,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
                       className="cast-pin-submit-btn"
                       disabled={pairing || pin.trim().length !== 4}
                     >
-                      {pairing ? "Vinculando..." : "Vincular Dispositivo"}
+                      {pairing ? t("cast.moonlightCard.pairing") : t("cast.moonlightCard.pairBtn")}
                     </button>
                   </form>
 
@@ -361,11 +373,11 @@ export default function CastModal({ isOpen, onClose }: Props) {
                   </div>
                   <div className="cast-device-info">
                     <div className="cast-device-title-row">
-                      <h3 className="cast-device-name">Smart TV / Pantalla Inalámbrica (Miracast)</h3>
-                      <span className="cast-badge">Miracast Directo</span>
+                      <h3 className="cast-device-name">{t("cast.miracastCard.title")}</h3>
+                      <span className="cast-badge">{t("cast.miracastCard.badge")}</span>
                     </div>
                     <p className="cast-device-protocol">
-                      Proyección inalámbrica nativa de Windows a cualquier Smart TV compatible (LG, Samsung, Sony, Roku, etc.)
+                      {t("cast.miracastCard.protocol")}
                     </p>
                   </div>
                   <button
@@ -373,14 +385,14 @@ export default function CastModal({ isOpen, onClose }: Props) {
                     className="cast-action-btn primary"
                     onClick={handleOpenMiracast}
                   >
-                    Proyectar a TV
+                    {t("cast.miracastCard.btnProject")}
                   </button>
                 </div>
               </div>
 
               {/* Dispositivos reales detectados en la red local */}
               <div className="cast-other-devices">
-                <h4 className="cast-section-subhead">Dispositivos detectados en tu red Wi-Fi:</h4>
+                <h4 className="cast-section-subhead">{t("cast.detectedDevices")}</h4>
                 <div className="cast-devices-grid">
                   {devices.map((device) => (
                     <div key={device.id} className="cast-device-chip">
@@ -393,7 +405,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
                   ))}
                   {devices.length === 0 && !loadingDevices && (
                     <div className="cast-empty-devices">
-                      No se detectaron receptores multimedia adicionales automáticamente. Pulsa "Buscar dispositivos" para escanear de nuevo.
+                      {t("cast.noDevices")}
                     </div>
                   )}
                 </div>
@@ -461,10 +473,10 @@ export default function CastModal({ isOpen, onClose }: Props) {
         {/* Pie de modal */}
         <footer className="cast-modal-footer">
           <div className="cast-footer-tip">
-            💡 <span>Tip: Mantén tu PC conectada a tu red Wi-Fi de 5 GHz o por cable Ethernet para máxima estabilidad visual.</span>
+            💡 <span>{t("cast.footerTip")}</span>
           </div>
           <button type="button" className="cast-modal-done-btn" onClick={onClose}>
-            Entendido
+            {t("common.understood")}
           </button>
         </footer>
       </div>

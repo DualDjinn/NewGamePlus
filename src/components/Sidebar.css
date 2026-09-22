@@ -330,3 +330,12 @@
   background: rgba(255, 255, 255, 0.08);
   margin: 4px 0;
 }
+
+.sidebar-settings .settings-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+  flex-shrink: 0;
+}

@@ -14,14 +14,14 @@
 ## 3. Funcionalidad
 - **Multi-cuenta / perfiles** — separar favoritos y recently played por usuario
 - **Exportar/importar biblioteca** — backup del JSON
-- **Update de RetroArch** — re-descargar si la versión es vieja
-- **Log de errores** — persistir errores en archivo en vez de solo consola
+- **Update de RetroArch** — ✅ re-descargar si la versión es vieja (tab Emuladores + auto-check 4 días; cubre también RPCS3, Azahar, Sunshine y cores)
+- ✅ **Log de errores** — `state::storage::log_error` → `data/logs/errors.log` (comando `get_error_logs`)
 
 ## 4. Infra
-- **CI/CD** — GitHub Actions para build automático del NSIS
-- **Tests** — al menos un test de Rust para `detect_platform` con los casos edge (.bin+.cue, .bin solo)
-- **Auto-update** — Tauri updater para nuevas versiones
+- ✅ **CI** — `.github/workflows/ci.yml` (build frontend + fmt + clippy + `cargo test` hermético)
+- ✅ **Tests** — 23 unitarios herméticos en verde; integración con `#[ignore]` (`cargo test -- --ignored` manual)
+- **CD + Auto-update** — pendientes: build NSIS en Actions, `tauri-plugin-updater`, firma (ver README)
 
 ## 5. Distribución
-- **README** — instrucciones de build y uso
-- **Release en GitHub** — subir el `.exe` del NSIS
+- ✅ **README** — instrucciones de build y uso + `NOTICE-THIRD-PARTY.md` (GPL) + `CHANGELOG.md`
+- **Release en GitHub** — subir el `.exe` del NSIS (firmado, ver README)

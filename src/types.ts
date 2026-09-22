@@ -110,9 +110,14 @@ export interface AppSettings {
   bios_folders?: string[];
   music_volume?: number;
   music_folders?: string[];
+  last_emulator_check_secs?: number;
+  auto_update_check?: boolean;
 }
 
 export type Section = "home" | "library" | "favorites" | "search" | "settings" | "genre" | "genres";
+
+export type SettingsTab = "library" | "appearance" | "graphics" | "sound" | "emulation" | "emulators" | "integrations" | "profiles" | "system";
+export type GraphicsConsole = "global" | "citra" | "pcsx2" | "dolphin" | "ppsspp" | "ps1" | "n64" | "nds";
 
 export type SortKey = "name" | "platform" | "last_played";
 
@@ -148,4 +153,14 @@ export interface GameAchievementProgress {
   unlocked_hc: number;
   completion_pct: number;
   achievements: Achievement[];
+}
+
+export interface EmulatorInfo {
+  id: string;
+  display_name: string;
+  installed: boolean;
+  installed_version: string | null;
+  latest_version: string | null;
+  update_available: boolean;
+  exe_path?: string | null;
 }

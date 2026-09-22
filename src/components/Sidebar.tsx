@@ -1,4 +1,5 @@
 import { useState, useEffect, type ComponentType } from "react";
+import { useTranslation } from "react-i18next";
 import type { Section, Game } from "../types";
 import { HomeIcon, LibraryIcon, HeartIcon, GearIcon, TagIcon, CastIcon, MaximizeIcon, MinimizeIcon } from "./icons";
 import { VinylPlayer } from "./VinylPlayer";
@@ -21,13 +22,8 @@ interface Props {
   onOpenCast?: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  settingsBadge?: boolean;
 }
-
-const NAV_ITEMS: { section: Section; icon: ComponentType; label: string }[] = [
-  { section: "home", icon: HomeIcon, label: "Inicio" },
-  { section: "library", icon: LibraryIcon, label: "Biblioteca" },
-  { section: "favorites", icon: HeartIcon, label: "Favoritos" },
-];
 
 export default function Sidebar({
   section,
@@ -46,10 +42,18 @@ export default function Sidebar({
   onOpenCast,
   isFullscreen = false,
   onToggleFullscreen,
+  settingsBadge = false,
 }: Props) {
+  const { t } = useTranslation();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const isImmersive = layoutStyle === "immersive";
   const isCollapsed = isImmersive ? true : collapsed;
+
+  const navItems: { section: Section; icon: ComponentType; label: string }[] = [
+    { section: "home", icon: HomeIcon, label: t("sidebar.home") },
+    { section: "library", icon: LibraryIcon, label: t("sidebar.library") },
+    { section: "favorites", icon: HeartIcon, label: t("sidebar.favorites") },
+  ];
 
   useEffect(() => {
     if (!profileMenuOpen) return;
@@ -68,7 +72,7 @@ export default function Sidebar({
       <div
         className="sidebar-logo"
         onClick={isImmersive ? undefined : onToggle}
-        title={isImmersive ? "GameFlix" : (isCollapsed ? "Expandir" : "Colapsar")}
+        title={isImmersive ? "GameFlix" : (isCollapsed ? t("sidebar.expand") : t("sidebar.collapse"))}
         style={{ cursor: isImmersive ? "default" : "pointer" }}
       >
         {isCollapsed ? "NG+" : "NewGame+"}
@@ -76,7 +80,7 @@ export default function Sidebar({
 
       <nav className="sidebar-nav">
         <ul>
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <li key={item.section}>
               <a
                 href="#"
@@ -97,14 +101,14 @@ export default function Sidebar({
               <a
                 href="#"
                 className={section === "genres" || section === "genre" ? "active" : ""}
-                title="Géneros"
+                title={t("sidebar.genres")}
                 onClick={(e) => {
                   e.preventDefault();
                   onNavigate("genres");
                 }}
               >
                 <span className="sidebar-icon"><TagIcon /></span>
-                {!isCollapsed && <span className="sidebar-label">Géneros</span>}
+                {!isCollapsed && <span className="sidebar-label">{t("sidebar.genres")}</span>}
               </a>
             </li>
           )}
@@ -114,7 +118,7 @@ export default function Sidebar({
       {!isCollapsed && genres.length > 0 && (
         <div className="sidebar-genres">
           <div className="sidebar-genres-header">
-            GÉNEROS {company ? `• ${company}` : ""}
+            {t("sidebar.genres").toUpperCase()} {company ? `• ${company}` : ""}
           </div>
           <ul>
             {genres.map((g) => (
@@ -149,14 +153,15 @@ export default function Sidebar({
             <a
               href="#"
               className={`sidebar-settings ${section === "settings" ? "active" : ""}`}
-              title={isCollapsed ? "Configuración" : undefined}
+              title={isCollapsed ? t("sidebar.settings") : undefined}
               onClick={(e) => {
                 e.preventDefault();
                 onNavigate("settings");
               }}
             >
               <span className="sidebar-icon"><GearIcon /></span>
-              {!isCollapsed && <span className="sidebar-label">Configuración</span>}
+              {!isCollapsed && <span className="sidebar-label">{t("sidebar.settings")}</span>}
+              {settingsBadge && <span className="settings-pill-dot" title={t("settings.emulators.updatesFound")} />}
             </a>
           </>
         )}
@@ -180,8 +185,8 @@ export default function Sidebar({
                 type="button"
                 className="sidebar-cast-btn"
                 onClick={onOpenCast}
-                title="Transmitir a TV / Dispositivo"
-                aria-label="Transmitir a TV"
+                title={t("cast.title")}
+                aria-label={t("cast.title")}
               >
                 <CastIcon />
               </button>
@@ -191,13 +196,13 @@ export default function Sidebar({
               <div
                 className="sidebar-profile-avatar"
                 onClick={() => setProfileMenuOpen((v) => !v)}
-                title={`Perfil: ${currentProfile}`}
+                title={`${t("settings.tabs.profiles")}: ${currentProfile}`}
               >
                 {currentProfile.charAt(0).toUpperCase()}
               </div>
             {profileMenuOpen && (
               <div className="sidebar-profile-dropdown" onClick={(e) => e.stopPropagation()}>
-                <div className="sidebar-profile-dropdown-header">Perfil actual</div>
+                <div className="sidebar-profile-dropdown-header">{t("settings.tabs.profiles")}</div>
                 {profiles.map((p) => (
                   <button
                     key={p}
@@ -218,7 +223,7 @@ export default function Sidebar({
                     setProfileMenuOpen(false);
                   }}
                 >
-                  <GearIcon /> Configuración
+                  <GearIcon /> {t("sidebar.settings")}
                 </button>
               </div>
             )}
