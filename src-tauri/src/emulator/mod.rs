@@ -2,32 +2,44 @@ pub mod downloader;
 pub mod ingame_controller;
 pub mod retroarch;
 pub mod standalone;
+pub mod updater;
+pub mod versions;
 
 pub use downloader::*;
 pub use ingame_controller::*;
 pub use retroarch::*;
 pub use standalone::*;
 
+use crate::platforms;
+use crate::state::lock_state;
+use crate::state::storage::{log_error, now_str, save_state};
 use std::path::Path;
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use tauri::{Emitter, Manager};
-use crate::platforms;
-use crate::state::storage::{now_str, save_state, log_error};
-use crate::state::STATE;
 
 pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<String, String> {
     if !Path::new(&rom_path).exists() {
         return Err(format!("ROM no encontrada: {}", rom_path));
+    }
+    // Solo se ejecuta lo que está en la biblioteca escaneada: el frontend
+    // nunca debe poder pedir binarios arbitrarios.
+    let known = {
+        let state = lock_state();
+        state.games.iter().any(|g| g.rom_path == rom_path)
+    };
+    if !known {
+        return Err("El juego no está en la biblioteca. Escanéalo primero.".into());
     }
     let info = platforms::detect_platform(&rom_path)
         .ok_or_else(|| format!("Plataforma no soportada: {}", rom_path))?;
 
     // Use platform-level core override if set, else platform default
     let (core_name, profile_name) = {
-        let state = STATE.lock().unwrap();
-        let core = state.settings.platform_cores
+        let state = lock_state();
+        let core = state
+            .settings
+            .platform_cores
             .get(info.platform)
             .cloned()
             .unwrap_or_else(|| info.core_name.to_string());
@@ -37,11 +49,16 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
 
     // Mark as last played in active profile
     {
-        let mut state = STATE.lock().unwrap();
+        let mut state = lock_state();
         let timestamp = now_str();
         if let Some(game) = state.games.iter().find(|g| g.rom_path == rom_path) {
             let game_id = game.id.clone();
-            if let Some(profile) = state.settings.profiles.iter_mut().find(|p| p.name == profile_name) {
+            if let Some(profile) = state
+                .settings
+                .profiles
+                .iter_mut()
+                .find(|p| p.name == profile_name)
+            {
                 profile.last_played.insert(game_id, timestamp);
             }
         }
@@ -54,15 +71,7 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
     }
 
     let start_instant = std::time::Instant::now();
-
     let is_retroarch = !platforms::is_standalone_emulator(&core_name);
-    let stop_listener = Arc::new(AtomicBool::new(false));
-
-    if is_retroarch {
-        GAME_RUNNING.store(true, Ordering::SeqCst);
-        OVERLAY_OPEN.store(false, Ordering::SeqCst);
-        start_global_hotkey_listener(app.clone(), Arc::clone(&stop_listener));
-    }
 
     let status = if !is_retroarch {
         launch_standalone(&core_name, &rom_path)?
@@ -71,8 +80,10 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
         let (ra_exe, cfg_path) = ensure_retroarch(&profile_name)?;
         let mut child = Command::new(&ra_exe)
             .args([
-                "-c", cfg_path.to_str().unwrap_or(""),
-                "-L", core_path.to_str().unwrap_or(""),
+                "-c",
+                cfg_path.to_str().unwrap_or(""),
+                "-L",
+                core_path.to_str().unwrap_or(""),
                 &rom_path,
             ])
             .spawn()
@@ -84,21 +95,20 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
         s
     };
 
-    if is_retroarch {
-        stop_listener.store(true, Ordering::Relaxed);
-        GAME_RUNNING.store(false, Ordering::SeqCst);
-        OVERLAY_OPEN.store(false, Ordering::SeqCst);
-    }
-
     let elapsed_secs = start_instant.elapsed().as_secs();
 
     // Accumulate play time in active profile
     {
-        let mut state = STATE.lock().unwrap();
+        let mut state = lock_state();
         let profile_name = state.settings.current_profile.clone();
         if let Some(game) = state.games.iter().find(|g| g.rom_path == rom_path) {
             let game_id = game.id.clone();
-            if let Some(profile) = state.settings.profiles.iter_mut().find(|p| p.name == profile_name) {
+            if let Some(profile) = state
+                .settings
+                .profiles
+                .iter_mut()
+                .find(|p| p.name == profile_name)
+            {
                 let current_time = profile.play_time_secs.entry(game_id).or_insert(0);
                 *current_time += elapsed_secs;
             }

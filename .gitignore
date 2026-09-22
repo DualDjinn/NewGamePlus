@@ -15,3 +15,14 @@ err_*.txt
 test_*.txt
 test_db.js
 *.log
+
+# Secrets & signing (never commit)
+.env*
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+*-key.*
+updater/*key*
+sunshine_state.json

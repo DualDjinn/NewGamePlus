@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost https://asset.localhost https: http:; media-src 'self' data: asset: http://asset.localhost https://asset.localhost; connect-src ipc: http://ipc.localhost tauri-plugin-dialog:*; font-src 'self'",
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost https://asset.localhost https:; media-src 'self' data: asset: http://asset.localhost https://asset.localhost https:; connect-src ipc: http://ipc.localhost tauri-plugin-dialog:*; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'none'",
       "assetProtocol": {
         "enable": true,
         "scope": ["**"]
