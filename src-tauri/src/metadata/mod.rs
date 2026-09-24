@@ -156,7 +156,9 @@ pub fn lookup_metadata(
     }
 
     // 4. Si es plataforma Arcade / MAME / Neo-Geo, consultar el diccionario de drivers arcade
-    if platforms::is_arcade_platform(platform) || platforms::arcade_display_name(game_name).is_some() {
+    if platforms::is_arcade_platform(platform)
+        || platforms::arcade_display_name(game_name).is_some()
+    {
         if let Some(arcade_meta) = arcade::resolve_arcade_driver(game_name) {
             return if let Some(mut existing) = db_meta {
                 if existing.genre.is_none() {
@@ -191,8 +193,8 @@ pub fn lookup_metadata(
     };
 
     if needs_curated {
-        let curated_meta = curated::find_curated_catalog_metadata(game_name, platform)
-            .or_else(|| {
+        let curated_meta =
+            curated::find_curated_catalog_metadata(game_name, platform).or_else(|| {
                 db_meta
                     .as_ref()
                     .and_then(|m| m.display_name.as_deref())

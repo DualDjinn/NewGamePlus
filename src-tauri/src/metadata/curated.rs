@@ -1011,7 +1011,12 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     // --- NINTENDO DS CLÁSICOS & SAGAS POPULARES ---
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["pokemon - edicion blanca 2", "pokemon blanca 2", "pokemon blanco 2", "white 2"],
+        keys: &[
+            "pokemon - edicion blanca 2",
+            "pokemon blanca 2",
+            "pokemon blanco 2",
+            "white 2",
+        ],
         display_name: "Pokémon Edición Blanca 2",
         genre: "Rol / RPG",
         developer: "Game Freak",
@@ -1021,7 +1026,12 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["pokemon - edicion negra 2", "pokemon negra 2", "pokemon negro 2", "black 2"],
+        keys: &[
+            "pokemon - edicion negra 2",
+            "pokemon negra 2",
+            "pokemon negro 2",
+            "black 2",
+        ],
         display_name: "Pokémon Edición Negra 2",
         genre: "Rol / RPG",
         developer: "Game Freak",
@@ -1031,7 +1041,12 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["pokemon - edicion blanca", "pokemon blanca", "pokemon blanco", "white version"],
+        keys: &[
+            "pokemon - edicion blanca",
+            "pokemon blanca",
+            "pokemon blanco",
+            "white version",
+        ],
         display_name: "Pokémon Edición Blanca",
         genre: "Rol / RPG",
         developer: "Game Freak",
@@ -1041,7 +1056,12 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["pokemon - edicion negra", "pokemon negra", "pokemon negro", "black version"],
+        keys: &[
+            "pokemon - edicion negra",
+            "pokemon negra",
+            "pokemon negro",
+            "black version",
+        ],
         display_name: "Pokémon Edición Negra",
         genre: "Rol / RPG",
         developer: "Game Freak",
@@ -1051,7 +1071,11 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["pokemon - edicion diamante", "pokemon diamante", "diamond version"],
+        keys: &[
+            "pokemon - edicion diamante",
+            "pokemon diamante",
+            "diamond version",
+        ],
         display_name: "Pokémon Edición Diamante",
         genre: "Rol / RPG",
         developer: "Game Freak",
@@ -1071,7 +1095,11 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["pokemon - edicion platino", "pokemon platino", "platinum version"],
+        keys: &[
+            "pokemon - edicion platino",
+            "pokemon platino",
+            "platinum version",
+        ],
         display_name: "Pokémon Edición Platino",
         genre: "Rol / RPG",
         developer: "Game Freak",
@@ -1081,7 +1109,11 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["pokemon - edicion oro heartgold", "pokemon heartgold", "oro heartgold"],
+        keys: &[
+            "pokemon - edicion oro heartgold",
+            "pokemon heartgold",
+            "oro heartgold",
+        ],
         display_name: "Pokémon Edición Oro HeartGold",
         genre: "Rol / RPG",
         developer: "Game Freak",
@@ -1091,7 +1123,11 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["pokemon - edicion plata soulsilver", "pokemon soulsilver", "plata soulsilver"],
+        keys: &[
+            "pokemon - edicion plata soulsilver",
+            "pokemon soulsilver",
+            "plata soulsilver",
+        ],
         display_name: "Pokémon Edición Plata SoulSilver",
         genre: "Rol / RPG",
         developer: "Game Freak",
@@ -1161,7 +1197,11 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["explotadores del cielo", "exploradores del cielo", "explorers of sky"],
+        keys: &[
+            "explotadores del cielo",
+            "exploradores del cielo",
+            "explorers of sky",
+        ],
         display_name: "Pokémon Mundo Misterioso: Exploradores del Cielo",
         genre: "Roguelike / Rol",
         developer: "Chunsoft",
@@ -1171,7 +1211,11 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["dragon quest iv", "capitulo de los elegidos", "chapters of the chosen"],
+        keys: &[
+            "dragon quest iv",
+            "capitulo de los elegidos",
+            "chapters of the chosen",
+        ],
         display_name: "Dragon Quest IV: Capítulos de los Elegidos",
         genre: "Rol / RPG",
         developer: "ArtePiazza",
@@ -1181,7 +1225,11 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["dragon quest v", "hand of the heavenly bride", "prometida celestial"],
+        keys: &[
+            "dragon quest v",
+            "hand of the heavenly bride",
+            "prometida celestial",
+        ],
         display_name: "Dragon Quest V: La Prometida Celestial",
         genre: "Rol / RPG",
         developer: "ArtePiazza",
@@ -1191,7 +1239,12 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["dragon quest vi", "los reinos oniricos", "reinos oniricos", "realms of revelation"],
+        keys: &[
+            "dragon quest vi",
+            "los reinos oniricos",
+            "reinos oniricos",
+            "realms of revelation",
+        ],
         display_name: "Dragon Quest VI: Los Reinos Oníricos",
         genre: "Rol / RPG",
         developer: "ArtePiazza",
@@ -1201,7 +1254,11 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["dragon quest ix", "sentinels of the starry skies", "centinelas del firmamento"],
+        keys: &[
+            "dragon quest ix",
+            "sentinels of the starry skies",
+            "centinelas del firmamento",
+        ],
         display_name: "Dragon Quest IX: Centinelas del Firmamento",
         genre: "Rol / RPG",
         developer: "Level-5",
@@ -1311,7 +1368,10 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["NDS"],
-        keys: &["phoenix wright - ace attorney", "phoenix wright ace attorney"],
+        keys: &[
+            "phoenix wright - ace attorney",
+            "phoenix wright ace attorney",
+        ],
         display_name: "Phoenix Wright: Ace Attorney",
         genre: "Novela Visual / Aventura",
         developer: "Capcom",
@@ -1869,12 +1929,7 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["GBA"],
-        keys: &[
-            "mother 1+2",
-            "mother 1 2",
-            "mother 1 + 2",
-            "earthbound 1+2",
-        ],
+        keys: &["mother 1+2", "mother 1 2", "mother 1 + 2", "earthbound 1+2"],
         display_name: "Mother 1+2",
         genre: "Rol / RPG",
         developer: "Ape Inc. / HAL Laboratory",
@@ -1884,11 +1939,7 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["GBA"],
-        keys: &[
-            "mother 3",
-            "earthbound 2",
-            "earthbound 3",
-        ],
+        keys: &["mother 3", "earthbound 2", "earthbound 3"],
         display_name: "Mother 3",
         genre: "Rol / RPG",
         developer: "Brownie Brown / HAL Laboratory",
@@ -1898,11 +1949,7 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["GBA", "NDS"],
-        keys: &[
-            "scurge - hive",
-            "scurge hive",
-            "scurge",
-        ],
+        keys: &["scurge - hive", "scurge hive", "scurge"],
         display_name: "Scurge: Hive",
         genre: "Acción y Aventura / Metroidvania",
         developer: "Orbital Media",
@@ -1970,10 +2017,7 @@ pub static CURATED_CATALOG: &[CuratedMetaEntry] = &[
     },
     CuratedMetaEntry {
         platforms: &["SNES", "MEGA_DRIVE"],
-        keys: &[
-            "aero the acro-bat 2",
-            "aero the acrobat 2",
-        ],
+        keys: &["aero the acro-bat 2", "aero the acrobat 2"],
         display_name: "Aero the Acro-Bat 2",
         genre: "Plataformas",
         developer: "Iguana Entertainment",

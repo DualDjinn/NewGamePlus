@@ -237,7 +237,6 @@ pub static ARCADE_DRIVERS: &[ArcadeDriverEntry] = &[
         release_year: 2001,
         franchise: None,
     },
-
     // --- SNK & Neo-Geo Classics ---
     ArcadeDriverEntry {
         driver: "mslug",
@@ -626,7 +625,6 @@ pub static ARCADE_DRIVERS: &[ArcadeDriverEntry] = &[
         release_year: 1990,
         franchise: None,
     },
-
     // --- Konami, Sega, Namco, Midway & Rare Classics ---
     ArcadeDriverEntry {
         driver: "ssriders",
@@ -763,7 +761,10 @@ pub fn resolve_arcade_driver(raw_name: &str) -> Option<GameMetadata> {
         .unwrap_or(raw_name)
         .to_lowercase();
 
-    let clean_driver = stem.split(|c: char| !c.is_alphanumeric()).next().unwrap_or(&stem);
+    let clean_driver = stem
+        .split(|c: char| !c.is_alphanumeric())
+        .next()
+        .unwrap_or(&stem);
 
     for entry in ARCADE_DRIVERS {
         if entry.driver.eq_ignore_ascii_case(clean_driver)

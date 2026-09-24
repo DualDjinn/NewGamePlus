@@ -533,14 +533,46 @@ pub fn query_metadata_by_serial(
     ";
 
     let c1 = serial;
-    let c2 = if clean.is_empty() { "__NO_MATCH__" } else { &clean };
-    let c3 = if clean_upper.is_empty() { "__NO_MATCH__" } else { &clean_upper };
-    let c4 = if with_hyphen.is_empty() { "__NO_MATCH__" } else { &with_hyphen };
-    let c5 = if hex_clean.is_empty() { "__NO_MATCH__" } else { &hex_clean };
-    let c6 = if hex_orig.is_empty() { "__NO_MATCH__" } else { &hex_orig };
-    let c7 = if hex_hyphen.is_empty() { "__NO_MATCH__" } else { &hex_hyphen };
-    let c8 = if hex_core_4.is_empty() { "__NO_MATCH__" } else { &hex_core_4 };
-    let c9 = if core_code_4.is_empty() { "__NO_MATCH__" } else { core_code_4 };
+    let c2 = if clean.is_empty() {
+        "__NO_MATCH__"
+    } else {
+        &clean
+    };
+    let c3 = if clean_upper.is_empty() {
+        "__NO_MATCH__"
+    } else {
+        &clean_upper
+    };
+    let c4 = if with_hyphen.is_empty() {
+        "__NO_MATCH__"
+    } else {
+        &with_hyphen
+    };
+    let c5 = if hex_clean.is_empty() {
+        "__NO_MATCH__"
+    } else {
+        &hex_clean
+    };
+    let c6 = if hex_orig.is_empty() {
+        "__NO_MATCH__"
+    } else {
+        &hex_orig
+    };
+    let c7 = if hex_hyphen.is_empty() {
+        "__NO_MATCH__"
+    } else {
+        &hex_hyphen
+    };
+    let c8 = if hex_core_4.is_empty() {
+        "__NO_MATCH__"
+    } else {
+        &hex_core_4
+    };
+    let c9 = if core_code_4.is_empty() {
+        "__NO_MATCH__"
+    } else {
+        core_code_4
+    };
 
     let meta = conn
         .query_row(

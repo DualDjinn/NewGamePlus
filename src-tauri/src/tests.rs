@@ -109,7 +109,10 @@ mod tests {
                 "NTR-AYWE",
                 "Yoshi's Island DS",
             );
-            assert!(meta.is_some(), "Debe resolver NTR-AYWE vía hex en libretrodb");
+            assert!(
+                meta.is_some(),
+                "Debe resolver NTR-AYWE vía hex en libretrodb"
+            );
             assert_eq!(
                 meta.unwrap().display_name.as_deref(),
                 Some("Yoshi's Island DS")
@@ -1170,14 +1173,23 @@ mod tests {
             "MOTHER 3 [GBA] [Roms Nintendo en Español]",
             "GBA",
         );
-        assert!(mother3.is_some(), "Mother 3 debe encontrarse en catálogo curado");
-        assert_eq!(mother3.unwrap().developer, Some("Brownie Brown / HAL Laboratory".to_string()));
+        assert!(
+            mother3.is_some(),
+            "Mother 3 debe encontrarse en catálogo curado"
+        );
+        assert_eq!(
+            mother3.unwrap().developer,
+            Some("Brownie Brown / HAL Laboratory".to_string())
+        );
 
         let dball = crate::metadata::curated::find_curated_catalog_metadata(
             "Dragon Ball - Advanced Adventure (Europe) (En,Fr,De,Es,It)",
             "GBA",
         );
-        assert!(dball.is_some(), "Dragon Ball Advanced Adventure debe encontrarse");
+        assert!(
+            dball.is_some(),
+            "Dragon Ball Advanced Adventure debe encontrarse"
+        );
 
         let fat_princess = crate::metadata::curated::find_curated_catalog_metadata(
             "Fat Princess - Fistful of Cake (Europe) (En,Fr,De,Es,It,Pt,Ru,El) (PSP) (PSN)",
@@ -1194,14 +1206,23 @@ mod tests {
         // Verificaciones de drivers Arcade
         let mslug = crate::metadata::arcade::resolve_arcade_driver("mslug");
         assert!(mslug.is_some(), "Metal Slug debe resolverse por driver");
-        assert_eq!(mslug.unwrap().developer, Some("Nazca Corporation".to_string()));
+        assert_eq!(
+            mslug.unwrap().developer,
+            Some("Nazca Corporation".to_string())
+        );
 
         let dino = crate::metadata::arcade::resolve_arcade_driver("dino");
-        assert!(dino.is_some(), "Cadillacs & Dinosaurs debe resolverse por driver");
+        assert!(
+            dino.is_some(),
+            "Cadillacs & Dinosaurs debe resolverse por driver"
+        );
         assert_eq!(dino.unwrap().developer, Some("Capcom".to_string()));
 
         let kinst = crate::metadata::arcade::resolve_arcade_driver("kinst");
-        assert!(kinst.is_some(), "Killer Instinct debe resolverse por driver");
+        assert!(
+            kinst.is_some(),
+            "Killer Instinct debe resolverse por driver"
+        );
         assert_eq!(kinst.unwrap().developer, Some("Rare".to_string()));
 
         // 2. Cargar newgameplus.json y enriquecer juegos sin metadatos
@@ -1228,7 +1249,9 @@ mod tests {
 
             if let Some(m) = meta {
                 let mut changed = false;
-                if (game.genre.is_none() || game.genre.as_deref() == Some("Arcade")) && m.genre.is_some() {
+                if (game.genre.is_none() || game.genre.as_deref() == Some("Arcade"))
+                    && m.genre.is_some()
+                {
                     game.genre = m.genre;
                     changed = true;
                 }
