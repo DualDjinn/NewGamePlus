@@ -27,6 +27,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+      - name: setup binary resource placeholders for CI
+        run: |
+          New-Item -ItemType Directory -Force -Path src-tauri/binaries/RetroArch
+          New-Item -ItemType Directory -Force -Path src-tauri/binaries/RPCS3
+          if (-not (Test-Path src-tauri/binaries/libretrodb.sqlite)) { New-Item -ItemType File -Force -Path src-tauri/binaries/libretrodb.sqlite }
       - name: fmt
         run: cargo fmt --check --manifest-path src-tauri/Cargo.toml
       - name: clippy
