@@ -26,6 +26,7 @@ pub fn get_active_game_id() -> Option<String> {
 }
 
 #[derive(serde::Serialize, Clone, Debug)]
+#[allow(dead_code)]
 pub struct PauseOpenPayload {
     pub screenshot_path: Option<String>,
     pub game_id: Option<String>,
@@ -237,70 +238,14 @@ pub fn capture_screen_to_bmp() -> Result<String, String> {
     Err("Captura de pantalla no soportada en esta plataforma".into())
 }
 
-/// Starts the global hotkey listener (VK_ESCAPE and XInput controllers for L3+R3, Back+Start, or Guide)
-pub fn start_global_hotkey_listener(app: AppHandle, stop_flag: Arc<AtomicBool>) {
-    std::thread::spawn(move || {
-        #[cfg(target_os = "windows")]
-        {
-            use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_ESCAPE};
-            use windows::Win32::UI::Input::XboxController::{
-                XInputGetState, XINPUT_GAMEPAD_BACK, XINPUT_GAMEPAD_LEFT_THUMB,
-                XINPUT_GAMEPAD_RIGHT_THUMB, XINPUT_GAMEPAD_START, XINPUT_STATE,
-            };
-
-            let mut was_pressed = false;
-            let mut last_toggle = std::time::Instant::now();
-
-            while !stop_flag.load(Ordering::Relaxed) {
-                // Check if Escape key is pressed (bit 15 indicates key is down)
-                let esc_state = unsafe { GetAsyncKeyState(VK_ESCAPE.0 as i32) };
-                let is_esc_down = (esc_state as u16 & 0x8000) != 0;
-
-                // Check L3 + R3 thumbsticks or Back + Start or Guide button on any connected gamepad (0..4)
-                let mut is_gamepad_down = false;
-                for i in 0..4 {
-                    let mut xs = XINPUT_STATE::default();
-                    let ret = unsafe { XInputGetState(i, &mut xs) };
-                    if ret == 0 {
-                        let btns = xs.Gamepad.wButtons.0;
-                        let thumb_combo =
-                            XINPUT_GAMEPAD_LEFT_THUMB.0 | XINPUT_GAMEPAD_RIGHT_THUMB.0;
-                        let menu_combo = XINPUT_GAMEPAD_BACK.0 | XINPUT_GAMEPAD_START.0;
-                        let guide_btn = 0x0400u16;
-
-                        if (btns & thumb_combo) == thumb_combo
-                            || (btns & menu_combo) == menu_combo
-                            || (btns & guide_btn) == guide_btn
-                        {
-                            is_gamepad_down = true;
-                            break;
-                        }
-                    }
-                }
-
-                let is_down = is_esc_down || is_gamepad_down;
-
-                if is_down && !was_pressed && last_toggle.elapsed() > Duration::from_millis(600) {
-                    last_toggle = std::time::Instant::now();
-                    let is_running = GAME_RUNNING.load(Ordering::Relaxed);
-                    if is_running {
-                        let is_overlay = OVERLAY_OPEN.load(Ordering::Relaxed);
-                        if is_overlay {
-                            let _ = resume_in_game(&app);
-                        } else {
-                            let _ = pause_in_game(&app);
-                        }
-                    }
-                }
-
-                was_pressed = is_down;
-                std::thread::sleep(Duration::from_millis(40));
-            }
-        }
-    });
+/// Global hotkey listener is deprecated in favor of RetroArch's native Ozone Quick Menu
+#[allow(dead_code)]
+pub fn start_global_hotkey_listener(_app: AppHandle, _stop_flag: Arc<AtomicBool>) {
+    // Native RetroArch Ozone menu handles Escape and L3+R3 directly
 }
 
 /// Pauses RetroArch and shows NewGame+ pause cards directly on top of the game
+#[allow(dead_code)]
 pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
     // 1. Send pause command to RetroArch (and focus loss will also pause via pause_nonactive = true)
     let _ = send_retroarch_command("PAUSE_TOGGLE");

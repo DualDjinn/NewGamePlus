@@ -102,12 +102,9 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
 
         GAME_RUNNING.store(true, Ordering::SeqCst);
         RETROARCH_PID.store(child.id(), Ordering::SeqCst);
-        let stop_hotkeys = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        start_global_hotkey_listener(app.clone(), stop_hotkeys.clone());
 
         let s = child.wait().map_err(|e| e.to_string())?;
 
-        stop_hotkeys.store(true, Ordering::SeqCst);
         GAME_RUNNING.store(false, Ordering::SeqCst);
         OVERLAY_OPEN.store(false, Ordering::SeqCst);
         RETROARCH_PID.store(0, Ordering::SeqCst);

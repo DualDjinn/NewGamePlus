@@ -230,19 +230,13 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     };
 
     let mut full_cfg = format!(
-        "menu_driver = \"null\"\n\
-         input_menu_toggle = \"nul\"\n\
-         input_menu_toggle_gamepad_combo = \"0\"\n\
+        "menu_driver = \"ozone\"\n\
+         input_menu_toggle = \"escape\"\n\
+         input_menu_toggle_gamepad_combo = \"2\"\n\
          input_quit_gamepad_combo = \"0\"\n\
-         input_enable_hotkey = \"nul\"\n\
+         input_enable_hotkey = \"\"\n\
          input_exit_emulator = \"nul\"\n\
-         input_exit_emulator_btn = \"nul\"\n\
-         input_exit_emulator_axis = \"nul\"\n\
-         input_pause_toggle = \"nul\"\n\
-         input_pause_toggle_btn = \"nul\"\n\
-         notification_show_when_menu_is_alive = \"false\"\n\
-         video_font_enable = \"false\"\n\
-         quit_press_twice = \"false\"\n\
+         quit_press_twice = \"true\"\n\
          quit_on_close_content = \"2\"\n\
          load_dummy_on_core_shutdown = \"false\"\n\
          menu_pause_libretro = \"true\"\n\
@@ -316,7 +310,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          settings_show_achievements = \"false\"\n\
          network_cmd_enable = \"true\"\n\
          network_cmd_port = \"55355\"\n\
-         pause_nonactive = \"true\"\n\
+         pause_nonactive = \"false\"\n\
          input_auto_mouse_grab = \"false\"\n\
          cursor_hide_fullscreen = \"true\"\n\
          cursor_hide_delay = \"2000000\"\n\
