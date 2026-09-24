@@ -88,18 +88,29 @@
 
 .library-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(276px, 1fr));
-  gap: 20px;
-  padding: 8px 0;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  padding: 12px 0 16px;
 }
 
 .library-grid .game-card {
   width: 100%;
   /* ponytail: el navegador salta el render de tarjetas fuera de pantalla; grid virtualizado sin librerías */
   content-visibility: auto;
-  contain-intrinsic-size: auto 420px;
+  contain-intrinsic-size: auto 260px;
 }
 
 .library-grid .game-card-body {
   width: 100%;
+  height: 205px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.18), 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+.library-grid .game-card:hover .game-card-body,
+.library-grid .game-card:focus-visible .game-card-body,
+.library-grid .game-card-focused .game-card-body {
+  border-color: var(--accent);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 14px 36px rgba(0, 0, 0, 0.75), 0 0 24px var(--accent-glow);
 }

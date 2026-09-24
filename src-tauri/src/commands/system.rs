@@ -37,9 +37,11 @@ pub fn open_music_folder() -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn scan_and_fetch_cores(
+pub async fn scan_and_fetch_cores(
     app: tauri::AppHandle,
     folders: Vec<String>,
 ) -> Result<ScanResult, String> {
-    scan_and_fetch_cores_inner(app, folders)
+    tauri::async_runtime::spawn_blocking(move || scan_and_fetch_cores_inner(app, folders))
+        .await
+        .map_err(|e| e.to_string())?
 }

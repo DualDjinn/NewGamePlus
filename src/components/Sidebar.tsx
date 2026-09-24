@@ -1,8 +1,9 @@
 import { useState, useEffect, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import type { Section, Game } from "../types";
-import { HomeIcon, LibraryIcon, HeartIcon, GearIcon, TagIcon, CastIcon, MaximizeIcon, MinimizeIcon } from "./icons";
+import { HomeIcon, LibraryIcon, HeartIcon, GearIcon, TagIcon, CastIcon, MaximizeIcon, MinimizeIcon, BookIcon } from "./icons";
 import { VinylPlayer } from "./VinylPlayer";
+import { getLocalizedGenreName, normalizeGenre } from "../lib/genreLocalization";
 import "./Sidebar.css";
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
   profiles?: string[];
   onProfileSwitch?: (name: string) => void;
   onOpenCast?: () => void;
+  onOpenGuide?: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   settingsBadge?: boolean;
@@ -40,6 +42,7 @@ export default function Sidebar({
   profiles = [],
   onProfileSwitch,
   onOpenCast,
+  onOpenGuide,
   isFullscreen = false,
   onToggleFullscreen,
   settingsBadge = false,
@@ -121,23 +124,37 @@ export default function Sidebar({
             {t("sidebar.genres").toUpperCase()} {company ? `• ${company}` : ""}
           </div>
           <ul>
-            {genres.map((g) => (
-              <li key={g.name}>
-                <a
-                  href="#"
-                  className={section === "genre" && selectedGenre === g.name ? "active" : ""}
-                  title={g.name}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onSelectGenre(g.name);
-                  }}
-                >
-                  <span className="sidebar-label">{g.name}</span>
-                  <span className="sidebar-genre-count">{g.count}</span>
-                </a>
-              </li>
-            ))}
+            {genres.slice(0, 6).map((g) => {
+              const localizedName = getLocalizedGenreName(g.name, t);
+              return (
+                <li key={g.name}>
+                  <a
+                    href="#"
+                    className={section === "genre" && normalizeGenre(selectedGenre) === normalizeGenre(g.name) ? "active" : ""}
+                    title={localizedName}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSelectGenre(g.name);
+                    }}
+                  >
+                    <span className="sidebar-label">{localizedName}</span>
+                    <span className="sidebar-genre-count">{g.count}</span>
+                  </a>
+                </li>
+              );
+            })}
           </ul>
+          {genres.length > 6 && (
+            <button
+              type="button"
+              className="sidebar-genres-explore-btn"
+              onClick={() => onNavigate("genres")}
+              title={t("sidebar.exploreAllGenres")}
+            >
+              <span>{t("sidebar.exploreAllGenres")}</span>
+              <span className="sidebar-genres-explore-arrow">→</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -192,6 +209,18 @@ export default function Sidebar({
               </button>
             )}
 
+            {onOpenGuide && (
+              <button
+                type="button"
+                className="sidebar-guide-btn"
+                onClick={onOpenGuide}
+                title="Guía de Inicio - NewGame+"
+                aria-label="Guía de Inicio - NewGame+"
+              >
+                <BookIcon />
+              </button>
+            )}
+
             <div className="sidebar-profile-wrap" onClick={(e) => e.stopPropagation()}>
               <div
                 className="sidebar-profile-avatar"
@@ -216,6 +245,17 @@ export default function Sidebar({
                   </button>
                 ))}
                 <div className="sidebar-profile-dropdown-divider" />
+                {onOpenGuide && (
+                  <button
+                    className="sidebar-profile-dropdown-item"
+                    onClick={() => {
+                      onOpenGuide();
+                      setProfileMenuOpen(false);
+                    }}
+                  >
+                    <BookIcon /> Guía de Inicio (NewGame+)
+                  </button>
+                )}
                 <button
                   className="sidebar-profile-dropdown-item"
                   onClick={() => {

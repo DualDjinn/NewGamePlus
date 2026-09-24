@@ -399,9 +399,9 @@ pub fn find_rom_serial(conn: &Connection, rom_name: &str, rom_path: &Path) -> Op
                             |r| r.get(0),
                         )
                         .ok();
-                    if !db_plat.map_or(true, |p| {
-                        p == expected || p.starts_with(&format!("{} (", expected))
-                    }) {
+                    if !db_plat
+                        .is_none_or(|p| p == expected || p.starts_with(&format!("{} (", expected)))
+                    {
                         continue;
                     }
                 }
@@ -435,7 +435,7 @@ pub fn find_rom_serial(conn: &Connection, rom_name: &str, rom_path: &Path) -> Op
                     .count();
                 score += shared as i32 * 10;
 
-                if best.as_ref().map_or(true, |(s, _)| score > *s) {
+                if best.as_ref().is_none_or(|(s, _)| score > *s) {
                     best = Some((score, serial));
                 }
             }
@@ -480,6 +480,32 @@ pub fn query_metadata_by_serial(
         .map(|b| format!("{:02X}", b))
         .collect::<String>();
 
+    // Extraer código de cartucho para Nintendo DS, GBA, GBC y GB
+    // Prefijos comunes en headers de Nintendo: NTR- (NDS), TWL- (DSi), AGB- (GBA), CGB- (GBC), DMG- (GB)
+    let core_code_4 = if (clean_upper.starts_with("NTR")
+        || clean_upper.starts_with("TWL")
+        || clean_upper.starts_with("AGB")
+        || clean_upper.starts_with("CGB")
+        || clean_upper.starts_with("DMG"))
+        && clean_upper.len() >= 7
+    {
+        &clean_upper[3..7]
+    } else if clean_upper.len() == 4 {
+        &clean_upper[..]
+    } else {
+        ""
+    };
+
+    let hex_core_4 = if !core_code_4.is_empty() {
+        core_code_4
+            .as_bytes()
+            .iter()
+            .map(|b| format!("{:02X}", b))
+            .collect::<String>()
+    } else {
+        clean_upper.clone()
+    };
+
     let query = "
         SELECT g.display_name, g.release_year, g.release_month,
                d.name, p.name, gn.name, f.name, r.name, rt.name
@@ -490,28 +516,36 @@ pub fn query_metadata_by_serial(
         LEFT JOIN franchises f ON g.franchise_id = f.id
         LEFT JOIN regions r ON g.region_id = r.id
         LEFT JOIN ratings rt ON g.rating_id = rt.id
-        WHERE g.serial_id = ?1
+        WHERE (g.serial_id = ?1
            OR g.serial_id = ?2
            OR g.serial_id = ?3
            OR g.serial_id = ?4
            OR g.serial_id = ?5
            OR g.serial_id = ?6
            OR g.serial_id = ?7
+           OR g.serial_id = ?8
+           OR g.serial_id = ?9)
+          AND g.serial_id != ''
+          AND g.serial_id != '216D697373696E67'
+          AND g.serial_id != '!missing'
         ORDER BY (g.developer_id IS NOT NULL) DESC, (g.genre_id IS NOT NULL) DESC, (g.publisher_id IS NOT NULL) DESC, g.release_year ASC
         LIMIT 1
     ";
+
+    let c1 = serial;
+    let c2 = if clean.is_empty() { "__NO_MATCH__" } else { &clean };
+    let c3 = if clean_upper.is_empty() { "__NO_MATCH__" } else { &clean_upper };
+    let c4 = if with_hyphen.is_empty() { "__NO_MATCH__" } else { &with_hyphen };
+    let c5 = if hex_clean.is_empty() { "__NO_MATCH__" } else { &hex_clean };
+    let c6 = if hex_orig.is_empty() { "__NO_MATCH__" } else { &hex_orig };
+    let c7 = if hex_hyphen.is_empty() { "__NO_MATCH__" } else { &hex_hyphen };
+    let c8 = if hex_core_4.is_empty() { "__NO_MATCH__" } else { &hex_core_4 };
+    let c9 = if core_code_4.is_empty() { "__NO_MATCH__" } else { core_code_4 };
+
     let meta = conn
         .query_row(
             query,
-            rusqlite::params![
-                serial,
-                clean,
-                clean_upper,
-                with_hyphen,
-                hex_clean,
-                hex_orig,
-                hex_hyphen
-            ],
+            rusqlite::params![c1, c2, c3, c4, c5, c6, c7, c8, c9],
             |row| {
                 Ok(GameMetadata {
                     display_name: row.get(0)?,
@@ -531,11 +565,12 @@ pub fn query_metadata_by_serial(
     if !rom_name.is_empty() {
         let base_rom = base_title(rom_name);
         let base_clean = base_rom.trim();
+        let d_name = meta.display_name.as_deref().unwrap_or("");
         if !base_clean.is_empty()
             && base_clean != "eboot"
             && base_clean != "boot"
             && base_clean != "default"
-            && !plausible_match(rom_name, meta.display_name.as_deref().unwrap_or(""))
+            && !plausible_match(rom_name, d_name)
         {
             return None;
         }
@@ -704,10 +739,8 @@ pub fn query_game_metadata_comprehensive(
                                 let (b_count, b_year) = metadata_completeness(best_meta);
                                 if c_count > b_count {
                                     true
-                                } else if c_count == b_count && c_year < b_year {
-                                    true
                                 } else {
-                                    false
+                                    c_count == b_count && c_year < b_year
                                 }
                             } else {
                                 false
@@ -821,10 +854,8 @@ pub fn query_game_metadata_comprehensive(
                             let (b_count, b_year) = metadata_completeness(best_meta);
                             if c_count > b_count {
                                 true
-                            } else if c_count == b_count && c_year < b_year {
-                                true
                             } else {
-                                false
+                                c_count == b_count && c_year < b_year
                             }
                         } else {
                             false

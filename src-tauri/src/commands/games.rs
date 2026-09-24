@@ -9,7 +9,7 @@ use std::path::Path;
 
 fn base64_encode(data: &[u8]) -> String {
     const TABLE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    let mut result = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as u32;
         let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
@@ -46,7 +46,7 @@ pub fn get_games() -> Result<Vec<Game>, String> {
         .iter()
         .map(|g| {
             let mut game = g.clone();
-            game.favorite = profile.map_or(false, |p| p.favorites.contains(&g.id));
+            game.favorite = profile.is_some_and(|p| p.favorites.contains(&g.id));
             game.last_played = profile.and_then(|p| p.last_played.get(&g.id).cloned());
             game.play_time_secs = profile.and_then(|p| p.play_time_secs.get(&g.id).copied());
             game
@@ -183,7 +183,7 @@ pub fn get_game_metadata(rom_path: String) -> Result<Option<GameMetadata>, Strin
     };
 
     let guard = metadata::libretro::SHARED_META_CONN.lock().unwrap();
-    let mut meta = metadata::lookup_metadata(&*guard, path, &target_name);
+    let mut meta = metadata::lookup_metadata(&guard, path, &target_name);
 
     if let Some(pg) = persisted_game {
         if pg.developer.is_some()

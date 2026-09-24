@@ -60,6 +60,7 @@ export default function HeroBanner({
 
   return (
     <div className={`hero-container ${isImmersive ? "hero-immersive" : ""}`}>
+      {!isImmersive && <div className="hero-ambilight-glow" aria-hidden="true" />}
       <div className={`hero-card ${isImmersive ? "hero-card-immersive" : ""}`}>
 
         {featured.map((g, idx) => {
@@ -201,29 +202,11 @@ export default function HeroBanner({
           </div>
         )}
 
-        {/* Indicadores en esquina inferior derecha del Hero en modo Inmersivo */}
-        {isImmersive && (
-          <div className="hero-indicators hero-indicators-right" onClick={(e) => e.stopPropagation()}>
-            {featured.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                className={`hero-pill ${i === current ? "active" : ""}`}
-                onClick={() => setCurrent(i)}
-                aria-label={`Juego ${i + 1}`}
-              >
-                {i === current && (
-                  <span key={current} className="hero-pill-progress" />
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Indicadores en modo Clásico (centrados debajo de la tarjeta) */}
-      {!isImmersive && (
-        <div className="hero-indicators" onClick={(e) => e.stopPropagation()}>
+        {/* Indicadores de carrusel integrados dentro del Hero Card */}
+        <div
+          className={`hero-indicators ${isImmersive ? "hero-indicators-right" : "hero-indicators-classic"}`}
+          onClick={(e) => e.stopPropagation()}
+        >
           {featured.map((_, i) => (
             <button
               key={i}
@@ -238,7 +221,15 @@ export default function HeroBanner({
             </button>
           ))}
         </div>
-      )}
+
+        {/* Detalle retro de encendido (Power LED) en el bisel inferior del marco CRT */}
+        {!isImmersive && (
+          <div className="hero-crt-bezel-led" aria-hidden="true" title="Power">
+            <span className="hero-crt-led-dot" />
+            <span className="hero-crt-led-text">CRT • TRINITRON</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

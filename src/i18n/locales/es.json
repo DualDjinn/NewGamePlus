@@ -33,13 +33,17 @@
     "settings": "Ajustes",
     "music": "Música",
     "collapse": "Colapsar menú",
-    "expand": "Expandir menú"
+    "expand": "Expandir menú",
+    "exploreAllGenres": "Explorar todos los géneros"
   },
   "search": {
     "gamesPlaceholder": "Buscar juegos o sagas...",
     "settingsPlaceholder": "Buscar en configuración (ej: volumen, tema, bios)...",
     "noResults": "No se encontraron resultados para \"{{query}}\"",
     "quickResults": "Resultados de búsqueda",
+    "searchResultsWithCount": "Resultados de búsqueda ({{count}})",
+    "resultsWithCount": "Resultados ({{count}})",
+    "noResultsShort": "No se encontraron resultados",
     "goToOption": "Ir a la opción",
     "optionsFound": "opciones encontradas",
     "optionFound": "opción encontrada"
@@ -64,12 +68,43 @@
     "sortLastPlayed": "Jugado recientemente",
     "emptyLibrary": "Tu biblioteca está vacía",
     "emptyLibraryHint": "Ve a Ajustes para agregar tus carpetas de juegos y comenzar a escanear.",
+    "noFavoritesYet": "No hay favoritos aún",
     "filterPlatform": "Todas las plataformas",
     "filterGenre": "Todos los géneros",
     "recent": "Continuar Jugando",
     "favorites": "Tus Favoritos",
     "newlyAdded": "Agregados Recientemente",
     "otherTitles": "Otros títulos"
+  },
+  "genres": {
+    "title": "Explorar Géneros",
+    "subtitle": "Descubrí tus juegos organizados por categorías y temáticas",
+    "backToGenres": "Volver a Géneros",
+    "noGamesInGenre": "No hay juegos en este género",
+    "noGenresAvailable": "No hay géneros disponibles",
+    "forCompany": "para {{company}}",
+    "featured": "Destacado: {{name}}",
+    "names": {
+      "Action": "Acción",
+      "Adventure": "Aventura",
+      "Platformer": "Plataformas",
+      "Platform": "Plataformas",
+      "Role-Playing": "Rol / RPG",
+      "RPG": "Rol / RPG",
+      "Fighting": "Lucha",
+      "Racing": "Carreras",
+      "Sports": "Deportes",
+      "Puzzle": "Puzles",
+      "Shooter": "Disparos",
+      "Strategy": "Estrategia",
+      "Simulation": "Simulación",
+      "Arcade": "Arcade",
+      "Horror": "Terror",
+      "Beat 'em up": "Beat 'em up",
+      "Music": "Música",
+      "Party": "Fiesta",
+      "Sandbox": "Mundo Abierto"
+    }
   },
   "scan": {
     "scanning": "Escaneando {{label}}…",
@@ -115,13 +150,34 @@
       "languageEs": "Español",
       "languageEn": "English",
       "theme": "Tema Visual",
-      "layoutStyle": "Estilo de Biblioteca"
+      "layoutStyle": "Estilo de Biblioteca",
+      "splashSection": "Animación de Inicio (Splash Screen)",
+      "splashSubtitle": "Personaliza la experiencia cinematográfica de bienvenida al abrir NewGame+",
+      "splashEnable": "Animación al abrir la aplicación",
+      "splashEnableDesc": "Reproduce la secuencia cinematográfica de consola cada vez que ingresas a la app.",
+      "splashSound": "Efecto de sonido de arranque",
+      "splashSoundDesc": "Acorde y destello sintético cinematográfico sincronizado con el logo.",
+      "splashPreviewBtn": "Previsualizar animación",
+      "splashSkipHint": "Cualquier botón o tecla para continuar"
     },
     "librarySection": {
       "romFolders": "Carpetas de Juegos (ROMs)",
       "addFolder": "Agregar Carpeta",
       "rescan": "Escanear Juegos Ahora",
       "noFolders": "No has configurado ninguna carpeta de juegos todavía."
+    },
+    "confirm": {
+      "folderTitle": "Quitar Carpeta de Juegos",
+      "folderDesc": "¿Deseas quitar esta carpeta? Los archivos físicos permanecerán intactos en tu disco, pero los juegos dejarán de aparecer en el catálogo.",
+      "biosTitle": "Quitar Carpeta de BIOS",
+      "biosDesc": "¿Deseas quitar esta ruta de BIOS? Los emuladores podrían requerir estos archivos para iniciar juegos de consolas con firmware especial.",
+      "musicTitle": "Quitar Carpeta de Música",
+      "musicDesc": "¿Deseas quitar esta carpeta de música? Los archivos de audio permanecerán intactos en tu disco.",
+      "profileTitle": "Eliminar Perfil",
+      "profileDesc": "¿Estás seguro de que deseas eliminar el perfil \"{{name}}\"? Se perderán sus favoritos y registros de juego independientes.",
+      "delete": "Eliminar",
+      "remove": "Quitar",
+      "cancel": "Cancelar"
     },
     "sound": {
       "musicVolume": "Volumen de Música de Fondo",

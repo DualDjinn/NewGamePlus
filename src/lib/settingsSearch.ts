@@ -116,6 +116,16 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
     keywords: ["kiosko", "kiosk", "consola", "pantalla completa", "fullscreen", "sin bordes", "modo tv", "borderless"],
     targetId: "settings-kiosk",
   },
+  {
+    id: "appearance-splash",
+    tab: "appearance",
+    title: "Animación de Inicio (Splash Screen)",
+    category: "Apariencia",
+    icon: "🎬",
+    description: "Animación cinematográfica de consola al abrir la app y efecto de sonido",
+    keywords: ["animacion", "splash", "intro", "inicio", "arranque", "boot", "sonido", "apertura", "bienvenida", "consola", "cinematica"],
+    targetId: "settings-splash",
+  },
 
   // --- BIBLIOTECA ---
   {

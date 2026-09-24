@@ -15,6 +15,11 @@
   --border-card: rgba(255, 255, 255, 0.09);
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --text-light: #cbd5e1;
+  --color-success: #10b981;
+  --color-error: #e50914;
+  --color-warning: #f59e0b;
 }
 
 [data-theme="gold"] {
@@ -175,7 +180,9 @@
 }
 
 [data-layout-style="immersive"] .category-row:first-of-type {
-  margin-top: 52px;
+  margin-top: 8px;
+  position: relative;
+  z-index: 10;
 }
 
 .app-header {
@@ -361,10 +368,13 @@
 
 .vinyl-navbar-waves .wave-bar {
   width: 2.5px;
-  height: 4px;
+  height: 14px;
   background: var(--accent, #e5a00d);
   border-radius: 2px;
-  transition: height 0.2s ease;
+  transform-origin: bottom;
+  transform: scaleY(0.28);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  will-change: transform;
   opacity: 0.5;
 }
 
@@ -379,9 +389,9 @@
 .vinyl-navbar-waves.active .bar-4 { animation-delay: 0.4s; }
 
 @keyframes vinyl-wave-jump {
-  0% { height: 4px; }
-  50% { height: 14px; }
-  100% { height: 6px; }
+  0% { transform: scaleY(0.28); }
+  50% { transform: scaleY(1); }
+  100% { transform: scaleY(0.42); }
 }
 
 .vinyl-navbar-info {
@@ -1243,25 +1253,47 @@
   transform: scale(1.15);
 }
 
+/* Backdrop dimmer para buscador */
+.app-search-backdrop {
+  position: fixed;
+  inset: 0;
+  top: 64px;
+  background: rgba(5, 7, 12, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 90;
+  animation: search-backdrop-fade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  cursor: default;
+}
+
+@keyframes search-backdrop-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Dropdown flotante en navbar */
 .app-navbar-search-dropdown {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  background: rgba(15, 18, 28, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(14, 17, 26, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;
-  padding: 6px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 8px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   z-index: 500;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   animation: navbar-search-fade 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  max-height: 380px;
+  max-height: 420px;
   overflow-y: auto;
 }
 
@@ -1279,27 +1311,32 @@
 .app-navbar-search-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 10px;
+  gap: 14px;
+  padding: 8px 12px;
   border-radius: 10px;
+  border-left: 3px solid transparent;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .app-navbar-search-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.09);
+  border-left-color: var(--accent);
+  transform: translateX(3px);
 }
 
 .app-navbar-search-item-thumb {
-  width: 36px;
-  height: 50px;
-  border-radius: 6px;
+  width: 40px;
+  height: 56px;
+  border-radius: 8px;
   overflow: hidden;
-  background: #1e2230;
+  background: #141722;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .app-navbar-search-item-img {
@@ -1317,12 +1354,12 @@
 .app-navbar-search-item-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 
 .app-navbar-search-item-title {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 700;
   color: #fff;
   white-space: nowrap;
@@ -1333,18 +1370,24 @@
 .app-navbar-search-item-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 11px;
 }
 
 .app-navbar-search-item-plat {
-  background: rgba(var(--accent-rgb, 245, 158, 11), 0.2);
-  color: var(--accent);
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  font-weight: 800;
   text-transform: uppercase;
-  font-size: 9.5px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
 }
 
 .app-navbar-search-item-year,
@@ -1376,7 +1419,7 @@
   align-items: center;
   gap: 12px;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -1518,7 +1561,7 @@
   right: 0;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: 12px;
   min-width: 190px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
   z-index: 200;
@@ -1645,16 +1688,44 @@
 
 .app-error-banner {
   position: fixed;
-  top: 0;
-  left: 220px;
-  right: 0;
-  z-index: 200;
-  padding: 12px;
-  background: #b71c1c;
-  color: #fff;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  padding: 9px 22px;
+  border-radius: 9999px;
+  background: rgba(185, 28, 28, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 16px rgba(229, 9, 20, 0.35);
+  color: #ffffff;
   font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
   text-align: center;
-  animation: fadeInSlide 0.3s;
+  pointer-events: none;
+  animation: toastPopIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 90vw;
+  white-space: nowrap;
+}
+
+.app-error-banner.is-info {
+  background: rgba(19, 22, 34, 0.94);
+  border-color: rgba(var(--accent-rgb, 245, 158, 11), 0.5);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.65), 0 0 16px var(--accent-glow);
+  color: var(--text-main, #f8fafc);
+}
+
+@keyframes toastPopIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
 }
 
 /* ============================================================

@@ -27,7 +27,7 @@ pub fn detect_iso_platform(p: &Path) -> PlatformInfo {
             }
 
             // 1.1 GameCube Magic: en offset 0x1C (28) el magic es 0xC2339F3D
-            if slice.len() >= 32 && &slice[0x1c..0x20] == &[0xc2, 0x33, 0x9f, 0x3d] {
+            if slice.len() >= 32 && slice[0x1c..0x20] == [0xc2, 0x33, 0x9f, 0x3d] {
                 return PlatformInfo {
                     platform: "GAMECUBE",
                     core_name: "dolphin",
@@ -977,7 +977,7 @@ pub fn arcade_thumbnail_candidates(stem: &str, display_name: Option<&str>) -> Ve
     add(title_clean);
 
     // 2. Variantes con & -> _ y / -> _
-    let with_underscores = title_clean.replace('&', "_").replace('/', "_");
+    let with_underscores = title_clean.replace(['&', '/'], "_");
     add(&with_underscores);
 
     // 3. Título sin paréntesis ni corchetes
@@ -991,7 +991,7 @@ pub fn arcade_thumbnail_candidates(stem: &str, display_name: Option<&str>) -> Ve
         .trim();
     if !bare.is_empty() {
         add(bare);
-        add(&bare.replace('&', "_").replace('/', "_"));
+        add(&bare.replace(['&', '/'], "_"));
 
         // Títulos dobles y variantes oficiales específicas de arcade
         if bare.contains("Sunset Riders") {

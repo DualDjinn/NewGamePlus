@@ -199,11 +199,10 @@ pub fn scan_music_tracks_inner() -> Vec<MusicTrack> {
                 let name_clean = g_name.trim();
                 let disp_clean = g_disp.trim();
 
-                let found = if name_clean.len() >= 4
-                    && stem_lower.contains(&name_clean.to_lowercase())
+                let found = if (name_clean.len() >= 4
+                    && stem_lower.contains(&name_clean.to_lowercase()))
+                    || (disp_clean.len() >= 4 && stem_lower.contains(&disp_clean.to_lowercase()))
                 {
-                    Some(disp_clean.to_string())
-                } else if disp_clean.len() >= 4 && stem_lower.contains(&disp_clean.to_lowercase()) {
                     Some(disp_clean.to_string())
                 } else {
                     None
@@ -270,7 +269,7 @@ pub fn scan_music_tracks_inner() -> Vec<MusicTrack> {
         }
     }
 
-    tracks.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
+    tracks.sort_by_key(|a| a.title.to_lowercase());
     tracks
 }
 

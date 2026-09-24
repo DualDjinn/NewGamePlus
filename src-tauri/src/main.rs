@@ -41,20 +41,6 @@ fn main() {
     // Migrar saves compartidos al perfil activo
     migrate_legacy_saves(&profile_name, &get_retroarch_exe());
 
-    // Migrar cores antiguos de MAME a fbneo
-    for game in &mut initial.games {
-        if game.platform == "MAME"
-            && (game.core_name == "mame2003_plus" || game.core_name == "mame")
-        {
-            game.core_name = "fbneo".into();
-        }
-    }
-    if let Some(mame_core) = initial.settings.platform_cores.get_mut("MAME") {
-        if mame_core == "mame2003_plus" || mame_core == "mame" {
-            *mame_core = "fbneo".into();
-        }
-    }
-
     save_state(&initial);
     {
         let mut state = lock_state();
@@ -63,7 +49,6 @@ fn main() {
 
     // 2. Iniciar Tauri Application
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let state = lock_state();

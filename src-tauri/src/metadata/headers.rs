@@ -165,17 +165,15 @@ pub fn read_snes_header(path: &Path) -> Option<RomHeaderInfo> {
 
     // Probar LoROM primero
     for offset in [0x7FC0, 0xFFC0] {
-        if len > offset + 32 {
-            if file.seek(SeekFrom::Start(offset)).is_ok() {
-                let mut buf = [0u8; 21];
-                if file.read_exact(&mut buf).is_ok() {
-                    if let Some(title) = clean_ascii_str(&buf) {
-                        if title.chars().all(|c| c.is_ascii_graphic() || c == ' ') {
-                            return Some(RomHeaderInfo {
-                                internal_title: Some(title),
-                                serial: None,
-                            });
-                        }
+        if len > offset + 32 && file.seek(SeekFrom::Start(offset)).is_ok() {
+            let mut buf = [0u8; 21];
+            if file.read_exact(&mut buf).is_ok() {
+                if let Some(title) = clean_ascii_str(&buf) {
+                    if title.chars().all(|c| c.is_ascii_graphic() || c == ' ') {
+                        return Some(RomHeaderInfo {
+                            internal_title: Some(title),
+                            serial: None,
+                        });
                     }
                 }
             }
@@ -338,9 +336,10 @@ pub fn read_psx_header(path: &Path) -> Option<RomHeaderInfo> {
 
 /// Lee la información de un juego PS3 a partir de PARAM.SFO
 pub fn read_ps3_header(path: &Path) -> Option<RomHeaderInfo> {
-    let sfo_path = if path.file_name().map_or(false, |f| {
-        f.to_string_lossy().eq_ignore_ascii_case("eboot.bin")
-    }) {
+    let sfo_path = if path
+        .file_name()
+        .is_some_and(|f| f.to_string_lossy().eq_ignore_ascii_case("eboot.bin"))
+    {
         path.parent()
             .and_then(|u| u.parent())
             .map(|p| p.join("PARAM.SFO"))

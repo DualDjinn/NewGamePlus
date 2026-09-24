@@ -64,9 +64,17 @@ pub fn load_state() -> AppState {
         }
         // Enriquecimiento automático instantáneo si faltan metadatos
         if game.genre.is_none() || game.developer.is_none() || game.release_year.is_none() {
-            if let Some(curated) =
-                crate::metadata::curated::find_curated_catalog_metadata(&game.name, &game.platform)
-            {
+            let meta_curated = crate::metadata::curated::find_curated_catalog_metadata(&game.name, &game.platform)
+                .or_else(|| {
+                    game.display_name
+                        .as_deref()
+                        .and_then(|d| crate::metadata::curated::find_curated_catalog_metadata(d, &game.platform))
+                });
+
+            if let Some(curated) = meta_curated {
+                if game.display_name.is_none() || game.display_name.as_deref() == Some(&game.name) {
+                    game.display_name = curated.display_name;
+                }
                 if game.genre.is_none() {
                     game.genre = curated.genre;
                 }

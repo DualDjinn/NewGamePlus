@@ -1,29 +1,71 @@
 .hero-container {
   position: relative;
   padding: 16px 48px 0;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+/* Ambient Backlight Glow para Estilo Clásico (Ambilight envolvente tipo TV) */
+.hero-ambilight-glow {
+  position: absolute;
+  top: -24px;
+  bottom: -16px;
+  left: 12px;
+  right: 12px;
+  background: radial-gradient(
+    ellipse at 50% 48%,
+    var(--accent-glow, rgba(245, 158, 11, 0.85)) 0%,
+    rgba(var(--accent-rgb, 245, 158, 11), 0.52) 32%,
+    rgba(var(--accent-rgb, 245, 158, 11), 0.2) 62%,
+    transparent 82%
+  );
+  filter: blur(52px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.95;
+  transition: background 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+}
+
 .hero-card {
   position: relative;
   width: 100%;
-  height: 60vh;
-  min-height: 440px;
-  max-height: 580px;
-  border-radius: 20px;
+  height: 58vh;
+  min-height: 460px;
+  max-height: 590px;
+  border-radius: 24px;
   overflow: hidden;
   background-color: var(--bg-card);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+  /* Chasis de Monitor CRT / Arcade con bisel exterior de 12px-16px */
+  border: 12px solid #141724;
+  border-top: 14px solid #23293c;
+  border-bottom: 18px solid #0d1018;
+  outline: 1px solid rgba(255, 255, 255, 0.16);
+  outline-offset: -1px;
+  box-shadow: 
+    /* Bisel interior de profundidad: encastre del cristal */
+    inset 0 0 0 2px rgba(0, 0, 0, 0.95),
+    inset 0 3px 6px rgba(255, 255, 255, 0.22),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.8),
+    /* Sombra de chasis y elevación */
+    0 28px 72px rgba(0, 0, 0, 0.92),
+    /* Halo Ambilight perimetral directo desde el chasis */
+    0 0 45px var(--accent-glow, rgba(245, 158, 11, 0.45)),
+    0 0 95px rgba(var(--accent-rgb, 245, 158, 11), 0.25);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, outline-color 0.3s ease;
+  z-index: 1;
 }
 
 .hero-card:hover {
-  /* No hover jump or zoom on the hero card */
-  border-color: rgba(255, 255, 255, 0.15);
+  outline-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 
+    inset 0 0 0 2px rgba(0, 0, 0, 0.95),
+    inset 0 3px 6px rgba(255, 255, 255, 0.35),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.8),
+    0 34px 84px rgba(0, 0, 0, 0.95),
+    0 0 60px var(--accent-glow, rgba(245, 158, 11, 0.65)),
+    0 0 120px rgba(var(--accent-rgb, 245, 158, 11), 0.38);
 }
 
 /* Cada diapositiva del carrusel con transición cinematográfica fluida */
@@ -54,6 +96,19 @@
   overflow: hidden;
 }
 
+/* Efecto de cristal curvado de tubo CRT sobre el fondo de la pantalla */
+.hero-container:not(.hero-immersive) .hero-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: 
+    linear-gradient(130deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 22%, transparent 45%),
+    radial-gradient(ellipse at center, transparent 65%, rgba(0, 0, 0, 0.35) 100%);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6);
+}
+
 .hero-bg-img {
   width: 100%;
   height: 100%;
@@ -80,6 +135,53 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(to right, rgba(10, 11, 16, 0.82) 0%, rgba(10, 11, 16, 0.4) 30%, transparent 65%);
+}
+
+/* Detalle retro de encendido (Power LED) en el bisel de chasis CRT */
+.hero-crt-bezel-led {
+  position: absolute;
+  bottom: 8px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  z-index: 25;
+  pointer-events: none;
+  user-select: none;
+  background: rgba(10, 12, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 3px 10px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.hero-crt-led-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent, #f59e0b);
+  box-shadow: 0 0 8px var(--accent, #f59e0b), 0 0 14px var(--accent-glow, rgba(245, 158, 11, 0.6));
+  animation: crt-led-pulse 2.8s ease-in-out infinite alternate;
+}
+
+@keyframes crt-led-pulse {
+  from {
+    opacity: 0.75;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.hero-crt-led-text {
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .hero-content {
@@ -250,7 +352,7 @@
 }
 
 .hero-pill.active {
-  width: 24px;
+  width: 28px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.25);
 }
@@ -262,8 +364,8 @@
   bottom: 0;
   width: 0%;
   border-radius: 4px;
-  background: linear-gradient(90deg, #ffffff, rgba(255, 255, 255, 0.9));
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+  background: linear-gradient(90deg, var(--accent, #f59e0b), var(--accent-hover, #fbbf24));
+  box-shadow: 0 0 10px var(--accent-glow, rgba(245, 158, 11, 0.5));
   animation: hero-progress 8s linear forwards;
 }
 
@@ -274,6 +376,25 @@
   100% {
     width: 100%;
   }
+}
+
+/* Indicadores en esquina inferior derecha en modo Clásico (dentro del monitor/tarjeta) */
+.hero-indicators.hero-indicators-classic {
+  position: absolute;
+  right: 36px;
+  bottom: 24px;
+  z-index: 25;
+  margin: 0;
+  padding: 8px 16px;
+  background: rgba(10, 13, 20, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 30px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ============================================================
@@ -292,14 +413,14 @@
   border-top: none;
   border-bottom: none;
   height: auto;
-  min-height: 75vh;
+  min-height: 72vh;
   max-height: none;
   box-shadow: none;
   background: transparent;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding-bottom: 28px;
+  padding-bottom: 8px;
   position: relative;
 }
 
@@ -321,12 +442,12 @@
 
 .hero-container.hero-immersive .hero-gradient {
   background: 
-    /* Lateral: legibilidad del texto */
-    linear-gradient(to right, rgba(8, 10, 15, 0.85) 0%, rgba(8, 10, 15, 0.45) 30%, transparent 65%),
-    /* Vertical inferior: transición suave hacia --bg-main */
-    linear-gradient(to top, var(--bg-main) 0%, rgba(10, 11, 16, 0.92) 8%, rgba(10, 11, 16, 0.55) 28%, transparent 55%),
-    /* Vignette superior sutil para profundidad */
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, transparent 20%);
+    /* Lateral izquierdo: protección profunda de contraste para logos, títulos y botones */
+    linear-gradient(to right, rgba(8, 10, 15, 0.94) 0%, rgba(8, 10, 15, 0.8) 32%, rgba(8, 10, 15, 0.4) 58%, transparent 78%),
+    /* Vertical inferior: disolución cinemática continua hacia el catálogo */
+    linear-gradient(to bottom, transparent 0%, transparent 35%, rgba(10, 11, 16, 0.25) 55%, rgba(10, 11, 16, 0.72) 75%, rgba(10, 11, 16, 0.95) 90%, var(--bg-main) 100%),
+    /* Vignette superior sutil para resaltar la barra de navegación */
+    linear-gradient(to bottom, rgba(6, 8, 12, 0.45) 0%, transparent 18%);
 }
 
 /* Cuerpo interactivo del Hero en modo Inmersivo */

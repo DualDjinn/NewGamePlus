@@ -238,19 +238,22 @@ pub fn discover_lan_devices() -> Result<Vec<LanDevice>, String> {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 3 && parts[2] == "dinámico" {
                     let ip = parts[0];
-                    if ip.starts_with("192.168.") || ip.starts_with("10.") || ip.starts_with("172.")
+                    if (ip.starts_with("192.168.")
+                        || ip.starts_with("10.")
+                        || ip.starts_with("172."))
+                        && !seen_ips.contains(ip)
+                        && !ip.ends_with(".1")
+                        && !ip.ends_with(".255")
                     {
-                        if !seen_ips.contains(ip) && !ip.ends_with(".1") && !ip.ends_with(".255") {
-                            seen_ips.insert(ip.to_string());
-                            devices.push(LanDevice {
-                                id: format!("arp-{}", ip.replace('.', "-")),
-                                name: format!("Dispositivo en red ({})", ip),
-                                ip: ip.to_string(),
-                                device_type: "other".to_string(),
-                                status: "Activo en red".to_string(),
-                                protocol: "Moonlight / LAN".to_string(),
-                            });
-                        }
+                        seen_ips.insert(ip.to_string());
+                        devices.push(LanDevice {
+                            id: format!("arp-{}", ip.replace('.', "-")),
+                            name: format!("Dispositivo en red ({})", ip),
+                            ip: ip.to_string(),
+                            device_type: "other".to_string(),
+                            status: "Activo en red".to_string(),
+                            protocol: "Moonlight / LAN".to_string(),
+                        });
                     }
                 }
             }

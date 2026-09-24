@@ -200,7 +200,9 @@ export default function GameDetailModal({
   useEffect(() => {
     const unlisten = onRetroarchExited((exitedRomPath) => {
       if (exitedRomPath === game.rom_path) {
-        handleRefreshAchievements();
+        setTimeout(() => {
+          handleRefreshAchievements();
+        }, 500);
       }
     });
     return () => {
@@ -208,7 +210,8 @@ export default function GameDetailModal({
     };
   }, [game.rom_path]);
 
-  const [modalFocus, setModalFocus] = useState<"play" | "fav">("play");
+  type ModalFocusTarget = "play" | "fav" | "fix-match" | "hero-picker" | "logo-picker" | "close";
+  const [modalFocus, setModalFocus] = useState<ModalFocusTarget>("play");
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -248,15 +251,52 @@ export default function GameDetailModal({
         return;
       }
 
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      if (e.key === "ArrowLeft") {
         e.preventDefault();
-        setModalFocus((prev) => (prev === "play" ? "fav" : "play"));
+        setModalFocus((prev) => {
+          if (prev === "play") return "fav";
+          if (prev === "fav") return "play";
+          if (prev === "hero-picker") return "fix-match";
+          if (prev === "logo-picker") return "hero-picker";
+          if (prev === "close") return "logo-picker";
+          return "play";
+        });
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setModalFocus((prev) => {
+          if (prev === "play") return "fav";
+          if (prev === "fav") return "play";
+          if (prev === "fix-match") return "hero-picker";
+          if (prev === "hero-picker") return "logo-picker";
+          if (prev === "logo-picker") return "close";
+          return "play";
+        });
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setModalFocus((prev) => {
+          if (prev === "play" || prev === "fav") return "fix-match";
+          return prev;
+        });
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setModalFocus((prev) => {
+          if (prev !== "play" && prev !== "fav") return "play";
+          return prev;
+        });
       } else if (e.key === "Enter") {
         e.preventDefault();
         if (modalFocus === "play") {
           handleLaunch();
-        } else {
+        } else if (modalFocus === "fav") {
           handleFavorite();
+        } else if (modalFocus === "fix-match") {
+          setShowFixMatch(true);
+        } else if (modalFocus === "hero-picker") {
+          handleOpenHeroPicker();
+        } else if (modalFocus === "logo-picker") {
+          handleOpenLogoPicker();
+        } else if (modalFocus === "close") {
+          onClose();
         }
       } else if (e.key === "Escape") {
         e.preventDefault();
@@ -546,7 +586,7 @@ export default function GameDetailModal({
 
         {/* Columna Derecha: 1 columna y 4 filas */}
         <div className="modal-right-column">
-          <button className="modal-close" onClick={onClose} aria-label={t("common.close")}>
+          <button className={`modal-close ${modalFocus === "close" ? "focused" : ""}`} onClick={onClose} aria-label={t("common.close")}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/>
               <line x1="6" y1="6" x2="18" y2="18"/>
@@ -565,7 +605,7 @@ export default function GameDetailModal({
             <div className="modal-action-tools">
               <button
                 type="button"
-                className="modal-tool-btn"
+                className={`modal-tool-btn ${modalFocus === "fix-match" ? "focused" : ""}`}
                 onClick={() => setShowFixMatch(true)}
                 title={t("gameDetail.fixMatch")}
               >
@@ -578,7 +618,7 @@ export default function GameDetailModal({
               </button>
               <button
                 type="button"
-                className="modal-tool-btn"
+                className={`modal-tool-btn ${modalFocus === "hero-picker" ? "focused" : ""}`}
                 onClick={handleOpenHeroPicker}
                 title="Cambiar Hero / Banner en SteamGridDB"
               >
@@ -593,7 +633,7 @@ export default function GameDetailModal({
               </button>
               <button
                 type="button"
-                className="modal-tool-btn"
+                className={`modal-tool-btn ${modalFocus === "logo-picker" ? "focused" : ""}`}
                 onClick={handleOpenLogoPicker}
                 title="Cambiar Logo transparente en SteamGridDB"
               >

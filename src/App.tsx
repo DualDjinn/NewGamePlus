@@ -1,26 +1,15 @@
-﻿import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { Game, Section, SortKey, LayoutStyle, SettingsTab, GraphicsConsole } from "./types";
+import type { Game, Section, SettingsTab, GraphicsConsole } from "./types";
 import { searchSettingsOptions, SETTINGS_OPTIONS, type SettingsSearchOption } from "./lib/settingsSearch";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
-  getGames,
-  getSettings,
-  scanAndFetchCores,
-  checkRetroarch,
-  onRetroarchExited,
-  onScanProgress,
-  onSetupStatus,
-  onEmulatorUpdates,
-  onCoversUpdated,
-  savePlatformCores,
-  switchProfile,
   toggleFavorite,
   getCoverUrl,
   launchGame,
-  setTheme,
-  setLayoutStyle,
   isWindowFullscreen,
   toggleWindowFullscreen,
+  saveSettings,
 } from "./lib/tauri";
 import HeroBanner from "./components/HeroBanner";
 import CategoryRow from "./components/CategoryRow";
@@ -30,55 +19,156 @@ import Settings from "./components/Settings";
 import Sidebar from "./components/Sidebar";
 import CastModal from "./components/CastModal";
 import AppHeader from "./components/AppHeader";
+import ControllerHUD from "./components/ControllerHUD";
+import SplashScreen from "./components/SplashScreen";
+import ScanProgressHUD from "./components/ScanProgressHUD";
+import ScanCompleteModal from "./components/ScanCompleteModal";
+import OnboardingModal from "./components/OnboardingModal";
 import { MusicProvider } from "./context/MusicContext";
 import { useGamepad } from "./hooks/useGamepad";
-import { getPlatformCompany, getPlatformDisplayName, PLATFORM_COLORS } from "./lib/platforms";
+import { useLibraryGames } from "./hooks/useLibraryGames";
+import { useGenreCatalog } from "./hooks/useGenreCatalog";
+import { useGameSearch } from "./hooks/useGameSearch";
 import { getGenreTheme } from "./lib/genreThemes";
+import { getLocalizedGenreName } from "./lib/genreLocalization";
 import "./App.css";
 
-function nameMatches(g: Game, q: string): boolean {
-  return (
-    g.name.toLowerCase().includes(q) ||
-    (g.display_name ?? "").toLowerCase().includes(q)
-  );
-}
-
-// Sentinela independiente del idioma para la categoría "sin género".
-const OTHER_TITLES = "___other___";
-
 function App() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [section, setSection] = useState<Section>("home");
-  const [games, setGames] = useState<Game[]>([]);
-  const [folders, setFolders] = useState<string[]>([]);
-  const [kioskMode, setKioskMode] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [loaded, setLoaded] = useState<boolean | null>(null);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
-  const [scanMessage, setScanMessage] = useState("");
-  const [setupStatus, setSetupStatus] = useState("");
-  const [theme, setThemeState] = useState<string>("gold");
-  const [layoutStyle, setLayoutStyleState] = useState<LayoutStyle>("classic");
   const [showNavFocus, setShowNavFocus] = useState(false);
   const [homeFocus, setHomeFocus] = useState<{ row: number; col: number }>({ row: 0, col: 0 });
   const [flatFocusIdx, setFlatFocusIdx] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState("");
-  const [scanCores, setScanCores] = useState<{ installed: string[]; needed: string[] } | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const [sortBy, setSortBy] = useState<SortKey>("name");
-  const [profiles, setProfiles] = useState<string[]>([]);
-  const [currentProfile, setCurrentProfile] = useState("Por defecto");
-  const [scanProgress, setScanProgress] = useState(0);
-  const [platformCores, setPlatformCores] = useState<Record<string, string>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("library");
   const [settingsGraphicsConsole, setSettingsGraphicsConsole] = useState<GraphicsConsole>("citra");
   const [settingsSearchQuery, setSettingsSearchQuery] = useState("");
   const [settingsSearchDropdownOpen, setSettingsSearchDropdownOpen] = useState(false);
   const settingsSearchInputRef = useRef<HTMLInputElement>(null);
+  const [castModalOpen, setCastModalOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const prevSectionRef = useRef<Section>(section);
+
+  // Hook 1: Library & Persistent State Management
+  const {
+    games,
+    setGames,
+    folders,
+    setFolders,
+    kioskMode,
+    setKioskMode,
+    scanning,
+    loaded,
+    scanMessage,
+    setupStatus,
+    theme,
+    handleThemeChange,
+    layoutStyle,
+    handleLayoutStyleChange,
+    scanCores,
+    sortBy,
+    setSortBy,
+    profiles,
+    currentProfile,
+    scanProgress,
+    platformCores,
+    emulatorUpdates,
+    sortGames,
+    featured,
+    recentlyPlayed,
+    favorites,
+    handleFavoriteChanged: onFavoriteChangedBase,
+    handleScan,
+    scanCompletedResult,
+    dismissScanCompleted,
+    handleProfilesChange,
+    handlePlatformCoreChange,
+    handleProfileSwitch,
+  } = useLibraryGames({
+    onRetroarchExitedCallback: (updatedGames) => {
+      setSelectedGame((prev) => {
+        if (!prev) return null;
+        return updatedGames.find((g) => g.id === prev.id) ?? prev;
+      });
+    },
+  });
+
+  // Hook 2: Genre Catalog & Dynamic Categories
+  const {
+    selectedGenre,
+    setSelectedGenre,
+    selectedCompany,
+    setSelectedCompany,
+    effectiveCompany,
+    availableCompanies,
+    genreList,
+    activeGenreGames,
+    activeGenreSections,
+    randomHomeCategories,
+    selectRandomHomeCategories,
+    homeRows,
+  } = useGenreCatalog({
+    games,
+    section,
+    sortGames,
+    recentlyPlayed,
+  });
+
+  // Hook 3: Game Search & Library Filter
+  const {
+    searchQuery,
+    setSearchQuery,
+    searchInputRef,
+    searchDropdownOpen,
+    setSearchDropdownOpen,
+    searchResults,
+    navbarSearchResults,
+    libraryGames,
+    librarySections,
+  } = useGameSearch({
+    games,
+    sortGames,
+    selectedCompany,
+  });
+
+  const handleFavoriteChanged = useCallback(
+    (gameId: string, isFav: boolean) => {
+      onFavoriteChangedBase(gameId, isFav);
+      setSelectedGame((prev) => (prev?.id === gameId ? { ...prev, favorite: isFav } : prev));
+    },
+    [onFavoriteChangedBase]
+  );
+
+  useEffect(() => {
+    if (loaded) {
+      const completed = localStorage.getItem("newgameplus_onboarding_completed");
+      if (!completed && folders.length === 0 && games.length === 0) {
+        setOnboardingOpen(true);
+      }
+    }
+  }, [loaded, folders.length, games.length]);
+
+  const handleCloseOnboarding = useCallback(() => {
+    localStorage.setItem("newgameplus_onboarding_completed", "true");
+    setOnboardingOpen(false);
+  }, []);
+
+  const handleAddFolderFromOnboarding = useCallback(async () => {
+    try {
+      const path = await openDialog({ directory: true, title: "Seleccionar carpeta de ROMs" });
+      if (path && !folders.includes(path)) {
+        const next = [...folders, path];
+        setFolders(next);
+        await saveSettings(next, kioskMode).catch(console.error);
+      }
+    } catch (e) {
+      console.error("Folder picker failed:", e);
+    }
+  }, [folders, kioskMode, setFolders]);
 
   const filteredSettingsOptions = useMemo(() => {
     if (!settingsSearchQuery.trim()) {
@@ -109,12 +199,31 @@ function App() {
       }, 90);
     }
   }, []);
-  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
-  const [selectedCompany, setSelectedCompany] = useState<string>("all");
-  const [randomHomeCategories, setRandomHomeCategories] = useState<string[]>([]);
-  const [castModalOpen, setCastModalOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const prevSectionRef = useRef<Section>(section);
+
+  // Splash Screen State
+  const [splashEnabled, setSplashEnabled] = useState<boolean>(() => {
+    return localStorage.getItem("gameflix_intro_enabled") !== "false";
+  });
+  const [splashSoundEnabled, setSplashSoundEnabled] = useState<boolean>(() => {
+    return localStorage.getItem("gameflix_intro_sound") !== "false";
+  });
+  const [showSplash, setShowSplash] = useState<boolean>(() => {
+    return localStorage.getItem("gameflix_intro_enabled") !== "false";
+  });
+
+  const handleSplashEnabledChange = useCallback((enabled: boolean) => {
+    setSplashEnabled(enabled);
+    localStorage.setItem("gameflix_intro_enabled", enabled ? "true" : "false");
+  }, []);
+
+  const handleSplashSoundEnabledChange = useCallback((soundEnabled: boolean) => {
+    setSplashSoundEnabled(soundEnabled);
+    localStorage.setItem("gameflix_intro_sound", soundEnabled ? "true" : "false");
+  }, []);
+
+  const handlePreviewSplash = useCallback(() => {
+    setShowSplash(true);
+  }, []);
 
   // Sync and toggle fullscreen
   const handleToggleFullscreen = useCallback(async () => {
@@ -170,7 +279,7 @@ function App() {
     return () => window.removeEventListener("click", handleOutsideClick);
   }, [searchDropdownOpen, searchQuery, section, settingsSearchDropdownOpen, settingsSearchQuery]);
 
-  // W5: Global error toast via custom event
+  // Global error toast via custom event
   useEffect(() => {
     function onError(e: CustomEvent<string>) {
       setErrorMsg(e.detail);
@@ -179,357 +288,6 @@ function App() {
     window.addEventListener("app-error", onError as EventListener);
     return () => window.removeEventListener("app-error", onError as EventListener);
   }, []);
-
-  // Auto-download RetroArch on first launch
-  useEffect(() => {
-    checkRetroarch().catch((e) => {
-      console.error("RetroArch setup failed:", e);
-      setSetupStatus("Error al instalar RetroArch");
-    });
-  }, []);
-
-  // Listen for setup progress
-  useEffect(() => {
-    const unlisten = onSetupStatus((msg) => setSetupStatus(msg));
-    return () => { unlisten.then((fn) => fn()); };
-  }, []);
-
-  // Badge no intrusivo cuando el auto-check (cada 4 días) encuentra updates
-  const [emulatorUpdates, setEmulatorUpdates] = useState(false);
-  useEffect(() => {
-    const unlisten = onEmulatorUpdates((infos) => {
-      setEmulatorUpdates(infos.some((i) => i.update_available));
-    });
-    return () => { unlisten.then((fn) => fn()); };
-  }, []);
-
-  // W10: Load persisted data on mount
-  useEffect(() => {
-    async function init() {
-      try {
-        const [savedGames, settings] = await Promise.all([
-          getGames(),
-          getSettings(),
-        ]);
-        setFolders(settings.folders);
-        setKioskMode(settings.kiosk_mode);
-        setProfiles(settings.profiles.map((p) => p.name));
-        setCurrentProfile(settings.current_profile);
-        setPlatformCores(settings.platform_cores || {});
-        if (settings.theme) {
-          setThemeState(settings.theme);
-        }
-        if (settings.layout_style) {
-          setLayoutStyleState(settings.layout_style as LayoutStyle);
-        }
-        if (savedGames.length > 0) {
-          setGames(savedGames);
-        }
-      } catch (e) {
-        console.error("Failed to load state:", e);
-      } finally {
-        setLoaded(true);
-      }
-    }
-    init();
-  }, []);
-
-  async function handleThemeChange(newTheme: string) {
-    setThemeState(newTheme);
-    try {
-      await setTheme(newTheme);
-    } catch (e) {
-      console.error("Failed to save theme:", e);
-    }
-  }
-
-  async function handleLayoutStyleChange(newStyle: LayoutStyle) {
-    setLayoutStyleState(newStyle);
-    try {
-      await setLayoutStyle(newStyle);
-    } catch (e) {
-      console.error("Failed to save layout style:", e);
-    }
-  }
-
-  // Listen for RetroArch exit
-  useEffect(() => {
-    const unlisten = onRetroarchExited(() => {
-      getGames().then((updatedGames) => {
-        setGames(updatedGames);
-        setSelectedGame((prev) => {
-          if (!prev) return null;
-          return updatedGames.find((g) => g.id === prev.id) ?? prev;
-        });
-      }).catch(console.error);
-    });
-    return () => { unlisten.then((fn) => fn()); };
-  }, []);
-
-  // Listen for covers updated in background
-  useEffect(() => {
-    const unlisten = onCoversUpdated(() => {
-      getGames().then((updatedGames) => {
-        setGames(updatedGames);
-      }).catch(console.error);
-    });
-    return () => { unlisten.then((fn) => fn()); };
-  }, []);
-
-  // Listen for scan progress
-  useEffect(() => {
-    const unlisten = onScanProgress((data) => {
-      const frac = data.total > 0 ? data.current / data.total : 0;
-      const pct = data.phase === "scan" ? frac * 40 : data.phase === "roms" ? 40 + frac * 50 : 90 + frac * 10;
-      setScanProgress(Math.round(pct));
-      setScanMessage(
-        data.phase === "scan"
-          ? t("scan.scanning", { label: data.label })
-          : data.phase === "roms"
-            ? t("scan.processing", { current: data.current, total: data.total, label: data.label })
-            : t("scan.downloadingCore", { label: data.label })
-      );
-    });
-    return () => { unlisten.then((fn) => fn()); };
-  }, []);
-
-  // Recommended: mix games with custom hero + favorites + recent + random
-  // Shuffles within each tier for variety between sessions
-  const featured = useMemo(() => {
-    if (games.length === 0) return [];
-
-    const shuffle = <T,>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5);
-
-    const withHero = shuffle(games.filter((g) => g.hero_path));
-    const favs = shuffle(games.filter((g) => g.favorite));
-    const recentTop = shuffle(
-      [...games]
-        .filter((g) => g.last_played)
-        .sort((a, b) => Number(b.last_played) - Number(a.last_played))
-        .slice(0, 5),
-    );
-    const random = shuffle(games);
-
-    const seen = new Set<string>();
-    const pool: Game[] = [];
-
-    const pickFrom = (source: Game[], max: number) => {
-      for (const g of source) {
-        if (pool.length >= 7 || max <= 0) break;
-        if (!seen.has(g.id)) {
-          seen.add(g.id);
-          pool.push(g);
-          max--;
-        }
-      }
-    };
-
-    pickFrom(withHero, 2);  // Up to 2 games with hero art
-    pickFrom(favs, 2);      // Up to 2 favorites
-    pickFrom(recentTop, 1); // 1 from top 5 recently played
-    pickFrom(random, 7);    // Fill remaining slots with random games
-
-    return pool;
-  }, [games]);
-
-  const recentlyPlayed = useMemo(
-    () =>
-      [...games]
-        .filter((g) => g.last_played)
-        .sort((a, b) => Number(b.last_played) - Number(a.last_played))
-        .slice(0, 10),
-    [games],
-  );
-
-  const sortGames = useCallback((list: Game[]) => {
-    const sorted = [...list];
-    if (sortBy === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
-    else if (sortBy === "platform") sorted.sort((a, b) => a.platform.localeCompare(b.platform));
-    else if (sortBy === "last_played") sorted.sort((a, b) => Number(b.last_played ?? 0) - Number(a.last_played ?? 0));
-    return sorted;
-  }, [sortBy]);
-
-  const favorites = useMemo(() => games.filter((g) => g.favorite), [games]);
-
-  const effectiveCompany = section === "home" ? "all" : selectedCompany;
-
-  const genreList = useMemo(() => {
-    const map: Record<string, { count: number; imagePath?: string | null; topGameName?: string }> = {};
-    const targetGames =
-      effectiveCompany === "all"
-        ? games
-        : games.filter((g) => getPlatformCompany(g.platform) === effectiveCompany);
-
-    for (const g of targetGames) {
-      if (g.genre) {
-        if (!map[g.genre]) {
-          map[g.genre] = { count: 0, imagePath: null };
-        }
-        map[g.genre].count += 1;
-
-        // Prioridad de imagen: si aÃºn no tiene o si encontramos uno con hero_path
-        const currentImg = map[g.genre].imagePath;
-        const candidateImg = g.hero_path || g.cover_path;
-
-        if (!currentImg && candidateImg) {
-          map[g.genre].imagePath = candidateImg;
-          map[g.genre].topGameName = g.display_name || g.name;
-        } else if (g.hero_path && (!currentImg || currentImg === g.cover_path)) {
-          // Si este juego tiene hero_path real, dale preferencia sobre solo cover
-          map[g.genre].imagePath = g.hero_path;
-          map[g.genre].topGameName = g.display_name || g.name;
-        }
-      }
-    }
-    return Object.entries(map)
-      .map(([name, data]) => ({ name, count: data.count, imagePath: data.imagePath, topGameName: data.topGameName }))
-      .sort((a, b) => b.count - a.count);
-  }, [games, effectiveCompany]);
-
-  const activeGenreGames = useMemo(() => {
-    if (!selectedGenre) return [];
-    let list = games.filter((g) => g.genre === selectedGenre);
-    if (effectiveCompany !== "all") {
-      list = list.filter((g) => getPlatformCompany(g.platform) === effectiveCompany);
-    }
-    return sortGames(list);
-  }, [games, selectedGenre, effectiveCompany, sortGames]);
-
-  // AgrupaciÃ³n de juegos del gÃ©nero seleccionado por plataforma
-  const activeGenreSections = useMemo(() => {
-    const map = new Map<string, Game[]>();
-    for (const game of activeGenreGames) {
-      const plat = game.platform || "Otros";
-      if (!map.has(plat)) {
-        map.set(plat, []);
-      }
-      map.get(plat)!.push(game);
-    }
-    return Array.from(map.entries())
-      .map(([platform, items]) => ({
-        platform,
-        displayName: getPlatformDisplayName(platform),
-        color: PLATFORM_COLORS[platform.toUpperCase()] || "var(--accent)",
-        games: items,
-      }))
-      .sort((a, b) => b.games.length - a.games.length);
-  }, [activeGenreGames]);
-
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return sortGames(games.filter((g) => nameMatches(g, q)));
-  }, [games, searchQuery, sortGames]);
-
-  const navbarSearchResults = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q || games.length === 0) return [];
-
-    const matches = games.filter((g) => {
-      const name = g.name.toLowerCase();
-      const disp = (g.display_name ?? "").toLowerCase();
-      return name.includes(q) || disp.includes(q);
-    });
-
-    matches.sort((a, b) => {
-      const aName = (a.display_name || a.name).toLowerCase();
-      const bName = (b.display_name || b.name).toLowerCase();
-      const aStarts = aName.startsWith(q);
-      const bStarts = bName.startsWith(q);
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-      return aName.localeCompare(bName);
-    });
-
-    return matches.slice(0, 6);
-  }, [searchQuery, games]);
-
-  const availableCompanies = useMemo(() => {
-    const set = new Set<string>();
-    for (const g of games) {
-      set.add(getPlatformCompany(g.platform));
-    }
-    const priority = [
-      "PlayStation",
-      "Nintendo",
-      "PC",
-      "Sega",
-      "Arcade",
-      "SNK",
-      "Atari",
-      "NEC",
-      "Bandai",
-      "Coleco",
-      "Otros",
-    ];
-    return priority
-      .filter((c) => set.has(c))
-      .concat(Array.from(set).filter((c) => !priority.includes(c)));
-  }, [games]);
-
-  // Biblioteca plana: todos los juegos filtrados por compaÃ±ia y buscador
-  const libraryGames = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    let list = games;
-    if (selectedCompany && selectedCompany !== "all") {
-      list = list.filter((g) => getPlatformCompany(g.platform) === selectedCompany);
-    }
-    if (q) {
-      list = list.filter((g) => nameMatches(g, q));
-    }
-    return sortGames(list);
-  }, [games, selectedCompany, searchQuery, sortGames]);
-
-  // AgrupaciÃ³n de la biblioteca por plataforma/consola
-  const librarySections = useMemo(() => {
-    const map = new Map<string, Game[]>();
-    for (const game of libraryGames) {
-      const plat = game.platform || "Otros";
-      if (!map.has(plat)) {
-        map.set(plat, []);
-      }
-      map.get(plat)!.push(game);
-    }
-    // Ordenar plataformas por cantidad de juegos descendente
-    return Array.from(map.entries())
-      .map(([platform, items]) => ({
-        platform,
-        displayName: getPlatformDisplayName(platform),
-        color: PLATFORM_COLORS[platform.toUpperCase()] || "var(--accent)",
-        games: items,
-      }))
-      .sort((a, b) => b.games.length - a.games.length);
-  }, [libraryGames]);
-
-  const selectRandomHomeCategories = useCallback(() => {
-    if (games.length === 0) return;
-
-    const genreCounts = new Map<string, number>();
-    let noGenreCount = 0;
-    for (const g of games) {
-      if (g.genre && g.genre.trim()) {
-        const cat = g.genre.trim();
-        genreCounts.set(cat, (genreCounts.get(cat) || 0) + 1);
-      } else {
-        noGenreCount++;
-      }
-    }
-
-    let candidates = Array.from(genreCounts.keys());
-    if (noGenreCount > 0 && candidates.length < 8) {
-      candidates.push(OTHER_TITLES);
-    }
-
-    // Fallback si la biblioteca no tuviera gÃ©neros detectados
-    if (candidates.length === 0) {
-      const platSet = new Set(games.map((g) => g.platform).filter(Boolean));
-      candidates = Array.from(platSet);
-    }
-
-    // Mezclar y elegir hasta 8 al azar
-    const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-    setRandomHomeCategories(shuffled.slice(0, 8));
-  }, [games]);
 
   useEffect(() => {
     if (section === "home") {
@@ -540,29 +298,6 @@ function App() {
     }
     prevSectionRef.current = section;
   }, [section, games, selectRandomHomeCategories, randomHomeCategories.length]);
-
-  const homeRows = useMemo(() => {
-    const rows: { id: string; title: string; games: Game[] }[] = [];
-    if (recentlyPlayed.length > 0) {
-      rows.push({ id: "recent", title: t("library.recent"), games: recentlyPlayed });
-    }
-
-    for (const cat of randomHomeCategories) {
-      const isOther = cat === OTHER_TITLES;
-      const catGames = isOther
-        ? games.filter((g) => !g.genre || !g.genre.trim())
-        : games.filter((g) => g.genre?.trim() === cat);
-
-      if (catGames.length > 0) {
-        rows.push({
-          id: `cat-${cat}`,
-          title: isOther ? t("library.otherTitles") : cat,
-          games: sortGames(catGames),
-        });
-      }
-    }
-    return rows;
-  }, [recentlyPlayed, randomHomeCategories, games, sortGames, t, i18n.language]);
 
   const currentFocusedGame = useMemo((): Game | null => {
     if (section === "home") {
@@ -586,7 +321,17 @@ function App() {
       return activeGenreGames[flatFocusIdx] ?? null;
     }
     return null;
-  }, [section, homeFocus, homeRows, libraryGames, favorites, searchResults, selectedGenre, activeGenreGames, flatFocusIdx]);
+  }, [
+    section,
+    homeFocus,
+    homeRows,
+    libraryGames,
+    favorites,
+    searchResults,
+    selectedGenre,
+    activeGenreGames,
+    flatFocusIdx,
+  ]);
 
   const moveFocus = useCallback(
     (direction: "up" | "down" | "left" | "right") => {
@@ -619,16 +364,16 @@ function App() {
         section === "library"
           ? libraryGames
           : section === "favorites"
-            ? favorites
-            : section === "search"
-              ? searchResults
-              : section === "genre" && selectedGenre
-                ? activeGenreGames
-                : [];
+          ? favorites
+          : section === "search"
+          ? searchResults
+          : section === "genre" && selectedGenre
+          ? activeGenreGames
+          : [];
 
       if (currentList.length === 0) return;
 
-      const GRID_COLS = (section === "library" || section === "genre") ? 5 : currentList.length;
+      const GRID_COLS = section === "library" || section === "genre" ? 5 : currentList.length;
 
       setFlatFocusIdx((prev) => {
         let idx = Math.min(Math.max(0, prev), currentList.length - 1);
@@ -644,10 +389,21 @@ function App() {
         return idx;
       });
     },
-    [section, homeRows, libraryGames, favorites, searchResults, selectedGenre, games, sortGames],
+    [section, homeRows, libraryGames, favorites, searchResults, selectedGenre, activeGenreGames]
   );
 
   const SECTIONS: Section[] = ["home", "library", "favorites", "genres", "settings"];
+  const SETTINGS_TABS: SettingsTab[] = [
+    "library",
+    "appearance",
+    "graphics",
+    "sound",
+    "emulation",
+    "emulators",
+    "integrations",
+    "profiles",
+    "system",
+  ];
 
   const handlePrevTab = useCallback(() => {
     setSection((curr) => {
@@ -663,35 +419,66 @@ function App() {
     });
   }, []);
 
-  const handleFavoriteChanged = useCallback((gameId: string, isFav: boolean) => {
-    setGames((prev) =>
-      prev.map((g) => (g.id === gameId ? { ...g, favorite: isFav } : g)),
-    );
-    setSelectedGame((prev) =>
-      prev?.id === gameId ? { ...prev, favorite: isFav } : prev,
-    );
-  }, []);
-
   // Global gamepad controller navigation
   useGamepad({
     onNavigate: (dir) => {
       setShowNavFocus(true);
-      if (selectedGame) {
-        window.dispatchEvent(new KeyboardEvent("keydown", { key: dir === "left" ? "ArrowLeft" : "ArrowRight" }));
+      if (section === "settings") {
+        const focusables = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            ".settings-container button, .settings-container input, .settings-container select, .settings-nav-btn"
+          )
+        ).filter((el) => el.offsetParent !== null && !el.hasAttribute("disabled"));
+
+        if (focusables.length > 0) {
+          const active = document.activeElement as HTMLElement | null;
+          const currentIdx = active ? focusables.indexOf(active) : -1;
+          if (dir === "down" || dir === "right") {
+            const nextIdx = currentIdx < focusables.length - 1 ? currentIdx + 1 : 0;
+            focusables[nextIdx]?.focus();
+            focusables[nextIdx]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          } else if (dir === "up" || dir === "left") {
+            const prevIdx = currentIdx > 0 ? currentIdx - 1 : focusables.length - 1;
+            focusables[prevIdx]?.focus();
+            focusables[prevIdx]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
+        }
+      } else if (selectedGame) {
+        window.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key:
+              dir === "left"
+                ? "ArrowLeft"
+                : dir === "right"
+                ? "ArrowRight"
+                : dir === "up"
+                ? "ArrowUp"
+                : "ArrowDown",
+          })
+        );
       } else {
         moveFocus(dir);
       }
     },
     onConfirm: () => {
       setShowNavFocus(true);
-      if (selectedGame) {
+      if (section === "settings") {
+        const active = document.activeElement as HTMLElement | null;
+        if (active && active.closest(".settings-container")) {
+          active.click();
+        }
+      } else if (selectedGame) {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
       } else if (currentFocusedGame) {
         setSelectedGame(currentFocusedGame);
       }
     },
     onCancel: () => {
-      if (selectedGame) {
+      if (onboardingOpen) {
+        handleCloseOnboarding();
+      } else if (scanCompletedResult) {
+        dismissScanCompleted();
+      } else if (selectedGame) {
         setSelectedGame(null);
       } else if (section !== "home") {
         setSection("home");
@@ -716,12 +503,32 @@ function App() {
         } catch (e) {
           console.error("Launch failed:", e);
           const msg = e instanceof Error ? e.message : String(e);
-          window.dispatchEvent(new CustomEvent("app-error", { detail: `Error al lanzar el juego: ${msg}` }));
+          window.dispatchEvent(
+            new CustomEvent("app-error", { detail: `Error al lanzar el juego: ${msg}` })
+          );
         }
       }
     },
-    onPrevTab: handlePrevTab,
-    onNextTab: handleNextTab,
+    onPrevTab: () => {
+      if (section === "settings") {
+        setSettingsTab((curr) => {
+          const idx = SETTINGS_TABS.indexOf(curr);
+          return SETTINGS_TABS[(idx - 1 + SETTINGS_TABS.length) % SETTINGS_TABS.length];
+        });
+      } else {
+        handlePrevTab();
+      }
+    },
+    onNextTab: () => {
+      if (section === "settings") {
+        setSettingsTab((curr) => {
+          const idx = SETTINGS_TABS.indexOf(curr);
+          return SETTINGS_TABS[(idx + 1) % SETTINGS_TABS.length];
+        });
+      } else {
+        handleNextTab();
+      }
+    },
     onToggleSidebar: () => setSidebarCollapsed((v) => !v),
     onToggleMenu: () => setSection((s) => (s === "settings" ? "home" : "settings")),
   });
@@ -776,85 +583,6 @@ function App() {
     return () => window.removeEventListener("mousemove", onMouseMove);
   }, []);
 
-  async function handleScan(f: string[]) {
-    setScanning(true);
-    setScanMessage("Iniciando escaneo...");
-    setScanCores(null);
-    setScanProgress(0);
-    try {
-      const result = await scanAndFetchCores(f);
-      const updatedGames = await getGames();
-      setGames(updatedGames);
-      setLoaded(true);
-      setSection("home");
-      setScanMessage("");
-      setScanCores({ installed: result.cores_installed, needed: result.cores_needed });
-    } catch (e) {
-      console.error("Scan failed:", e);
-      setScanMessage("Error al escanear");
-    } finally {
-      setScanning(false);
-      setScanProgress(0);
-    }
-  }
-
-  async function handleProfilesChange(newProfiles: string[], newCurrent: string) {
-    setProfiles(newProfiles);
-    setCurrentProfile(newCurrent);
-    try {
-      const [updatedGames, updatedSettings] = await Promise.all([
-        getGames(),
-        getSettings(),
-      ]);
-      setGames(updatedGames);
-      const prof = updatedSettings.profiles.find((p) => p.name === newCurrent);
-      if (prof?.theme) {
-        setThemeState(prof.theme);
-      } else if (updatedSettings.theme) {
-        setThemeState(updatedSettings.theme);
-      }
-      if (prof?.layout_style) {
-        setLayoutStyleState(prof.layout_style as LayoutStyle);
-      } else if (updatedSettings.layout_style) {
-        setLayoutStyleState(updatedSettings.layout_style as LayoutStyle);
-      }
-    } catch (e) {
-      console.error("Failed to reload state for new profile:", e);
-    }
-  }
-
-  async function handlePlatformCoreChange(platform: string, core: string) {
-    const next = { ...platformCores, [platform]: core };
-    setPlatformCores(next);
-    await savePlatformCores(next).catch(console.error);
-  }
-
-  async function handleProfileSwitch(name: string) {
-    if (name === currentProfile) return;
-    try {
-      await switchProfile(name);
-      setCurrentProfile(name);
-      const [updatedGames, updatedSettings] = await Promise.all([
-        getGames(),
-        getSettings(),
-      ]);
-      setGames(updatedGames);
-      const prof = updatedSettings.profiles.find((p) => p.name === name);
-      if (prof?.theme) {
-        setThemeState(prof.theme);
-      } else if (updatedSettings.theme) {
-        setThemeState(updatedSettings.theme);
-      }
-      if (prof?.layout_style) {
-        setLayoutStyleState(prof.layout_style as LayoutStyle);
-      } else if (updatedSettings.layout_style) {
-        setLayoutStyleState(updatedSettings.layout_style as LayoutStyle);
-      }
-    } catch (e) {
-      console.error("Switch profile failed:", e);
-    }
-  }
-
   function handleNavigate(s: Section) {
     if (s === "home") {
       setSelectedCompany("all");
@@ -871,460 +599,532 @@ function App() {
     setSection("genre");
   }
 
+  const handleScanWrapper = useCallback(
+    (f: string[]) => {
+      handleScan(f);
+    },
+    [handleScan]
+  );
+
   return (
     <MusicProvider games={games}>
       <div
-        className={`app ${kioskMode ? "kiosk" : ""} ${sidebarCollapsed || layoutStyle === "immersive" ? "sidebar-collapsed" : ""}`}
+        className={`app ${kioskMode ? "kiosk" : ""} ${
+          sidebarCollapsed || layoutStyle === "immersive" ? "sidebar-collapsed" : ""
+        }`}
         data-theme={theme}
         data-layout-style={layoutStyle}
       >
-        {setupStatus && (
-          <div className="app-setup-banner">{setupStatus}</div>
-        )}
-      {errorMsg && (
-        <div className="app-error-banner">{errorMsg}</div>
-      )}
-
-      {loaded === null && (
-        <div className="app-welcome">
-          <div className="spinner" />
-          <p className="loading-text">{t("common.loading")}</p>
-        </div>
-      )}
-
-      <Sidebar
-        section={section}
-        onNavigate={handleNavigate}
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed((v) => !v)}
-        genres={genreList}
-        selectedGenre={selectedGenre}
-        onSelectGenre={handleSelectGenre}
-        company={effectiveCompany !== "all" ? effectiveCompany : undefined}
-        games={games}
-        layoutStyle={layoutStyle}
-        currentProfile={currentProfile}
-        profiles={profiles}
-        onProfileSwitch={handleProfileSwitch}
-        onOpenCast={() => setCastModalOpen(true)}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={handleToggleFullscreen}
-        settingsBadge={emulatorUpdates && section !== "settings"}
-      />
-
-      <div className="app-main">
-        <AppHeader
-          section={section}
-          setSection={setSection}
-          layoutStyle={layoutStyle}
-          games={games}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          searchDropdownOpen={searchDropdownOpen}
-          setSearchDropdownOpen={setSearchDropdownOpen}
-          navbarSearchResults={navbarSearchResults}
-          searchInputRef={searchInputRef}
-          setSelectedGame={setSelectedGame}
-          settingsSearchQuery={settingsSearchQuery}
-          setSettingsSearchQuery={setSettingsSearchQuery}
-          settingsSearchDropdownOpen={settingsSearchDropdownOpen}
-          setSettingsSearchDropdownOpen={setSettingsSearchDropdownOpen}
-          filteredSettingsOptions={filteredSettingsOptions}
-          handleSelectSettingsOption={handleSelectSettingsOption}
-          settingsSearchInputRef={settingsSearchInputRef}
-          isFullscreen={isFullscreen}
-          handleToggleFullscreen={handleToggleFullscreen}
-          setCastModalOpen={setCastModalOpen}
-          currentProfile={currentProfile}
-          profiles={profiles}
-          handleProfileSwitch={handleProfileSwitch}
-          profileDropdownOpen={profileDropdownOpen}
-          setProfileDropdownOpen={setProfileDropdownOpen}
-        />
-
-        <main className="app-content">
-        {section === "settings" && (
-          <Settings
-            onScan={handleScan}
-            scanning={scanning}
-            folders={folders}
-            setFolders={setFolders}
-            kioskMode={kioskMode}
-            setKioskMode={setKioskMode}
-            scanMessage={scanMessage}
-            scanCores={scanCores}
-            scanProgress={scanProgress}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            profiles={profiles}
-            currentProfile={currentProfile}
-            onProfilesChange={handleProfilesChange}
-            platformCores={platformCores}
-            onPlatformCoreChange={handlePlatformCoreChange}
-            games={games}
-            theme={theme}
-            onThemeChange={handleThemeChange}
-            layoutStyle={layoutStyle}
-            onLayoutStyleChange={handleLayoutStyleChange}
-            activeTab={settingsTab}
-            onActiveTabChange={setSettingsTab}
-            activeGraphicsConsole={settingsGraphicsConsole}
-            onActiveGraphicsConsoleChange={setSettingsGraphicsConsole}
-          />
-        )}
-
-        {loaded === false && section !== "settings" && (
-          <div className="app-welcome">
-            <h1>NewGame+</h1>
-            <p>Configura tus carpetas de ROMs para comenzar</p>
-            <button
-              className="app-welcome-btn"
-              onClick={() => setSection("settings")}
-            >
-              Configurar
-            </button>
+        {setupStatus && <div className="app-setup-banner">{setupStatus}</div>}
+        {errorMsg && (
+          <div className={`app-error-banner ${errorMsg.includes("🎮") ? "is-info" : ""}`}>
+            {errorMsg}
           </div>
         )}
 
-        {loaded === true && section === "home" && (
-          <>
-            <HeroBanner
-              games={featured}
-              allGames={games}
-              onSelect={setSelectedGame}
-              onFavoriteChanged={handleFavoriteChanged}
-              layoutStyle={layoutStyle}
-            />
-            {layoutStyle === "classic" && searchQuery.trim() ? (
-              <div style={{ padding: "0 48px 48px" }}>
+        {loaded === null && (
+          <div className="app-welcome">
+            <div className="spinner" />
+            <p className="loading-text">{t("common.loading")}</p>
+          </div>
+        )}
+
+        <Sidebar
+          section={section}
+          onNavigate={handleNavigate}
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed((v) => !v)}
+          genres={genreList}
+          selectedGenre={selectedGenre}
+          onSelectGenre={handleSelectGenre}
+          company={effectiveCompany !== "all" ? effectiveCompany : undefined}
+          games={games}
+          layoutStyle={layoutStyle}
+          currentProfile={currentProfile}
+          profiles={profiles}
+          onProfileSwitch={handleProfileSwitch}
+          onOpenCast={() => setCastModalOpen(true)}
+          onOpenGuide={() => setOnboardingOpen(true)}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={handleToggleFullscreen}
+          settingsBadge={emulatorUpdates && section !== "settings"}
+        />
+
+        <div className="app-main">
+          <AppHeader
+            section={section}
+            setSection={setSection}
+            layoutStyle={layoutStyle}
+            games={games}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            searchDropdownOpen={searchDropdownOpen}
+            setSearchDropdownOpen={setSearchDropdownOpen}
+            navbarSearchResults={navbarSearchResults}
+            searchInputRef={searchInputRef}
+            setSelectedGame={setSelectedGame}
+            settingsSearchQuery={settingsSearchQuery}
+            setSettingsSearchQuery={setSettingsSearchQuery}
+            settingsSearchDropdownOpen={settingsSearchDropdownOpen}
+            setSettingsSearchDropdownOpen={setSettingsSearchDropdownOpen}
+            filteredSettingsOptions={filteredSettingsOptions}
+            handleSelectSettingsOption={handleSelectSettingsOption}
+            settingsSearchInputRef={settingsSearchInputRef}
+            isFullscreen={isFullscreen}
+            handleToggleFullscreen={handleToggleFullscreen}
+            setCastModalOpen={setCastModalOpen}
+            currentProfile={currentProfile}
+            profiles={profiles}
+            handleProfileSwitch={handleProfileSwitch}
+            profileDropdownOpen={profileDropdownOpen}
+            setProfileDropdownOpen={setProfileDropdownOpen}
+          />
+
+          <main className="app-content">
+            {section === "settings" && (
+              <Settings
+                onScan={handleScanWrapper}
+                scanning={scanning}
+                folders={folders}
+                setFolders={setFolders}
+                kioskMode={kioskMode}
+                setKioskMode={setKioskMode}
+                scanMessage={scanMessage}
+                scanCores={scanCores}
+                scanProgress={scanProgress}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                profiles={profiles}
+                currentProfile={currentProfile}
+                onProfilesChange={handleProfilesChange}
+                platformCores={platformCores}
+                onPlatformCoreChange={handlePlatformCoreChange}
+                games={games}
+                theme={theme}
+                onThemeChange={handleThemeChange}
+                layoutStyle={layoutStyle}
+                onLayoutStyleChange={handleLayoutStyleChange}
+                activeTab={settingsTab}
+                onActiveTabChange={setSettingsTab}
+                activeGraphicsConsole={settingsGraphicsConsole}
+                onActiveGraphicsConsoleChange={setSettingsGraphicsConsole}
+                splashEnabled={splashEnabled}
+                onSplashEnabledChange={handleSplashEnabledChange}
+                splashSoundEnabled={splashSoundEnabled}
+                onSplashSoundEnabledChange={handleSplashSoundEnabledChange}
+                onPreviewSplash={handlePreviewSplash}
+                onOpenOnboarding={() => setOnboardingOpen(true)}
+              />
+            )}
+
+            {loaded === true && section === "home" && games.length === 0 && (
+              <div className="app-welcome" style={{ padding: "80px 20px", textAlign: "center" }}>
+                <h1>NewGame+</h1>
+                <p style={{ color: "#94a3b8", maxWidth: "480px", margin: "14px auto 24px", lineHeight: "1.5" }}>
+                  Tu biblioteca está vacía. Añade tus carpetas de juegos o abre el asistente guiado para comenzar.
+                </p>
+                <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+                  <button className="app-welcome-btn" onClick={() => setOnboardingOpen(true)}>
+                    📖 Abrir Asistente de Inicio
+                  </button>
+                  <button
+                    className="app-welcome-btn"
+                    style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff" }}
+                    onClick={() => setSection("settings")}
+                  >
+                    ⚙️ Ir a Ajustes
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {loaded === true && section === "home" && games.length > 0 && (
+              <>
+                <HeroBanner
+                  games={featured}
+                  allGames={games}
+                  onSelect={setSelectedGame}
+                  onFavoriteChanged={handleFavoriteChanged}
+                  layoutStyle={layoutStyle}
+                />
+                {layoutStyle === "classic" && searchQuery.trim() ? (
+                  <div style={{ padding: "0 48px 48px" }}>
+                    {searchResults.length > 0 ? (
+                      <CategoryRow
+                        title={t("search.searchResultsWithCount", { count: searchResults.length })}
+                        games={searchResults}
+                        onSelect={setSelectedGame}
+                        onFavoriteChanged={handleFavoriteChanged}
+                        focusedId={showNavFocus ? searchResults[flatFocusIdx]?.id : null}
+                      />
+                    ) : (
+                      <p
+                        style={{
+                          color: "#777",
+                          padding: "32px 0",
+                          textAlign: "center",
+                          fontSize: "16px",
+                        }}
+                      >
+                        {t("search.noResults", { query: searchQuery })}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  homeRows.map((row, rowIdx) => {
+                    const isRowActive = homeFocus.row === rowIdx;
+                    const focusedIdInRow =
+                      showNavFocus && isRowActive && row.games.length > 0
+                        ? row.games[Math.min(homeFocus.col, row.games.length - 1)]?.id
+                        : null;
+                    return (
+                      <CategoryRow
+                        key={row.id}
+                        title={row.title}
+                        games={row.games}
+                        onSelect={setSelectedGame}
+                        onFavoriteChanged={handleFavoriteChanged}
+                        focusedId={focusedIdInRow}
+                      />
+                    );
+                  })
+                )}
+              </>
+            )}
+
+            {loaded === true && section === "library" && (
+              <div className="library-container">
+                {availableCompanies.length > 0 && (
+                  <div className="library-filter-pill-container">
+                    <div className="library-filter-pill">
+                      <button
+                        type="button"
+                        className={`library-filter-item ${selectedCompany === "all" ? "active" : ""}`}
+                        onClick={() => setSelectedCompany("all")}
+                      >
+                        Todos
+                      </button>
+                      {availableCompanies.map((company) => (
+                        <button
+                          key={company}
+                          type="button"
+                          className={`library-filter-item ${
+                            selectedCompany === company ? "active" : ""
+                          }`}
+                          onClick={() =>
+                            setSelectedCompany(company === selectedCompany ? "all" : company)
+                          }
+                        >
+                          {company}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {librarySections.length > 0 ? (
+                  <div className="library-sections-list">
+                    {librarySections.map((sec) => {
+                      return (
+                        <div key={sec.platform} className="library-platform-block">
+                          <div className="library-platform-header">
+                            <div className="library-platform-title-group">
+                              <span
+                                className="library-platform-indicator"
+                                style={{ backgroundColor: sec.color }}
+                              />
+                              <h2 className="library-platform-title">{sec.displayName}</h2>
+                              <span className="library-platform-count">
+                                {sec.games.length} {sec.games.length === 1 ? "juego" : "juegos"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="library-grid">
+                            {sec.games.map((game) => {
+                              const globalIdx = libraryGames.findIndex((g) => g.id === game.id);
+                              return (
+                                <GameCard
+                                  key={game.id}
+                                  game={game}
+                                  onSelect={setSelectedGame}
+                                  onFavoriteChanged={handleFavoriteChanged}
+                                  focused={showNavFocus && flatFocusIdx === globalIdx}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ color: "#555", textAlign: "center", padding: "48px" }}>
+                    No se encontraron juegos
+                  </p>
+                )}
+              </div>
+            )}
+
+            {loaded === true && section === "favorites" && (
+              <div style={{ padding: "48px" }}>
+                {favorites.length > 0 ? (
+                  <CategoryRow
+                    title={t("library.favorites")}
+                    games={favorites}
+                    onSelect={setSelectedGame}
+                    onFavoriteChanged={handleFavoriteChanged}
+                    focusedId={showNavFocus ? favorites[flatFocusIdx]?.id : null}
+                  />
+                ) : (
+                  <p style={{ color: "#555", padding: "48px", textAlign: "center" }}>
+                    {t("library.noFavoritesYet")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {loaded === true && section === "search" && (
+              <div style={{ padding: "48px" }}>
                 {searchResults.length > 0 ? (
                   <CategoryRow
-                    title={`Resultados de bÃºsqueda (${searchResults.length})`}
+                    title={t("search.resultsWithCount", { count: searchResults.length })}
                     games={searchResults}
                     onSelect={setSelectedGame}
                     onFavoriteChanged={handleFavoriteChanged}
                     focusedId={showNavFocus ? searchResults[flatFocusIdx]?.id : null}
                   />
                 ) : (
-                  <p style={{ color: "#777", padding: "32px 0", textAlign: "center", fontSize: "16px" }}>
-                    No se encontraron resultados para "{searchQuery}"
+                  <p style={{ color: "#555", padding: "48px", textAlign: "center" }}>
+                    {t("search.noResultsShort")}
                   </p>
                 )}
               </div>
-            ) : (
-              homeRows.map((row, rowIdx) => {
-                const isRowActive = homeFocus.row === rowIdx;
-                const focusedIdInRow =
-                  showNavFocus && isRowActive && row.games.length > 0
-                    ? row.games[Math.min(homeFocus.col, row.games.length - 1)]?.id
-                    : null;
-                return (
-                  <CategoryRow
-                    key={row.id}
-                    title={row.title}
-                    games={row.games}
-                    onSelect={setSelectedGame}
-                    onFavoriteChanged={handleFavoriteChanged}
-                    focusedId={focusedIdInRow}
-                  />
-                );
-              })
             )}
-          </>
-        )}
 
-        {loaded === true && section === "library" && (
-          <div className="library-container">
-            {availableCompanies.length > 0 && (
-              <div className="library-filter-pill-container">
-                <div className="library-filter-pill">
+            {loaded === true && section === "genre" && selectedGenre && (
+              <div className="library-container">
+                <div className="genre-view-header">
                   <button
                     type="button"
-                    className={`library-filter-item ${selectedCompany === "all" ? "active" : ""}`}
-                    onClick={() => setSelectedCompany("all")}
+                    className="genre-back-btn"
+                    onClick={() => setSection("genres")}
+                    aria-label={t("genres.backToGenres")}
                   >
-                    Todos
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="19" y1="12" x2="5" y2="12" />
+                      <polyline points="12 19 5 12 12 5" />
+                    </svg>
+                    <span>{t("genres.backToGenres")}</span>
                   </button>
-                  {availableCompanies.map((company) => (
-                    <button
-                      key={company}
-                      type="button"
-                      className={`library-filter-item ${selectedCompany === company ? "active" : ""}`}
-                      onClick={() => setSelectedCompany(company === selectedCompany ? "all" : company)}
-                    >
-                      {company}
-                    </button>
-                  ))}
+
+                  <div className="genre-view-title-wrap">
+                    <h2 className="genre-view-title">
+                      {effectiveCompany !== "all"
+                        ? `${getLocalizedGenreName(selectedGenre, t)} • ${effectiveCompany}`
+                        : getLocalizedGenreName(selectedGenre, t)}
+                    </h2>
+                    <span className="genre-view-count">
+                      {t("library.totalGames", { count: activeGenreGames.length })}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
 
-            {librarySections.length > 0 ? (
-              <div className="library-sections-list">
-                {librarySections.map((sec) => {
-                  return (
-                    <div key={sec.platform} className="library-platform-block">
-                      <div className="library-platform-header">
-                        <div className="library-platform-title-group">
-                          <span
-                            className="library-platform-indicator"
-                            style={{ backgroundColor: sec.color }}
-                          />
-                          <h2 className="library-platform-title">{sec.displayName}</h2>
-                          <span className="library-platform-count">
-                            {sec.games.length} {sec.games.length === 1 ? "juego" : "juegos"}
-                          </span>
+                {activeGenreSections.length > 0 ? (
+                  <div className="library-sections-list">
+                    {activeGenreSections.map((sec) => {
+                      return (
+                        <div key={sec.platform} className="library-platform-block">
+                          <div className="library-platform-header">
+                            <div className="library-platform-title-group">
+                              <span
+                                className="library-platform-indicator"
+                                style={{ backgroundColor: sec.color }}
+                              />
+                              <h2 className="library-platform-title">{sec.displayName}</h2>
+                              <span className="library-platform-count">
+                                {sec.games.length} {sec.games.length === 1 ? "juego" : "juegos"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="library-grid">
+                            {sec.games.map((game) => {
+                              const globalIdx = activeGenreGames.findIndex((g) => g.id === game.id);
+                              return (
+                                <GameCard
+                                  key={game.id}
+                                  game={game}
+                                  onSelect={setSelectedGame}
+                                  onFavoriteChanged={handleFavoriteChanged}
+                                  focused={showNavFocus && flatFocusIdx === globalIdx}
+                                />
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-
-                      <div className="library-grid">
-                        {sec.games.map((game) => {
-                          const globalIdx = libraryGames.findIndex((g) => g.id === game.id);
-                          return (
-                            <GameCard
-                              key={game.id}
-                              game={game}
-                              onSelect={setSelectedGame}
-                              onFavoriteChanged={handleFavoriteChanged}
-                              focused={showNavFocus && flatFocusIdx === globalIdx}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ color: "#555", textAlign: "center", padding: "48px" }}>
+                    {t("genres.noGamesInGenre")}{" "}
+                    {effectiveCompany !== "all" ? t("genres.forCompany", { company: effectiveCompany }) : ""}
+                  </p>
+                )}
               </div>
-            ) : (
-              <p style={{ color: "#555", textAlign: "center", padding: "48px" }}>
-                No se encontraron juegos
-              </p>
             )}
-          </div>
+
+            {loaded === true && section === "genres" && (
+              <div className="genres-container">
+                <div className="genres-header">
+                  <div className="genres-header-info">
+                    <h1 className="genres-title">
+                      {t("genres.title")}
+                      {effectiveCompany !== "all" && (
+                        <span className="genres-company-badge">{effectiveCompany}</span>
+                      )}
+                    </h1>
+                    <p className="genres-subtitle">{t("genres.subtitle")}</p>
+                  </div>
+                </div>
+
+                {genreList.length > 0 ? (
+                  <div className="genre-cards-grid">
+                    {genreList.map((g) => {
+                      const itemTheme = getGenreTheme(g.name);
+                      const bgSrc = g.imagePath ? getCoverUrl(g.imagePath) : "";
+                      const localizedGenreName = getLocalizedGenreName(g.name, t);
+                      return (
+                        <button
+                          key={g.name}
+                          className="modern-genre-card"
+                          style={
+                            {
+                              "--genre-color": itemTheme.color,
+                              "--genre-glow": itemTheme.glow,
+                              "--genre-gradient": itemTheme.gradient,
+                            } as React.CSSProperties
+                          }
+                          onClick={() => handleSelectGenre(g.name)}
+                        >
+                          <div className="modern-genre-card-inner">
+                            {bgSrc ? (
+                              <img src={bgSrc} alt="" className="modern-genre-card-bg" loading="lazy" />
+                            ) : (
+                              <div className="modern-genre-fallback-bg" />
+                            )}
+                            <div className="modern-genre-card-overlay" />
+
+                            <div className="modern-genre-card-top">
+                              <span className="modern-genre-count-badge">
+                                {t("library.totalGames", { count: g.count })}
+                              </span>
+                            </div>
+
+                            <div className="modern-genre-card-bottom">
+                              <span className="modern-genre-name">{localizedGenreName}</span>
+                              {g.topGameName && (
+                                <span className="modern-genre-featured-label" title={g.topGameName}>
+                                  {t("genres.featured", { name: g.topGameName })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ color: "#777", textAlign: "center", padding: "60px 0" }}>
+                    {t("genres.noGenresAvailable")}{" "}
+                    {effectiveCompany !== "all" ? t("genres.forCompany", { company: effectiveCompany }) : ""}
+                  </p>
+                )}
+              </div>
+            )}
+          </main>
+        </div>
+
+        {selectedGame && (
+          <GameDetailModal
+            game={selectedGame}
+            onClose={() => setSelectedGame(null)}
+            onFavoriteChanged={handleFavoriteChanged}
+            onHeroChanged={(gameId, newHeroPath) => {
+              setGames((prev) =>
+                prev.map((g) => (g.id === gameId ? { ...g, hero_path: newHeroPath } : g))
+              );
+              if (selectedGame && selectedGame.id === gameId) {
+                setSelectedGame({ ...selectedGame, hero_path: newHeroPath });
+              }
+            }}
+            onLogoChanged={(gameId, newLogoPath) => {
+              setGames((prev) =>
+                prev.map((g) => (g.id === gameId ? { ...g, logo_path: newLogoPath } : g))
+              );
+              if (selectedGame && selectedGame.id === gameId) {
+                setSelectedGame({ ...selectedGame, logo_path: newLogoPath });
+              }
+            }}
+            onGameUpdated={(updated) => {
+              setGames((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+              setSelectedGame(updated);
+            }}
+          />
         )}
 
-        {loaded === true && section === "favorites" && (
-          <div style={{ padding: "48px" }}>
-            {favorites.length > 0 ? (
-              <CategoryRow
-                title="Favoritos"
-                games={favorites}
-                onSelect={setSelectedGame}
-                onFavoriteChanged={handleFavoriteChanged}
-                focusedId={showNavFocus ? favorites[flatFocusIdx]?.id : null}
-              />
-            ) : (
-              <p style={{ color: "#555", padding: "48px", textAlign: "center" }}>
-                No hay favoritos aÃºn
-              </p>
-            )}
-          </div>
-        )}
+        <CastModal isOpen={castModalOpen} onClose={() => setCastModalOpen(false)} />
 
-        {loaded === true && section === "search" && (
-          <div style={{ padding: "48px" }}>
-            {searchResults.length > 0 ? (
-              <CategoryRow
-                title={`Resultados (${searchResults.length})`}
-                games={searchResults}
-                onSelect={setSelectedGame}
-                onFavoriteChanged={handleFavoriteChanged}
-                focusedId={showNavFocus ? searchResults[flatFocusIdx]?.id : null}
-              />
-            ) : (
-              <p style={{ color: "#555", padding: "48px", textAlign: "center" }}>
-                No se encontraron resultados
-              </p>
-            )}
-          </div>
-        )}
-
-        {loaded === true && section === "genre" && selectedGenre && (
-          <div className="library-container">
-            <div className="genre-view-header">
-              <button
-                type="button"
-                className="genre-back-btn"
-                onClick={() => setSection("genres")}
-                aria-label="Volver a gÃ©neros"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="19" y1="12" x2="5" y2="12" />
-                  <polyline points="12 19 5 12 12 5" />
-                </svg>
-                <span>Volver a GÃ©neros</span>
-              </button>
-
-              <div className="genre-view-title-wrap">
-                <h2 className="genre-view-title">
-                  {effectiveCompany !== "all" ? `${selectedGenre} â€¢ ${effectiveCompany}` : selectedGenre}
-                </h2>
-                <span className="genre-view-count">
-                  {activeGenreGames.length} {activeGenreGames.length === 1 ? "juego" : "juegos"}
-                </span>
-              </div>
-            </div>
-
-            {activeGenreSections.length > 0 ? (
-              <div className="library-sections-list">
-                {activeGenreSections.map((sec) => {
-                  return (
-                    <div key={sec.platform} className="library-platform-block">
-                      <div className="library-platform-header">
-                        <div className="library-platform-title-group">
-                          <span
-                            className="library-platform-indicator"
-                            style={{ backgroundColor: sec.color }}
-                          />
-                          <h2 className="library-platform-title">{sec.displayName}</h2>
-                          <span className="library-platform-count">
-                            {sec.games.length} {sec.games.length === 1 ? "juego" : "juegos"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="library-grid">
-                        {sec.games.map((game) => {
-                          const globalIdx = activeGenreGames.findIndex((g) => g.id === game.id);
-                          return (
-                            <GameCard
-                              key={game.id}
-                              game={game}
-                              onSelect={setSelectedGame}
-                              onFavoriteChanged={handleFavoriteChanged}
-                              focused={showNavFocus && flatFocusIdx === globalIdx}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p style={{ color: "#555", textAlign: "center", padding: "48px" }}>
-                No hay juegos en este gÃ©nero {effectiveCompany !== "all" ? `para ${effectiveCompany}` : ""}
-              </p>
-            )}
-          </div>
-        )}
-
-        {loaded === true && section === "genres" && (
-          <div className="genres-container">
-            <div className="genres-header">
-              <div className="genres-header-info">
-                <h1 className="genres-title">
-                  Explorar GÃ©neros
-                  {effectiveCompany !== "all" && <span className="genres-company-badge">{effectiveCompany}</span>}
-                </h1>
-                <p className="genres-subtitle">
-                  DescubrÃ­ tus juegos organizados por categorÃ­as y temÃ¡ticas
-                </p>
-              </div>
-            </div>
-
-            {genreList.length > 0 ? (
-              <div className="genre-cards-grid">
-                {genreList.map((g) => {
-                  const theme = getGenreTheme(g.name);
-                  const bgSrc = g.imagePath ? getCoverUrl(g.imagePath) : "";
-                  return (
-                    <button
-                      key={g.name}
-                      className="modern-genre-card"
-                      style={{
-                        "--genre-color": theme.color,
-                        "--genre-glow": theme.glow,
-                        "--genre-gradient": theme.gradient,
-                      } as React.CSSProperties}
-                      onClick={() => handleSelectGenre(g.name)}
-                    >
-                      <div className="modern-genre-card-inner">
-                        {bgSrc ? (
-                          <img
-                            src={bgSrc}
-                            alt=""
-                            className="modern-genre-card-bg"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="modern-genre-fallback-bg" />
-                        )}
-                        <div className="modern-genre-card-overlay" />
-
-                        <div className="modern-genre-card-top">
-                          <span className="modern-genre-count-badge">
-                            {g.count} {g.count === 1 ? "juego" : "juegos"}
-                          </span>
-                        </div>
-
-                        <div className="modern-genre-card-bottom">
-                          <span className="modern-genre-name">{g.name}</span>
-                          {g.topGameName && (
-                            <span className="modern-genre-featured-label" title={g.topGameName}>
-                              Destacado: {g.topGameName}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <p style={{ color: "#777", textAlign: "center", padding: "60px 0" }}>
-                No hay gÃ©neros disponibles {effectiveCompany !== "all" ? `para ${effectiveCompany}` : ""}
-              </p>
-            )}
-          </div>
-        )}
-      </main>
-      </div>
-
-      {selectedGame && (
-        <GameDetailModal
-          game={selectedGame}
-          onClose={() => setSelectedGame(null)}
-          onFavoriteChanged={handleFavoriteChanged}
-          onHeroChanged={(gameId, newHeroPath) => {
-            setGames((prev) =>
-              prev.map((g) => (g.id === gameId ? { ...g, hero_path: newHeroPath } : g))
-            );
-            if (selectedGame && selectedGame.id === gameId) {
-              setSelectedGame({ ...selectedGame, hero_path: newHeroPath });
-            }
-          }}
-          onLogoChanged={(gameId, newLogoPath) => {
-            setGames((prev) =>
-              prev.map((g) => (g.id === gameId ? { ...g, logo_path: newLogoPath } : g))
-            );
-            if (selectedGame && selectedGame.id === gameId) {
-              setSelectedGame({ ...selectedGame, logo_path: newLogoPath });
-            }
-          }}
-          onGameUpdated={(updated) => {
-            setGames((prev) =>
-              prev.map((g) => (g.id === updated.id ? updated : g))
-            );
-            setSelectedGame(updated);
+        <ScanCompleteModal
+          isOpen={!!scanCompletedResult}
+          result={scanCompletedResult}
+          onClose={dismissScanCompleted}
+          onGoToLibrary={() => {
+            dismissScanCompleted();
+            setSection("home");
           }}
         />
-      )}
 
-      <CastModal
-        isOpen={castModalOpen}
-        onClose={() => setCastModalOpen(false)}
-      />
+        <ScanProgressHUD
+          scanning={scanning}
+          progress={scanProgress}
+          message={scanMessage}
+        />
 
+        <OnboardingModal
+          isOpen={onboardingOpen}
+          onClose={handleCloseOnboarding}
+          folders={folders}
+          onAddFolder={handleAddFolderFromOnboarding}
+          onStartScan={(f) => {
+            handleCloseOnboarding();
+            handleScanWrapper(f);
+          }}
+        />
+
+        <ControllerHUD
+          section={section}
+          hasModalOpen={selectedGame !== null || castModalOpen || onboardingOpen || !!scanCompletedResult}
+          selectedGameId={selectedGame?.id ?? null}
+        />
+
+        {showSplash && (
+          <SplashScreen
+            soundEnabled={splashSoundEnabled}
+            volume={0.4}
+            onFinish={() => setShowSplash(false)}
+          />
+        )}
       </div>
     </MusicProvider>
   );

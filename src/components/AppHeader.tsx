@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { Game, LayoutStyle, Section } from "../types";
 import type { SettingsSearchOption } from "../lib/settingsSearch";
 import { getCoverUrl } from "../lib/tauri";
+import { PLATFORM_COLORS } from "../lib/platforms";
+import { ConsoleIcon } from "./ConsoleIcon";
 import { VinylPlayer } from "./VinylPlayer";
 import { GearIcon, SearchIcon, CloseIcon, CastIcon, MaximizeIcon, MinimizeIcon } from "./icons";
 
@@ -99,7 +101,12 @@ export default function AppHeader(props: AppHeaderProps) {
             </div>
 
             {settingsSearchDropdownOpen && (
-              <div className="app-navbar-search-dropdown app-settings-search-dropdown" role="listbox">
+              <>
+                <div
+                  className="app-search-backdrop"
+                  onClick={() => setSettingsSearchDropdownOpen(false)}
+                />
+                <div className="app-navbar-search-dropdown app-settings-search-dropdown" role="listbox">
                 {filteredSettingsOptions.length > 0 ? (
                   <>
                     {!settingsSearchQuery.trim() && (
@@ -135,6 +142,7 @@ export default function AppHeader(props: AppHeaderProps) {
                   </div>
                 )}
               </div>
+              </>
             )}
           </div>
         ) : (
@@ -182,52 +190,68 @@ export default function AppHeader(props: AppHeaderProps) {
             </div>
 
             {searchQuery.trim().length > 0 && searchDropdownOpen && (
-              <div className="app-navbar-search-dropdown" role="listbox">
-                {navbarSearchResults.length > 0 ? (
-                  navbarSearchResults.map((game) => {
-                    const coverSrc = getCoverUrl(game.cover_path);
-                    const title = game.display_name || game.name;
-                    return (
-                      <div
-                        key={game.id}
-                        className="app-navbar-search-item"
-                        role="option"
-                        onClick={() => {
-                          setSelectedGame(game);
-                          setSearchQuery("");
-                          setSearchDropdownOpen(false);
-                        }}
-                      >
-                        <div className="app-navbar-search-item-thumb">
-                          {coverSrc ? (
-                            <img src={coverSrc} alt={title} className="app-navbar-search-item-img" />
-                          ) : (
-                            <div className="app-navbar-search-item-placeholder">
-                              {(title[0] || "?").toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-                        <div className="app-navbar-search-item-info">
-                          <span className="app-navbar-search-item-title">{title}</span>
-                          <span className="app-navbar-search-item-meta">
-                            <span className="app-navbar-search-item-plat">{game.platform}</span>
-                            {game.release_year && (
-                              <span className="app-navbar-search-item-year">{game.release_year}</span>
+              <>
+                <div
+                  className="app-search-backdrop"
+                  onClick={() => setSearchDropdownOpen(false)}
+                />
+                <div className="app-navbar-search-dropdown" role="listbox">
+                  {navbarSearchResults.length > 0 ? (
+                    navbarSearchResults.map((game) => {
+                      const coverSrc = getCoverUrl(game.cover_path);
+                      const title = game.display_name || game.name;
+                      const platColor = PLATFORM_COLORS[game.platform] || "var(--accent)";
+                      return (
+                        <div
+                          key={game.id}
+                          className="app-navbar-search-item"
+                          role="option"
+                          onClick={() => {
+                            setSelectedGame(game);
+                            setSearchQuery("");
+                            setSearchDropdownOpen(false);
+                          }}
+                        >
+                          <div className="app-navbar-search-item-thumb">
+                            {coverSrc ? (
+                              <img src={coverSrc} alt={title} className="app-navbar-search-item-img" />
+                            ) : (
+                              <div className="app-navbar-search-item-placeholder">
+                                {(title[0] || "?").toUpperCase()}
+                              </div>
                             )}
-                            {game.genre && (
-                              <span className="app-navbar-search-item-genre">{game.genre}</span>
-                            )}
-                          </span>
+                          </div>
+                          <div className="app-navbar-search-item-info">
+                            <span className="app-navbar-search-item-title">{title}</span>
+                            <span className="app-navbar-search-item-meta">
+                              <span
+                                className="app-navbar-search-item-plat"
+                                style={{
+                                  borderColor: platColor,
+                                  color: platColor,
+                                }}
+                              >
+                                <ConsoleIcon platform={game.platform} size={11} />
+                                <span>{game.platform}</span>
+                              </span>
+                              {game.release_year && (
+                                <span className="app-navbar-search-item-year">{game.release_year}</span>
+                              )}
+                              {game.genre && (
+                                <span className="app-navbar-search-item-genre">{game.genre}</span>
+                              )}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="app-navbar-search-no-results">
-                    {t("search.noResults", { query: searchQuery })}
-                  </div>
-                )}
-              </div>
+                      );
+                    })
+                  ) : (
+                    <div className="app-navbar-search-no-results">
+                      {t("search.noResults", { query: searchQuery })}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         )}

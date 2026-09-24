@@ -84,7 +84,7 @@ pub fn timestamp_to_year(ts: i64) -> Option<i32> {
         days -= year_days;
         year += 1;
     }
-    Some(year as i32)
+    Some(year)
 }
 
 fn client_with_auth(_api_key: &str) -> Result<reqwest::blocking::Client, String> {

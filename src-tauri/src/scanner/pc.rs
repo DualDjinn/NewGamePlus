@@ -66,9 +66,9 @@ pub fn is_pc_path(path: &Path) -> bool {
         || path_str.contains("/juegos pc/")
         || path_str.contains(r"\windows\")
         || path_str.contains("/windows/")
-        || path.parent().map_or(false, |p| {
+        || path.parent().is_some_and(|p| {
             p.file_name()
-                .map_or(false, |n| is_pc_folder_name(&n.to_string_lossy()))
+                .is_some_and(|n| is_pc_folder_name(&n.to_string_lossy()))
         })
 }
 
@@ -510,7 +510,7 @@ pub fn resolve_pc_game_info(rom_path: &Path) -> (String, Option<String>) {
     // usar el nombre de la subcarpeta limpio. Si está suelto en PC, usar el file stem.
     let is_parent_pc = parent
         .and_then(|p| p.file_name())
-        .map_or(false, |n| is_pc_folder_name(&n.to_string_lossy()));
+        .is_some_and(|n| is_pc_folder_name(&n.to_string_lossy()));
 
     let title = if is_parent_pc {
         rom_path
@@ -734,7 +734,7 @@ pub fn match_best_steam_candidate(
         }
     }
 
-    scored_candidates.sort_by(|a, b| b.1.cmp(&a.1));
+    scored_candidates.sort_by_key(|b| std::cmp::Reverse(b.1));
     scored_candidates.first().map(|(id, _)| *id)
 }
 
@@ -783,7 +783,7 @@ pub fn fetch_steam_raw_details(appid: u32) -> Option<SteamRawDetails> {
         return None;
     }
     let json_val = resp.json::<serde_json::Value>().ok()?;
-    let app_obj = json_val.get(&appid.to_string())?;
+    let app_obj = json_val.get(appid.to_string())?;
     let details = serde_json::from_value::<SteamAppDetailsWrapper>(app_obj.clone()).ok()?;
     if !details.success {
         return None;

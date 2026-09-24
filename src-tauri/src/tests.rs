@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use crate::emulator::standalone::get_rpcs3_exe;
     use crate::metadata::ensure_thumbnail as ensure_thumbnail_orchestrator;
@@ -93,6 +94,68 @@ mod tests {
 
         let rpcs3_exe = get_rpcs3_exe();
         assert!(rpcs3_exe.exists(), "rpcs3.exe debe existir");
+    }
+
+    #[test]
+    fn test_nds_metadata_resolution_and_curated() {
+        // 1. Test resolución de serial NDS en formato NTR-XXXX contra libretrodb (hexadecimal '41595745')
+        let db_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("binaries")
+            .join("libretrodb.sqlite");
+        if db_path.exists() {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            let meta = crate::metadata::libretro::query_metadata_by_serial(
+                &conn,
+                "NTR-AYWE",
+                "Yoshi's Island DS",
+            );
+            assert!(meta.is_some(), "Debe resolver NTR-AYWE vía hex en libretrodb");
+            assert_eq!(
+                meta.unwrap().display_name.as_deref(),
+                Some("Yoshi's Island DS")
+            );
+        }
+
+        // 2. Test catálogo curado NDS con variantes en español y etiquetas [NDS]
+        let p1 = crate::metadata::curated::find_curated_catalog_metadata(
+            "Pokémon Blanco 2 [NDS] [Roms Nintendo en Español]",
+            "NDS",
+        );
+        assert!(p1.is_some());
+        let m1 = p1.unwrap();
+        assert_eq!(m1.genre.as_deref(), Some("Rol / RPG"));
+        assert_eq!(m1.developer.as_deref(), Some("Game Freak"));
+        assert_eq!(m1.release_year, Some(2012));
+
+        let p2 = crate::metadata::curated::find_curated_catalog_metadata(
+            "El Profesor Layton y la Villa Misteriosa [NDS] [Roms Nintendo en Español]",
+            "NDS",
+        );
+        assert!(p2.is_some());
+        let m2 = p2.unwrap();
+        assert_eq!(m2.genre.as_deref(), Some("Puzle / Aventura"));
+        assert_eq!(m2.developer.as_deref(), Some("Level-5"));
+        assert_eq!(m2.release_year, Some(2007));
+
+        let p3 = crate::metadata::curated::find_curated_catalog_metadata(
+            "Mario & Luigi - Compañeros en el Tiempo [NDS] [Roms Nintendo en Español]",
+            "NDS",
+        );
+        assert!(p3.is_some());
+        let m3 = p3.unwrap();
+        assert_eq!(m3.genre.as_deref(), Some("Rol / RPG"));
+        assert_eq!(m3.developer.as_deref(), Some("AlphaDream"));
+        assert_eq!(m3.release_year, Some(2005));
+
+        let p4 = crate::metadata::curated::find_curated_catalog_metadata(
+            "Golden Sun - Oscuro Amanecer [NDS] [Roms Nintendo en Español]",
+            "NDS",
+        );
+        assert!(p4.is_some());
+        let m4 = p4.unwrap();
+        assert_eq!(m4.genre.as_deref(), Some("Rol / RPG"));
+        assert_eq!(m4.developer.as_deref(), Some("Camelot"));
+        assert_eq!(m4.release_year, Some(2010));
     }
 
     #[test]
@@ -514,7 +577,7 @@ mod tests {
             assert!(
                 m.publisher
                     .as_deref()
-                    .map_or(false, |p| p.starts_with("Atlus")),
+                    .is_some_and(|p| p.starts_with("Atlus")),
                 "Publisher must be Atlus"
             );
         }
@@ -1102,6 +1165,45 @@ mod tests {
         let gcnm = gcn_test.unwrap();
         assert_eq!(gcnm.genre, Some("Carreras".to_string()));
 
+        // Verificaciones de nuevas adiciones: GBA, SNES, PSP
+        let mother3 = crate::metadata::curated::find_curated_catalog_metadata(
+            "MOTHER 3 [GBA] [Roms Nintendo en Español]",
+            "GBA",
+        );
+        assert!(mother3.is_some(), "Mother 3 debe encontrarse en catálogo curado");
+        assert_eq!(mother3.unwrap().developer, Some("Brownie Brown / HAL Laboratory".to_string()));
+
+        let dball = crate::metadata::curated::find_curated_catalog_metadata(
+            "Dragon Ball - Advanced Adventure (Europe) (En,Fr,De,Es,It)",
+            "GBA",
+        );
+        assert!(dball.is_some(), "Dragon Ball Advanced Adventure debe encontrarse");
+
+        let fat_princess = crate::metadata::curated::find_curated_catalog_metadata(
+            "Fat Princess - Fistful of Cake (Europe) (En,Fr,De,Es,It,Pt,Ru,El) (PSP) (PSN)",
+            "PSP",
+        );
+        assert!(fat_princess.is_some(), "Fat Princess debe encontrarse");
+
+        let aero2 = crate::metadata::curated::find_curated_catalog_metadata(
+            "Aero the Acro-Bat 2 (Europe)",
+            "SNES",
+        );
+        assert!(aero2.is_some(), "Aero 2 debe encontrarse");
+
+        // Verificaciones de drivers Arcade
+        let mslug = crate::metadata::arcade::resolve_arcade_driver("mslug");
+        assert!(mslug.is_some(), "Metal Slug debe resolverse por driver");
+        assert_eq!(mslug.unwrap().developer, Some("Nazca Corporation".to_string()));
+
+        let dino = crate::metadata::arcade::resolve_arcade_driver("dino");
+        assert!(dino.is_some(), "Cadillacs & Dinosaurs debe resolverse por driver");
+        assert_eq!(dino.unwrap().developer, Some("Capcom".to_string()));
+
+        let kinst = crate::metadata::arcade::resolve_arcade_driver("kinst");
+        assert!(kinst.is_some(), "Killer Instinct debe resolverse por driver");
+        assert_eq!(kinst.unwrap().developer, Some("Rare".to_string()));
+
         // 2. Cargar newgameplus.json y enriquecer juegos sin metadatos
         let db_path = Path::new("target/debug/data/newgameplus.json");
         if !db_path.exists() {
@@ -1126,7 +1228,7 @@ mod tests {
 
             if let Some(m) = meta {
                 let mut changed = false;
-                if game.genre.is_none() && m.genre.is_some() {
+                if (game.genre.is_none() || game.genre.as_deref() == Some("Arcade")) && m.genre.is_some() {
                     game.genre = m.genre;
                     changed = true;
                 }
@@ -1140,6 +1242,12 @@ mod tests {
                 }
                 if game.release_year.is_none() && m.release_year.is_some() {
                     game.release_year = m.release_year;
+                    changed = true;
+                }
+                if (game.display_name.is_none() || game.display_name.as_deref() == Some(&game.name))
+                    && m.display_name.is_some()
+                {
+                    game.display_name = m.display_name;
                     changed = true;
                 }
                 if (game.region.is_none() || game.region.as_deref() == Some(""))

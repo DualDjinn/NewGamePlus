@@ -97,26 +97,7 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
 
     let elapsed_secs = start_instant.elapsed().as_secs();
 
-    // Accumulate play time in active profile
-    {
-        let mut state = lock_state();
-        let profile_name = state.settings.current_profile.clone();
-        if let Some(game) = state.games.iter().find(|g| g.rom_path == rom_path) {
-            let game_id = game.id.clone();
-            if let Some(profile) = state
-                .settings
-                .profiles
-                .iter_mut()
-                .find(|p| p.name == profile_name)
-            {
-                let current_time = profile.play_time_secs.entry(game_id).or_insert(0);
-                *current_time += elapsed_secs;
-            }
-        }
-        save_state(&state);
-    }
-
-    // Show main window again immediately without waiting for any background tasks
+    // Show main window again immediately without waiting for any disk I/O or background tasks
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.set_always_on_top(false);
         let _ = window.unminimize();
@@ -124,13 +105,31 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
         let _ = window.set_focus();
     }
 
-    // Notify frontend that RetroArch exited
+    // Notify frontend immediately that emulator exited
     let _ = app.emit("retroarch-exited", &rom_path);
 
-    // Invalidate and refresh RetroAchievements progress cache in background thread (non-blocking)
+    // Persist playtime and refresh RetroAchievements in background thread (completely non-blocking)
     let rom_path_bg = rom_path.clone();
     std::thread::spawn(move || {
-        let _ = crate::commands::achievements::refresh_game_achievements(rom_path_bg);
+        {
+            let mut state = lock_state();
+            let profile_name = state.settings.current_profile.clone();
+            if let Some(game) = state.games.iter().find(|g| g.rom_path == rom_path_bg) {
+                let game_id = game.id.clone();
+                if let Some(profile) = state
+                    .settings
+                    .profiles
+                    .iter_mut()
+                    .find(|p| p.name == profile_name)
+                {
+                    let current_time = profile.play_time_secs.entry(game_id).or_insert(0);
+                    *current_time += elapsed_secs;
+                }
+            }
+            save_state(&state);
+        }
+
+        let _ = crate::commands::achievements::fetch_achievements_internal(rom_path_bg, true);
     });
 
     if status.success() {

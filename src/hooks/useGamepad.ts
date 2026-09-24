@@ -1,4 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+export type ControllerType = "xbox" | "playstation" | "nintendo" | "generic";
+export type InputDevice = "gamepad" | "keyboard" | "mouse";
 
 export interface GamepadHandlers {
   onNavigate: (direction: "up" | "down" | "left" | "right") => void;
@@ -12,12 +15,123 @@ export interface GamepadHandlers {
   onToggleMenu?: () => void;    // Start / Menu (9)
 }
 
+export function detectControllerType(id?: string): ControllerType {
+  if (!id) return "xbox";
+  const lower = id.toLowerCase();
+  if (
+    lower.includes("dualshock") ||
+    lower.includes("dualsense") ||
+    lower.includes("playstation") ||
+    lower.includes("sony") ||
+    lower.includes("054c")
+  ) {
+    return "playstation";
+  }
+  if (
+    lower.includes("nintendo") ||
+    lower.includes("pro controller") ||
+    lower.includes("joy-con") ||
+    lower.includes("057e")
+  ) {
+    return "nintendo";
+  }
+  if (
+    lower.includes("xbox") ||
+    lower.includes("xinput") ||
+    lower.includes("045e")
+  ) {
+    return "xbox";
+  }
+  return "generic";
+}
+
+function getInitialDevice(): InputDevice {
+  if (typeof navigator !== "undefined" && typeof navigator.getGamepads === "function") {
+    try {
+      const gps = navigator.getGamepads();
+      for (let i = 0; i < gps.length; i++) {
+        if (gps[i]) return "gamepad";
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return "mouse";
+}
+
+let globalInputDevice: InputDevice = getInitialDevice();
+let globalControllerType: ControllerType = "xbox";
+
+export function useInputDevice(): {
+  device: InputDevice;
+  controllerType: ControllerType;
+} {
+  const [state, setState] = useState<{
+    device: InputDevice;
+    controllerType: ControllerType;
+  }>({
+    device: globalInputDevice,
+    controllerType: globalControllerType,
+  });
+
+  useEffect(() => {
+    function handleDeviceChange(e: CustomEvent<{ device: InputDevice; controllerType?: ControllerType }>) {
+      const dev = e.detail.device;
+      const cType = e.detail.controllerType ?? globalControllerType;
+      globalInputDevice = dev;
+      if (e.detail.controllerType) {
+        globalControllerType = e.detail.controllerType;
+      }
+      setState({ device: dev, controllerType: cType });
+    }
+
+    window.addEventListener("input-device-changed", handleDeviceChange as EventListener);
+    return () => {
+      window.removeEventListener("input-device-changed", handleDeviceChange as EventListener);
+    };
+  }, []);
+
+  return state;
+}
+
 export function useGamepad(handlers: GamepadHandlers, enabled: boolean = true) {
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
 
   useEffect(() => {
-    if (!enabled) return;
+    // Keyboard listener to update active input device to keyboard
+    function handleKeyDown() {
+      if (globalInputDevice !== "keyboard") {
+        globalInputDevice = "keyboard";
+        window.dispatchEvent(
+          new CustomEvent("input-device-changed", {
+            detail: { device: "keyboard", controllerType: globalControllerType },
+          })
+        );
+      }
+    }
+
+    // Mouse listener to update active input device to mouse
+    function handleMouseMove() {
+      if (globalInputDevice !== "mouse") {
+        globalInputDevice = "mouse";
+        window.dispatchEvent(
+          new CustomEvent("input-device-changed", {
+            detail: { device: "mouse", controllerType: globalControllerType },
+          })
+        );
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousemove", handleMouseMove);
+
+    if (!enabled) {
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+        window.removeEventListener("mousemove", handleMouseMove);
+      };
+    }
 
     let animFrameId: number;
     const prevButtons = new Map<number, boolean>();
@@ -31,6 +145,18 @@ export function useGamepad(handlers: GamepadHandlers, enabled: boolean = true) {
     function handleGamepadEvents(e: GamepadEvent) {
       const isConnected = e.type === "gamepadconnected";
       const name = e.gamepad.id ? e.gamepad.id.split("(")[0].trim() : "Mando";
+      const cType = detectControllerType(e.gamepad.id);
+      globalControllerType = cType;
+
+      if (isConnected) {
+        globalInputDevice = "gamepad";
+        window.dispatchEvent(
+          new CustomEvent("input-device-changed", {
+            detail: { device: "gamepad", controllerType: cType },
+          })
+        );
+      }
+
       window.dispatchEvent(
         new CustomEvent("app-error", {
           detail: isConnected
@@ -60,6 +186,22 @@ export function useGamepad(handlers: GamepadHandlers, enabled: boolean = true) {
         // Action buttons: trigger on rising edge (just pressed)
         const isJustPressed = (btnIdx: number) =>
           currentButtons[btnIdx] && !prevButtons.get(btnIdx);
+
+        // Notify input device changed to gamepad if button or stick moved
+        const hasGamepadActivity =
+          currentButtons.some((b) => b) ||
+          gp.axes.some((a) => Math.abs(a) > STICK_DEADZONE);
+
+        if (hasGamepadActivity && globalInputDevice !== "gamepad") {
+          globalInputDevice = "gamepad";
+          const detected = detectControllerType(gp.id);
+          globalControllerType = detected;
+          window.dispatchEvent(
+            new CustomEvent("input-device-changed", {
+              detail: { device: "gamepad", controllerType: detected },
+            })
+          );
+        }
 
         if (isJustPressed(0)) handlersRef.current.onConfirm();
         if (isJustPressed(1)) handlersRef.current.onCancel();
@@ -112,6 +254,8 @@ export function useGamepad(handlers: GamepadHandlers, enabled: boolean = true) {
       cancelAnimationFrame(animFrameId);
       window.removeEventListener("gamepadconnected", handleGamepadEvents);
       window.removeEventListener("gamepaddisconnected", handleGamepadEvents);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mousemove", handleMouseMove);
     };
   }, [enabled]);
 }

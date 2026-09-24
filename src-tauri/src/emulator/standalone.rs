@@ -136,7 +136,7 @@ pub fn launch_standalone(
             }
             if exe_path
                 .extension()
-                .map_or(false, |ext| ext.eq_ignore_ascii_case("lnk"))
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("lnk"))
             {
                 // Sin cmd.exe: Start-Process -LiteralPath no re-parsea ni
                 // interpreta metacaracteres (& ^ % ! ") del path.

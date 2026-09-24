@@ -1,3 +1,4 @@
+pub mod arcade;
 pub mod curated;
 pub mod headers;
 pub mod libretro;
@@ -94,12 +95,7 @@ pub fn lookup_metadata(
         if let Some(ref hdr) = header {
             if let Some(serial) = &hdr.serial {
                 if let Some(meta) = libretro::query_metadata_by_serial(conn, serial, game_name) {
-                    if meta.genre.is_some()
-                        || meta.developer.is_some()
-                        || meta.release_year.is_some()
-                    {
-                        db_meta = Some(meta);
-                    }
+                    db_meta = Some(meta);
                 }
             }
             if db_meta.is_none() {
@@ -111,13 +107,12 @@ pub fn lookup_metadata(
                         path,
                     ) {
                         let dname = meta.display_name.as_deref().unwrap_or(internal_title);
-                        if libretro::plausible_match(game_name, dname) {
-                            if meta.genre.is_some()
+                        if libretro::plausible_match(game_name, dname)
+                            && (meta.genre.is_some()
                                 || meta.developer.is_some()
-                                || meta.release_year.is_some()
-                            {
-                                db_meta = Some(meta);
-                            }
+                                || meta.release_year.is_some())
+                        {
+                            db_meta = Some(meta);
                         }
                     }
                 }
@@ -160,14 +155,51 @@ pub fn lookup_metadata(
         }
     }
 
-    // 4. Fallback al catálogo curado multiplataforma (GB, GBC, GBA, NDS, SNES, PS1, PS2, PSP, etc.)
+    // 4. Si es plataforma Arcade / MAME / Neo-Geo, consultar el diccionario de drivers arcade
+    if platforms::is_arcade_platform(platform) || platforms::arcade_display_name(game_name).is_some() {
+        if let Some(arcade_meta) = arcade::resolve_arcade_driver(game_name) {
+            return if let Some(mut existing) = db_meta {
+                if existing.genre.is_none() {
+                    existing.genre = arcade_meta.genre;
+                }
+                if existing.developer.is_none() {
+                    existing.developer = arcade_meta.developer;
+                }
+                if existing.publisher.is_none() {
+                    existing.publisher = arcade_meta.publisher;
+                }
+                if existing.release_year.is_none() {
+                    existing.release_year = arcade_meta.release_year;
+                }
+                if existing.display_name.is_none() {
+                    existing.display_name = arcade_meta.display_name;
+                }
+                if existing.franchise.is_none() {
+                    existing.franchise = arcade_meta.franchise;
+                }
+                Some(existing)
+            } else {
+                Some(arcade_meta)
+            };
+        }
+    }
+
+    // 5. Fallback al catálogo curado multiplataforma (GB, GBC, GBA, NDS, SNES, PS1, PS2, PSP, etc.)
     let needs_curated = match &db_meta {
         None => true,
         Some(m) => m.genre.is_none() || m.developer.is_none() || m.release_year.is_none(),
     };
 
     if needs_curated {
-        if let Some(curated_meta) = curated::find_curated_catalog_metadata(game_name, platform) {
+        let curated_meta = curated::find_curated_catalog_metadata(game_name, platform)
+            .or_else(|| {
+                db_meta
+                    .as_ref()
+                    .and_then(|m| m.display_name.as_deref())
+                    .and_then(|d| curated::find_curated_catalog_metadata(d, platform))
+            });
+
+        if let Some(curated_meta) = curated_meta {
             return if let Some(mut existing) = db_meta {
                 if existing.genre.is_none() {
                     existing.genre = curated_meta.genre;
@@ -221,7 +253,7 @@ pub fn ensure_thumbnail(
 
     let mut candidates: Vec<String> = Vec::new();
     let target_sequel = db_name
-        .and_then(|d| sequel_number(d))
+        .and_then(sequel_number)
         .or_else(|| sequel_number(game_name));
 
     let is_arcade = platforms::is_arcade_platform(platform)

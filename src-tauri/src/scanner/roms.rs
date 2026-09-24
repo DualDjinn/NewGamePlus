@@ -86,12 +86,12 @@ pub fn scan_and_fetch_cores_inner(
                     let is_iso = e
                         .path()
                         .extension()
-                        .map_or(false, |ext| ext.eq_ignore_ascii_case("iso"));
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("iso"));
                     if !is_iso {
                         return false;
                     }
                     platforms::detect_platform(&e.path().to_string_lossy())
-                        .map_or(false, |info| info.platform == "PS3")
+                        .is_some_and(|info| info.platform == "PS3")
                 })
                 .map(|e| e.path().to_path_buf())
                 .collect();
@@ -184,7 +184,7 @@ pub fn scan_and_fetch_cores_inner(
                 let scan_label = if path
                     .file_name()
                     .and_then(|s| s.to_str())
-                    .map_or(false, |s| s.eq_ignore_ascii_case("eboot.bin"))
+                    .is_some_and(|s| s.eq_ignore_ascii_case("eboot.bin"))
                 {
                     path.parent()
                         .and_then(|p| p.parent())
@@ -199,7 +199,7 @@ pub fn scan_and_fetch_cores_inner(
                 };
 
                 // Emitir progreso por lotes para mantener UI reactiva sin saturar IPC
-                if current_idx % 5 == 0 || current_idx == folder_count {
+                if current_idx.is_multiple_of(5) || current_idx == folder_count {
                     let _ = app_handle.emit(
                         "scan-progress",
                         serde_json::json!({
@@ -246,7 +246,7 @@ pub fn scan_and_fetch_cores_inner(
                                 .map(|s| s.to_string_lossy().to_string())
                                 .unwrap_or_else(|| g.name.clone())
                         };
-                        let metadata = metadata::lookup_metadata(&*meta_conn, path, &rom_name);
+                        let metadata = metadata::lookup_metadata(&meta_conn, path, &rom_name);
                         let new_genre =
                             metadata.as_ref().and_then(|m| m.genre.clone()).or_else(|| {
                                 if platforms::is_arcade_platform(info.platform) {
@@ -430,7 +430,7 @@ pub fn scan_and_fetch_cores_inner(
                         }
 
                         let metadata = if genre.is_none() || developer.is_none() {
-                            metadata::lookup_metadata(&*meta_conn, path, &game_name)
+                            metadata::lookup_metadata(&meta_conn, path, &game_name)
                         } else {
                             None
                         };
@@ -474,7 +474,7 @@ pub fn scan_and_fetch_cores_inner(
                                     let p = entry.path();
                                     if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
                                         if name.starts_with(&format!("{}_", game_id))
-                                            && p.extension().map_or(false, |e| e == "png")
+                                            && p.extension().is_some_and(|e| e == "png")
                                         {
                                             existing_hero_path =
                                                 Some(p.to_string_lossy().to_string());
@@ -496,7 +496,7 @@ pub fn scan_and_fetch_cores_inner(
                                     let p = entry.path();
                                     if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
                                         if name.starts_with(&format!("{}_", game_id))
-                                            && p.extension().map_or(false, |e| e == "png")
+                                            && p.extension().is_some_and(|e| e == "png")
                                         {
                                             existing_logo_path =
                                                 Some(p.to_string_lossy().to_string());

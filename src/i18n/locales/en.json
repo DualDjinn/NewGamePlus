@@ -33,13 +33,17 @@
     "settings": "Settings",
     "music": "Music",
     "collapse": "Collapse sidebar",
-    "expand": "Expand sidebar"
+    "expand": "Expand sidebar",
+    "exploreAllGenres": "Explore all genres"
   },
   "search": {
     "gamesPlaceholder": "Search games or franchises...",
     "settingsPlaceholder": "Search settings (e.g. volume, theme, bios)...",
     "noResults": "No results found for \"{{query}}\"",
     "quickResults": "Search results",
+    "searchResultsWithCount": "Search results ({{count}})",
+    "resultsWithCount": "Results ({{count}})",
+    "noResultsShort": "No results found",
     "goToOption": "Go to option",
     "optionsFound": "options found",
     "optionFound": "option found"
@@ -64,12 +68,43 @@
     "sortLastPlayed": "Recently played",
     "emptyLibrary": "Your library is empty",
     "emptyLibraryHint": "Go to Settings to add your game folders and start scanning.",
+    "noFavoritesYet": "No favorites yet",
     "filterPlatform": "All platforms",
     "filterGenre": "All genres",
     "recent": "Continue Playing",
     "favorites": "Your Favorites",
     "newlyAdded": "Recently Added",
     "otherTitles": "Other Titles"
+  },
+  "genres": {
+    "title": "Explore Genres",
+    "subtitle": "Discover your games organized by categories and themes",
+    "backToGenres": "Back to Genres",
+    "noGamesInGenre": "No games in this genre",
+    "noGenresAvailable": "No genres available",
+    "forCompany": "for {{company}}",
+    "featured": "Featured: {{name}}",
+    "names": {
+      "Action": "Action",
+      "Adventure": "Adventure",
+      "Platformer": "Platformer",
+      "Platform": "Platformer",
+      "Role-Playing": "RPG",
+      "RPG": "RPG",
+      "Fighting": "Fighting",
+      "Racing": "Racing",
+      "Sports": "Sports",
+      "Puzzle": "Puzzle",
+      "Shooter": "Shooter",
+      "Strategy": "Strategy",
+      "Simulation": "Simulation",
+      "Arcade": "Arcade",
+      "Horror": "Horror",
+      "Beat 'em up": "Beat 'em up",
+      "Music": "Music",
+      "Party": "Party",
+      "Sandbox": "Sandbox"
+    }
   },
   "scan": {
     "scanning": "Scanning {{label}}…",
@@ -115,13 +150,34 @@
       "languageEs": "Español",
       "languageEn": "English",
       "theme": "Visual Theme",
-      "layoutStyle": "Library Layout"
+      "layoutStyle": "Library Layout",
+      "splashSection": "Startup Animation (Splash Screen)",
+      "splashSubtitle": "Customize the cinematic startup experience when launching NewGame+",
+      "splashEnable": "Animation on app launch",
+      "splashEnableDesc": "Play the cinematic console sequence every time you open the app.",
+      "splashSound": "Startup sound effect",
+      "splashSoundDesc": "Synthetic cinematic chord and whoosh synchronized with the logo.",
+      "splashPreviewBtn": "Preview animation",
+      "splashSkipHint": "Any button or key to continue"
     },
     "librarySection": {
       "romFolders": "Game Folders (ROMs)",
       "addFolder": "Add Folder",
       "rescan": "Scan Games Now",
       "noFolders": "No game folders configured yet."
+    },
+    "confirm": {
+      "folderTitle": "Remove Game Folder",
+      "folderDesc": "Do you want to remove this folder? Physical files will remain intact on your drive, but games will no longer appear in the catalog.",
+      "biosTitle": "Remove BIOS Folder",
+      "biosDesc": "Do you want to remove this BIOS path? Emulators may require these files to start games from consoles with special firmware.",
+      "musicTitle": "Remove Music Folder",
+      "musicDesc": "Do you want to remove this music folder? Audio files will remain intact on your drive.",
+      "profileTitle": "Delete Profile",
+      "profileDesc": "Are you sure you want to delete profile \"{{name}}\"? Its associated favorites and independent play records will be lost.",
+      "delete": "Delete",
+      "remove": "Remove",
+      "cancel": "Cancel"
     },
     "sound": {
       "musicVolume": "Background Music Volume",

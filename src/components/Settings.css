@@ -402,14 +402,14 @@
 .settings-progress {
   height: 6px;
   background: rgba(0, 0, 0, 0.5);
-  border-radius: 3px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .settings-progress-bar {
   height: 100%;
   background: linear-gradient(90deg, var(--accent), var(--accent-hover));
-  border-radius: 3px;
+  border-radius: 4px;
   transition: width 0.25s ease;
   box-shadow: 0 0 10px var(--accent-glow);
 }

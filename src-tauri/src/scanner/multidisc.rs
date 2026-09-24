@@ -72,7 +72,7 @@ pub fn process_multidisc_games(dir: &Path) -> HashSet<PathBuf> {
             let p = entry.path();
             if p.is_file()
                 && p.extension()
-                    .map_or(false, |ext| ext.eq_ignore_ascii_case("m3u"))
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("m3u"))
             {
                 // Leer las líneas del m3u para ignorar los archivos que referencia
                 if let Ok(content) = fs::read_to_string(&p) {

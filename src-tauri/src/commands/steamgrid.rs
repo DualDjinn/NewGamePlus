@@ -278,6 +278,7 @@ fn platform_to_thumb_dirs(plat: &str) -> &'static [&'static str] {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_libretro_query(
     conn: &rusqlite::Connection,
     candidates_map: &mut std::collections::HashMap<u64, (FixMatchCandidate, i32)>,
@@ -520,7 +521,7 @@ fn search_libretro_fix_match(
     }
 
     let mut ranked: Vec<(FixMatchCandidate, i32)> = candidates_map.into_values().collect();
-    ranked.sort_by(|a, b| b.1.cmp(&a.1));
+    ranked.sort_by_key(|b| std::cmp::Reverse(b.1));
     ranked.into_iter().take(30).map(|(c, _)| c).collect()
 }
 
@@ -667,6 +668,7 @@ pub fn fix_match_get_covers(game_id: u64) -> Result<Vec<SGDBGrid>, String> {
     steamgriddb::get_grids_for_game(&api_key, game_id)
 }
 
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub fn apply_fix_match(
     app: tauri::AppHandle,
