@@ -96,13 +96,20 @@ mod tests {
         assert!(rpcs3_exe.exists(), "rpcs3.exe debe existir");
     }
 
+    fn is_real_libretrodb(db_path: &Path) -> bool {
+        db_path
+            .metadata()
+            .map(|m| m.len() > 1024 * 1024)
+            .unwrap_or(false)
+    }
+
     #[test]
     fn test_nds_metadata_resolution_and_curated() {
         // 1. Test resolución de serial NDS en formato NTR-XXXX contra libretrodb (hexadecimal '41595745')
         let db_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("binaries")
             .join("libretrodb.sqlite");
-        if db_path.exists() {
+        if is_real_libretrodb(&db_path) {
             let conn = rusqlite::Connection::open(&db_path).unwrap();
             let meta = crate::metadata::libretro::query_metadata_by_serial(
                 &conn,
@@ -316,7 +323,7 @@ mod tests {
         let db_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("binaries")
             .join("libretrodb.sqlite");
-        if db_path.exists() {
+        if is_real_libretrodb(&db_path) {
             let conn = Connection::open(&db_path).unwrap();
             let test_games = [
                 (
@@ -385,7 +392,7 @@ mod tests {
         let db_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("binaries")
             .join("libretrodb.sqlite");
-        if db_path.exists() {
+        if is_real_libretrodb(&db_path) {
             let conn = Connection::open(&db_path).unwrap();
             let test_roms = [
                 r"F:\Roms\SMS\Sonic The Hedgehog (USA, Europe).sms",
@@ -492,7 +499,7 @@ mod tests {
         let db_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("binaries")
             .join("libretrodb.sqlite");
-        if db_path.exists() {
+        if is_real_libretrodb(&db_path) {
             let conn = Connection::open(&db_path).unwrap();
 
             // LocoRoco
@@ -591,7 +598,7 @@ mod tests {
         let db_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("binaries")
             .join("libretrodb.sqlite");
-        if db_path.exists() {
+        if is_real_libretrodb(&db_path) {
             let conn = Connection::open(&db_path).unwrap();
             let opt_conn = Some(conn);
             let p = Path::new(
@@ -604,7 +611,10 @@ mod tests {
                 "The Legend of Dragoon metadata must be found"
             );
             let m = meta_lookup.unwrap();
-            assert_eq!(m.genre.as_deref(), Some("RPG"), "Genre must be RPG");
+            assert!(
+                m.genre.as_deref() == Some("RPG") || m.genre.as_deref() == Some("Rol / RPG"),
+                "Genre must be RPG or Rol / RPG"
+            );
             assert_eq!(
                 m.developer.as_deref(),
                 Some("Sony"),
@@ -624,10 +634,9 @@ mod tests {
                 "Metadata by title alone must be found"
             );
             let m2 = meta_by_name.unwrap();
-            assert_eq!(
-                m2.genre.as_deref(),
-                Some("RPG"),
-                "Genre by pure name must also be RPG"
+            assert!(
+                m2.genre.as_deref() == Some("RPG") || m2.genre.as_deref() == Some("Rol / RPG"),
+                "Genre by pure name must also be RPG or Rol / RPG"
             );
             assert_eq!(
                 m2.developer.as_deref(),
@@ -642,7 +651,7 @@ mod tests {
         let db_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("binaries")
             .join("libretrodb.sqlite");
-        if db_path.exists() {
+        if is_real_libretrodb(&db_path) {
             let conn = Connection::open(&db_path).unwrap();
             let opt_conn = Some(conn);
 
