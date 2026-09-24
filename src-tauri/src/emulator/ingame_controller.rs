@@ -306,22 +306,88 @@ pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
     let _ = send_retroarch_command("PAUSE_TOGGLE");
     OVERLAY_OPEN.store(true, Ordering::SeqCst);
 
-    // 2. Capture screenshot asynchronously for savestate thumbnails without freezing the UI thread
-    std::thread::spawn(|| {
-        let _ = capture_screen_to_bmp();
-    });
+    // 2. Capture screenshot synchronously for blurred background presentation
+    #[cfg(target_os = "windows")]
+    let screenshot_path = capture_screen_to_bmp().ok();
+    #[cfg(not(target_os = "windows"))]
+    let screenshot_path = None;
 
-    // 3. Elevate and focus main NewGame+ window directly over RetroArch (without hiding RetroArch!)
+    // 3. Elevate and focus main NewGame+ window directly over RetroArch
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.set_always_on_top(true);
+        let _ = window.set_fullscreen(true);
         let _ = window.unminimize();
         let _ = window.show();
+
+        #[cfg(target_os = "windows")]
+        {
+            use windows::Win32::Foundation::HWND;
+            use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
+            use windows::Win32::UI::WindowsAndMessaging::{
+                BringWindowToTop, GetForegroundWindow, GetWindowThreadProcessId,
+                SetForegroundWindow, SetWindowPos, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOACTIVATE,
+                SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
+            };
+
+            if let Ok(tauri_hwnd) = window.hwnd() {
+                let t_hwnd = HWND(tauri_hwnd.0);
+                let cur_tid = unsafe { GetCurrentThreadId() };
+                let fg_hwnd = unsafe { GetForegroundWindow() };
+                let ra_hwnd = get_retroarch_hwnd().unwrap_or(fg_hwnd);
+
+                unsafe {
+                    // Demote RetroArch from topmost layer
+                    if !ra_hwnd.0.is_null() {
+                        let _ = SetWindowPos(
+                            ra_hwnd,
+                            Some(HWND_NOTOPMOST),
+                            0,
+                            0,
+                            0,
+                            0,
+                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                        );
+                    }
+
+                    // Attach thread input queue to foreground to bypass Windows Foreground Lockout
+                    let fg_tid = if !fg_hwnd.0.is_null() {
+                        GetWindowThreadProcessId(fg_hwnd, None)
+                    } else if !ra_hwnd.0.is_null() {
+                        GetWindowThreadProcessId(ra_hwnd, None)
+                    } else {
+                        0
+                    };
+
+                    if fg_tid != 0 && fg_tid != cur_tid {
+                        let _ = AttachThreadInput(cur_tid, fg_tid, true);
+                    }
+
+                    // Force NewGame+ to topmost z-order and take active foreground focus
+                    let _ = SetWindowPos(
+                        t_hwnd,
+                        Some(HWND_TOPMOST),
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
+                    );
+                    let _ = BringWindowToTop(t_hwnd);
+                    let _ = SetForegroundWindow(t_hwnd);
+
+                    if fg_tid != 0 && fg_tid != cur_tid {
+                        let _ = AttachThreadInput(cur_tid, fg_tid, false);
+                    }
+                }
+            }
+        }
+
         let _ = window.set_focus();
     }
 
     // 4. Notify frontend to mount InGameOverlayModal
     let payload = PauseOpenPayload {
-        screenshot_path: None,
+        screenshot_path,
         game_id: get_active_game_id(),
     };
     let _ = app.emit("in-game-pause-open", payload);
@@ -341,13 +407,38 @@ pub fn resume_in_game(app: &AppHandle) -> Result<(), String> {
         let _ = window.hide();
     }
 
-    // 2. Restore foreground focus directly to RetroArch
+    // 2. Restore foreground focus and topmost status directly to RetroArch
     #[cfg(target_os = "windows")]
     {
-        use windows::Win32::UI::WindowsAndMessaging::SetForegroundWindow;
+        use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
+        use windows::Win32::UI::WindowsAndMessaging::{
+            BringWindowToTop, GetWindowThreadProcessId, SetForegroundWindow, SetWindowPos,
+            HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
+        };
+
         if let Some(hwnd) = get_retroarch_hwnd() {
             unsafe {
+                let cur_tid = GetCurrentThreadId();
+                let ra_tid = GetWindowThreadProcessId(hwnd, None);
+                if ra_tid != 0 && cur_tid != ra_tid {
+                    let _ = AttachThreadInput(cur_tid, ra_tid, true);
+                }
+
+                let _ = SetWindowPos(
+                    hwnd,
+                    Some(HWND_TOPMOST),
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
+                );
+                let _ = BringWindowToTop(hwnd);
                 let _ = SetForegroundWindow(hwnd);
+
+                if ra_tid != 0 && cur_tid != ra_tid {
+                    let _ = AttachThreadInput(cur_tid, ra_tid, false);
+                }
             }
         }
     }
@@ -366,7 +457,12 @@ pub fn quit_in_game(app: &AppHandle) -> Result<(), String> {
     let _ = send_retroarch_command("QUIT");
 
     if let Some(window) = app.get_webview_window("main") {
+        let is_kiosk = crate::state::lock_state().settings.kiosk_mode;
         let _ = window.set_always_on_top(false);
+        let _ = window.set_fullscreen(is_kiosk);
+        if !is_kiosk {
+            let _ = window.maximize();
+        }
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();

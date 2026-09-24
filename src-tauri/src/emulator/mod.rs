@@ -119,7 +119,12 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
 
     // Show main window again immediately without waiting for any disk I/O or background tasks
     if let Some(window) = app.get_webview_window("main") {
+        let is_kiosk = lock_state().settings.kiosk_mode;
         let _ = window.set_always_on_top(false);
+        let _ = window.set_fullscreen(is_kiosk);
+        if !is_kiosk {
+            let _ = window.maximize();
+        }
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
