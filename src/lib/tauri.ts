@@ -1,6 +1,6 @@
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Game, ScanResult, AppSettings, GameMetadata, GameAchievementProgress, SGDBHero, SGDBLogo, SGDBGrid, FixMatchCandidate, MusicTrack, EmulatorInfo } from "../types";
+import type { Game, ScanResult, AppSettings, GameMetadata, GameAchievementProgress, SGDBHero, SGDBLogo, SGDBGrid, FixMatchCandidate, MusicTrack, EmulatorInfo, ControllerMapping, SaveSlotInfo } from "../types";
 
 export function getCoverUrl(path: string | null | undefined): string {
   if (!path) return "";
@@ -424,17 +424,34 @@ export async function toggleWindowFullscreen(): Promise<boolean> {
   }
 }
 
+export interface PauseOpenPayload {
+  screenshot_path?: string | null;
+  game_id?: string | null;
+}
+
 // In-Game Pause Overlay controls
 export async function inGameResume(): Promise<void> {
   return invoke<void>("in_game_resume");
 }
 
-export async function inGameSaveState(slot?: number): Promise<string> {
-  return invoke<string>("in_game_save_state", { slot });
+export async function inGameSaveState(gameId?: string | null, slot?: number): Promise<string> {
+  return invoke<string>("in_game_save_state", { gameId: gameId ?? null, slot });
 }
 
 export async function inGameLoadState(slot?: number): Promise<string> {
   return invoke<string>("in_game_load_state", { slot });
+}
+
+export async function getSavestateSlots(gameId: string): Promise<SaveSlotInfo[]> {
+  return invoke<SaveSlotInfo[]>("get_savestate_slots", { gameId });
+}
+
+export async function getControllerMapping(): Promise<ControllerMapping> {
+  return invoke<ControllerMapping>("get_controller_mapping");
+}
+
+export async function saveControllerMapping(mapping: ControllerMapping): Promise<void> {
+  return invoke<void>("save_controller_mapping", { mapping });
 }
 
 export async function inGameSetVolume(volume: number): Promise<void> {
@@ -445,8 +462,14 @@ export async function inGameQuit(): Promise<void> {
   return invoke<void>("in_game_quit");
 }
 
-export function onInGamePauseOpen(cb: (screenshotPath: string | null) => void) {
-  return listen<string | null>("in-game-pause-open", (event) => cb(event.payload));
+export function onInGamePauseOpen(cb: (payload: PauseOpenPayload) => void) {
+  return listen<any>("in-game-pause-open", (event) => {
+    if (typeof event.payload === "string" || event.payload === null) {
+      cb({ screenshot_path: event.payload, game_id: null });
+    } else {
+      cb(event.payload);
+    }
+  });
 }
 
 export function onInGamePauseClose(cb: () => void) {

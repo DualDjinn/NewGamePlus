@@ -2,7 +2,7 @@ use crate::emulator::launch_game_runner;
 use crate::metadata::{self, GameMetadata};
 use crate::platforms;
 use crate::state::lock_state;
-use crate::state::models::Game;
+use crate::state::models::{ControllerMapping, Game, SaveSlotInfo};
 use crate::state::storage::save_state;
 use std::fs;
 use std::path::Path;
@@ -264,22 +264,32 @@ pub fn in_game_resume(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn in_game_save_state(slot: Option<u32>) -> Result<String, String> {
-    if let Some(s) = slot {
-        // Change slot then save
-        let _ = crate::emulator::send_retroarch_command(&format!("STATE_SLOT {}", s));
-    }
-    crate::emulator::send_retroarch_command("SAVE_STATE")?;
-    Ok(format!("Estado guardado en ranura {}", slot.unwrap_or(1)))
+pub fn get_savestate_slots(game_id: String) -> Result<Vec<SaveSlotInfo>, String> {
+    Ok(crate::emulator::get_savestate_slots_for_game(&game_id))
+}
+
+#[tauri::command]
+pub fn in_game_save_state(game_id: Option<String>, slot: Option<u32>) -> Result<String, String> {
+    crate::emulator::save_state_slot(game_id, slot.unwrap_or(1))
 }
 
 #[tauri::command]
 pub fn in_game_load_state(slot: Option<u32>) -> Result<String, String> {
-    if let Some(s) = slot {
-        let _ = crate::emulator::send_retroarch_command(&format!("STATE_SLOT {}", s));
-    }
-    crate::emulator::send_retroarch_command("LOAD_STATE")?;
-    Ok(format!("Estado cargado de ranura {}", slot.unwrap_or(1)))
+    crate::emulator::load_state_slot(slot.unwrap_or(1))
+}
+
+#[tauri::command]
+pub fn get_controller_mapping() -> Result<ControllerMapping, String> {
+    let state = lock_state();
+    Ok(state.settings.controller_mapping.clone())
+}
+
+#[tauri::command]
+pub fn save_controller_mapping(mapping: ControllerMapping) -> Result<(), String> {
+    let mut state = lock_state();
+    state.settings.controller_mapping = mapping;
+    save_state(&state);
+    Ok(())
 }
 
 #[tauri::command]

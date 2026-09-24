@@ -112,6 +112,7 @@ export interface AppSettings {
   music_folders?: string[];
   last_emulator_check_secs?: number;
   auto_update_check?: boolean;
+  controller_mapping?: ControllerMapping;
 }
 
 export type Section = "home" | "library" | "favorites" | "search" | "settings" | "genre" | "genres";
@@ -163,4 +164,27 @@ export interface EmulatorInfo {
   latest_version: string | null;
   update_available: boolean;
   exe_path?: string | null;
+}
+
+export interface ControllerMapping {
+  btn_a: string;
+  btn_b: string;
+  btn_x: string;
+  btn_y: string;
+  btn_start: string;
+  btn_select: string;
+  btn_l: string;
+  btn_r: string;
+  btn_l2: string;
+  btn_r2: string;
+  btn_l3: string;
+  btn_r3: string;
+  swap_ab_xy: boolean;
+}
+
+export interface SaveSlotInfo {
+  slot: number;
+  has_save: boolean;
+  screenshot_path?: string | null;
+  timestamp_str?: string | null;
 }

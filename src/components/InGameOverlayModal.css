@@ -372,3 +372,218 @@
   min-width: 110px;
   text-align: center;
 }
+
+.ingame-subaction-link {
+  background: none;
+  border: none;
+  color: #38bdf8;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+  transition: all 0.15s;
+}
+
+.ingame-subaction-link:hover {
+  text-decoration: underline;
+  color: #7dd3fc;
+}
+
+.ingame-controls-action-box {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.ingame-open-mapping-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.ingame-open-mapping-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+}
+
+/* Slots Modal */
+.ingame-slots-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.ingame-slots-modal {
+  background: #14141e;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  width: 90%;
+  max-width: 1050px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+  color: #fff;
+}
+
+.ingame-slots-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.ingame-slots-header h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+}
+
+.ingame-slots-header p {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.ingame-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .ingame-slots-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.ingame-slot-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+
+.ingame-slot-card:hover,
+.ingame-slot-card.selected-slot {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 16px rgba(56, 189, 248, 0.2);
+}
+
+.ingame-slot-card-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ingame-slot-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ingame-slot-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.ingame-slot-card-num {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.ingame-slot-card-info {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ingame-slot-timestamp {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-align: center;
+  min-height: 1rem;
+}
+
+.ingame-slot-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ingame-slot-btn {
+  flex: 1;
+  padding: 6px 0;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.ingame-slot-btn.save {
+  background: #2563eb;
+  color: #fff;
+}
+
+.ingame-slot-btn.save:hover {
+  background: #1d4ed8;
+}
+
+.ingame-slot-btn.load {
+  background: #059669;
+  color: #fff;
+}
+
+.ingame-slot-btn.load:hover:not(:disabled) {
+  background: #047857;
+}
+
+.ingame-slot-btn.load:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  color: #64748b;
+  cursor: not-allowed;
+}
+

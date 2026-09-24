@@ -148,6 +148,103 @@ pub struct AppSettings {
     pub last_emulator_check_secs: u64,
     #[serde(default = "default_auto_update_check")]
     pub auto_update_check: bool,
+    #[serde(default)]
+    pub controller_mapping: ControllerMapping,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct ControllerMapping {
+    #[serde(default = "default_btn_a")]
+    pub btn_a: String,
+    #[serde(default = "default_btn_b")]
+    pub btn_b: String,
+    #[serde(default = "default_btn_x")]
+    pub btn_x: String,
+    #[serde(default = "default_btn_y")]
+    pub btn_y: String,
+    #[serde(default = "default_btn_start")]
+    pub btn_start: String,
+    #[serde(default = "default_btn_select")]
+    pub btn_select: String,
+    #[serde(default = "default_btn_l")]
+    pub btn_l: String,
+    #[serde(default = "default_btn_r")]
+    pub btn_r: String,
+    #[serde(default = "default_btn_l2")]
+    pub btn_l2: String,
+    #[serde(default = "default_btn_r2")]
+    pub btn_r2: String,
+    #[serde(default = "default_btn_l3")]
+    pub btn_l3: String,
+    #[serde(default = "default_btn_r3")]
+    pub btn_r3: String,
+    #[serde(default)]
+    pub swap_ab_xy: bool,
+}
+
+fn default_btn_a() -> String {
+    "0".into()
+}
+fn default_btn_b() -> String {
+    "1".into()
+}
+fn default_btn_x() -> String {
+    "2".into()
+}
+fn default_btn_y() -> String {
+    "3".into()
+}
+fn default_btn_start() -> String {
+    "7".into()
+}
+fn default_btn_select() -> String {
+    "6".into()
+}
+fn default_btn_l() -> String {
+    "4".into()
+}
+fn default_btn_r() -> String {
+    "5".into()
+}
+fn default_btn_l2() -> String {
+    "+4".into()
+}
+fn default_btn_r2() -> String {
+    "+5".into()
+}
+fn default_btn_l3() -> String {
+    "8".into()
+}
+fn default_btn_r3() -> String {
+    "9".into()
+}
+
+impl Default for ControllerMapping {
+    fn default() -> Self {
+        Self {
+            btn_a: default_btn_a(),
+            btn_b: default_btn_b(),
+            btn_x: default_btn_x(),
+            btn_y: default_btn_y(),
+            btn_start: default_btn_start(),
+            btn_select: default_btn_select(),
+            btn_l: default_btn_l(),
+            btn_r: default_btn_r(),
+            btn_l2: default_btn_l2(),
+            btn_r2: default_btn_r2(),
+            btn_l3: default_btn_l3(),
+            btn_r3: default_btn_r3(),
+            swap_ab_xy: false,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SaveSlotInfo {
+    pub slot: u32,
+    pub has_save: bool,
+    pub screenshot_path: Option<String>,
+    pub timestamp_str: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -196,6 +293,7 @@ impl Default for AppState {
                 music_folders: Vec::new(),
                 last_emulator_check_secs: 0,
                 auto_update_check: default_auto_update_check(),
+                controller_mapping: ControllerMapping::default(),
             },
         }
     }

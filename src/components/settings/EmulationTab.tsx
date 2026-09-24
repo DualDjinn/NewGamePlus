@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { PLATFORM_CORES } from "../../lib/cores";
+import ControllerMappingModal from "../ControllerMappingModal";
 
 export interface EmulationTabProps {
   connectedGamepads: string[];
@@ -15,6 +17,7 @@ export default function EmulationTab({
   onPlatformCoreChange,
   getDefaultCore,
 }: EmulationTabProps) {
+  const [mappingModalOpen, setMappingModalOpen] = useState(false);
   return (
     <div className="settings-tab-panel">
       <div className="settings-panel-header">
@@ -45,6 +48,28 @@ export default function EmulationTab({
               <span className="settings-hint">Conecta un mando por USB o Bluetooth para navegar con gamepad.</span>
             </div>
           )}
+        </div>
+        <div style={{ marginTop: "16px" }}>
+          <button
+            type="button"
+            className="settings-action-btn"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 18px",
+              background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: 600,
+              fontSize: "0.9rem",
+              cursor: "pointer",
+            }}
+            onClick={() => setMappingModalOpen(true)}
+          >
+            🎮 Personalizar Mapeo de Botones (RetroPad)
+          </button>
         </div>
       </section>
 
@@ -85,6 +110,11 @@ export default function EmulationTab({
           </p>
         </section>
       )}
+
+      <ControllerMappingModal
+        isOpen={mappingModalOpen}
+        onClose={() => setMappingModalOpen(false)}
+      />
     </div>
   );
 }

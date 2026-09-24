@@ -48,11 +48,13 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
     };
 
     // Mark as last played in active profile
-    {
+    let current_game_id = {
         let mut state = lock_state();
         let timestamp = now_str();
+        let mut gid = None;
         if let Some(game) = state.games.iter().find(|g| g.rom_path == rom_path) {
             let game_id = game.id.clone();
+            gid = Some(game_id.clone());
             if let Some(profile) = state
                 .settings
                 .profiles
@@ -63,7 +65,9 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
             }
         }
         save_state(&state);
-    }
+        gid
+    };
+    set_active_game_id(current_game_id);
 
     // Hide main window before launching emulator
     if let Some(window) = app.get_webview_window("main") {
@@ -74,7 +78,9 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
     let is_retroarch = !platforms::is_standalone_emulator(&core_name);
 
     let status = if !is_retroarch {
-        launch_standalone(&core_name, &rom_path)?
+        let s = launch_standalone(&core_name, &rom_path);
+        set_active_game_id(None);
+        s?
     } else {
         let core_path = ensure_core(&core_name)?;
         let (ra_exe, cfg_path) = ensure_retroarch(&profile_name)?;
@@ -89,9 +95,18 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
             .spawn()
             .map_err(|e| e.to_string())?;
 
+        GAME_RUNNING.store(true, Ordering::SeqCst);
         RETROARCH_PID.store(child.id(), Ordering::SeqCst);
+        let stop_hotkeys = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        start_global_hotkey_listener(app.clone(), stop_hotkeys.clone());
+
         let s = child.wait().map_err(|e| e.to_string())?;
+
+        stop_hotkeys.store(true, Ordering::SeqCst);
+        GAME_RUNNING.store(false, Ordering::SeqCst);
+        OVERLAY_OPEN.store(false, Ordering::SeqCst);
         RETROARCH_PID.store(0, Ordering::SeqCst);
+        set_active_game_id(None);
         s
     };
 

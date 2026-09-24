@@ -1,3 +1,5 @@
+use crate::state::models::SaveSlotInfo;
+use crate::state::storage::get_data_dir;
 use std::net::UdpSocket;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
@@ -10,6 +12,24 @@ const RETROARCH_UDP_ADDR: &str = "127.0.0.1:55355";
 pub static GAME_RUNNING: AtomicBool = AtomicBool::new(false);
 pub static OVERLAY_OPEN: AtomicBool = AtomicBool::new(false);
 pub static RETROARCH_PID: AtomicU32 = AtomicU32::new(0);
+
+static ACTIVE_GAME_ID: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
+
+pub fn set_active_game_id(id: Option<String>) {
+    if let Ok(mut g) = ACTIVE_GAME_ID.write() {
+        *g = id;
+    }
+}
+
+pub fn get_active_game_id() -> Option<String> {
+    ACTIVE_GAME_ID.read().ok().and_then(|g| g.clone())
+}
+
+#[derive(serde::Serialize, Clone, Debug)]
+pub struct PauseOpenPayload {
+    pub screenshot_path: Option<String>,
+    pub game_id: Option<String>,
+}
 
 #[cfg(target_os = "windows")]
 pub fn get_retroarch_hwnd() -> Option<windows::Win32::Foundation::HWND> {
@@ -218,10 +238,67 @@ pub fn capture_screen_to_bmp() -> Result<String, String> {
     Err("Captura de pantalla no soportada en esta plataforma".into())
 }
 
-/// Global hotkey listener is deprecated in favor of RetroArch's native Ozone Quick Menu
-#[allow(dead_code)]
-pub fn start_global_hotkey_listener(_app: AppHandle, _stop_flag: Arc<AtomicBool>) {
-    // Native RetroArch Ozone menu handles Escape and L3+R3 directly
+/// Starts the global hotkey listener (VK_ESCAPE and XInput controllers for L3+R3, Back+Start, or Guide)
+pub fn start_global_hotkey_listener(app: AppHandle, stop_flag: Arc<AtomicBool>) {
+    std::thread::spawn(move || {
+        #[cfg(target_os = "windows")]
+        {
+            use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_ESCAPE};
+            use windows::Win32::UI::Input::XboxController::{
+                XInputGetState, XINPUT_GAMEPAD_BACK, XINPUT_GAMEPAD_LEFT_THUMB,
+                XINPUT_GAMEPAD_RIGHT_THUMB, XINPUT_GAMEPAD_START, XINPUT_STATE,
+            };
+
+            let mut was_pressed = false;
+            let mut last_toggle = std::time::Instant::now();
+
+            while !stop_flag.load(Ordering::Relaxed) {
+                // Check if Escape key is pressed (bit 15 indicates key is down)
+                let esc_state = unsafe { GetAsyncKeyState(VK_ESCAPE.0 as i32) };
+                let is_esc_down = (esc_state as u16 & 0x8000) != 0;
+
+                // Check L3 + R3 thumbsticks or Back + Start or Guide button on any connected gamepad (0..4)
+                let mut is_gamepad_down = false;
+                for i in 0..4 {
+                    let mut xs = XINPUT_STATE::default();
+                    let ret = unsafe { XInputGetState(i, &mut xs) };
+                    if ret == 0 {
+                        let btns = xs.Gamepad.wButtons.0;
+                        let thumb_combo =
+                            XINPUT_GAMEPAD_LEFT_THUMB.0 | XINPUT_GAMEPAD_RIGHT_THUMB.0;
+                        let menu_combo = XINPUT_GAMEPAD_BACK.0 | XINPUT_GAMEPAD_START.0;
+                        let guide_btn = 0x0400u16;
+
+                        if (btns & thumb_combo) == thumb_combo
+                            || (btns & menu_combo) == menu_combo
+                            || (btns & guide_btn) == guide_btn
+                        {
+                            is_gamepad_down = true;
+                            break;
+                        }
+                    }
+                }
+
+                let is_down = is_esc_down || is_gamepad_down;
+
+                if is_down && !was_pressed && last_toggle.elapsed() > Duration::from_millis(350) {
+                    last_toggle = std::time::Instant::now();
+                    let is_running = GAME_RUNNING.load(Ordering::Relaxed);
+                    if is_running {
+                        let is_overlay = OVERLAY_OPEN.load(Ordering::Relaxed);
+                        if is_overlay {
+                            let _ = resume_in_game(&app);
+                        } else {
+                            let _ = pause_in_game(&app);
+                        }
+                    }
+                }
+
+                was_pressed = is_down;
+                std::thread::sleep(Duration::from_millis(40));
+            }
+        }
+    });
 }
 
 /// Pauses RetroArch, captures a frame screenshot, hides RetroArch window, and shows NewGame+ pause cards
@@ -257,7 +334,11 @@ pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
     }
 
     // 6. Notify frontend to mount InGameOverlayModal with captured frame
-    let _ = app.emit("in-game-pause-open", screenshot_path);
+    let payload = PauseOpenPayload {
+        screenshot_path,
+        game_id: get_active_game_id(),
+    };
+    let _ = app.emit("in-game-pause-open", payload);
 
     Ok(())
 }
@@ -312,4 +393,78 @@ pub fn quit_in_game(app: &AppHandle) -> Result<(), String> {
 
     let _ = app.emit("in-game-pause-close", ());
     Ok(())
+}
+
+pub fn get_savestate_slots_for_game(game_id: &str) -> Vec<SaveSlotInfo> {
+    let slots_dir = get_data_dir().join("savestates").join(game_id);
+    let _ = std::fs::create_dir_all(&slots_dir);
+
+    (1..=5)
+        .map(|slot| {
+            let bmp_path = slots_dir.join(format!("slot_{}.bmp", slot));
+            let json_path = slots_dir.join(format!("slot_{}.json", slot));
+
+            let has_save = bmp_path.exists() || json_path.exists();
+            let timestamp_str = if json_path.exists() {
+                std::fs::read_to_string(&json_path).ok()
+            } else {
+                None
+            };
+
+            let screenshot_path = if bmp_path.exists() {
+                Some(bmp_path.to_string_lossy().to_string())
+            } else {
+                None
+            };
+
+            SaveSlotInfo {
+                slot,
+                has_save,
+                screenshot_path,
+                timestamp_str,
+            }
+        })
+        .collect()
+}
+
+pub fn save_state_slot(game_id: Option<String>, slot: u32) -> Result<String, String> {
+    // 1. Send commands to RetroArch via UDP
+    let _ = send_retroarch_command(&format!("STATE_SLOT {}", slot));
+    send_retroarch_command("SAVE_STATE")?;
+
+    // 2. If game_id is provided or active, copy the captured frame
+    let target_gid = game_id.or_else(get_active_game_id);
+    if let Some(ref gid) = target_gid {
+        let slots_dir = get_data_dir().join("savestates").join(gid);
+        let _ = std::fs::create_dir_all(&slots_dir);
+        let dest_bmp = slots_dir.join(format!("slot_{}.bmp", slot));
+        let temp_bmp = get_data_dir().join("temp").join("pause_bg.bmp");
+        if temp_bmp.exists() {
+            let _ = std::fs::copy(&temp_bmp, &dest_bmp);
+        }
+
+        let json_path = slots_dir.join(format!("slot_{}.json", slot));
+        let now = chrono_or_simple_timestamp();
+        let _ = std::fs::write(&json_path, now);
+    }
+
+    Ok(format!("Estado guardado en ranura {}", slot))
+}
+
+pub fn load_state_slot(slot: u32) -> Result<String, String> {
+    let _ = send_retroarch_command(&format!("STATE_SLOT {}", slot));
+    send_retroarch_command("LOAD_STATE")?;
+    Ok(format!("Estado cargado de ranura {}", slot))
+}
+
+fn chrono_or_simple_timestamp() -> String {
+    let now = std::time::SystemTime::now();
+    let duration = now
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let secs_in_day = duration % 86400;
+    let hours = (secs_in_day / 3600) % 24;
+    let minutes = (secs_in_day % 3600) / 60;
+    format!("{:02}:{:02}", hours, minutes)
 }

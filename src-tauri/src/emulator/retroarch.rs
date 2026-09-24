@@ -230,13 +230,15 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     };
 
     let mut full_cfg = format!(
-        "menu_driver = \"ozone\"\n\
-         input_menu_toggle = \"escape\"\n\
-         input_menu_toggle_gamepad_combo = \"2\"\n\
+        "menu_driver = \"null\"\n\
+         input_menu_toggle = \"nul\"\n\
+         input_menu_toggle_gamepad_combo = \"0\"\n\
          input_quit_gamepad_combo = \"0\"\n\
-         input_enable_hotkey = \"\"\n\
+         input_enable_hotkey = \"nul\"\n\
          input_exit_emulator = \"nul\"\n\
-         quit_press_twice = \"true\"\n\
+         notification_show_when_menu_is_alive = \"false\"\n\
+         video_font_enable = \"false\"\n\
+         quit_press_twice = \"false\"\n\
          quit_on_close_content = \"2\"\n\
          load_dummy_on_core_shutdown = \"false\"\n\
          menu_pause_libretro = \"true\"\n\
@@ -413,6 +415,44 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     if let Some(cheevos) = cheevos_cfg {
         full_cfg.push_str(&cheevos);
     }
+
+    // Controller mapping from settings
+    let ctrl_cfg = {
+        let state = lock_state();
+        let cm = &state.settings.controller_mapping;
+        let (btn_a, btn_b, btn_x, btn_y) = if cm.swap_ab_xy {
+            (&cm.btn_b, &cm.btn_a, &cm.btn_y, &cm.btn_x)
+        } else {
+            (&cm.btn_a, &cm.btn_b, &cm.btn_x, &cm.btn_y)
+        };
+        format!(
+            "input_player1_a_btn = \"{}\"\n\
+             input_player1_b_btn = \"{}\"\n\
+             input_player1_x_btn = \"{}\"\n\
+             input_player1_y_btn = \"{}\"\n\
+             input_player1_start_btn = \"{}\"\n\
+             input_player1_select_btn = \"{}\"\n\
+             input_player1_l_btn = \"{}\"\n\
+             input_player1_r_btn = \"{}\"\n\
+             input_player1_l2_btn = \"{}\"\n\
+             input_player1_r2_btn = \"{}\"\n\
+             input_player1_l3_btn = \"{}\"\n\
+             input_player1_r3_btn = \"{}\"\n",
+            btn_a,
+            btn_b,
+            btn_x,
+            btn_y,
+            cm.btn_start,
+            cm.btn_select,
+            cm.btn_l,
+            cm.btn_r,
+            cm.btn_l2,
+            cm.btn_r2,
+            cm.btn_l3,
+            cm.btn_r3
+        )
+    };
+    full_cfg.push_str(&ctrl_cfg);
 
     let cfg_path = ra_dir.join("retroarch.cfg");
     let _ = fs::write(&cfg_path, &full_cfg);

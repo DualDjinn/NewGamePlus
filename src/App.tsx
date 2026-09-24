@@ -10,7 +10,11 @@ import {
   isWindowFullscreen,
   toggleWindowFullscreen,
   saveSettings,
+  onInGamePauseOpen,
+  onInGamePauseClose,
+  getActiveLaunchedRomPath,
 } from "./lib/tauri";
+import InGameOverlayModal from "./components/InGameOverlayModal";
 import HeroBanner from "./components/HeroBanner";
 import CategoryRow from "./components/CategoryRow";
 import GameCard from "./components/GameCard";
@@ -51,6 +55,9 @@ function App() {
   const [castModalOpen, setCastModalOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [inGamePauseOpen, setInGamePauseOpen] = useState(false);
+  const [inGameScreenshot, setInGameScreenshot] = useState<string | null>(null);
+  const [inGameActiveGame, setInGameActiveGame] = useState<Game | null>(null);
   const prevSectionRef = useRef<Section>(section);
 
   // Hook 1: Library & Persistent State Management
@@ -96,6 +103,30 @@ function App() {
       });
     },
   });
+
+  // Listen to in-game pause overlay requests from background hotkey listener
+  useEffect(() => {
+    const unlistenOpen = onInGamePauseOpen((payload) => {
+      const activeRom = getActiveLaunchedRomPath();
+      const runningGame =
+        (payload.game_id ? games.find((g) => g.id === payload.game_id) : null) ||
+        (activeRom ? games.find((g) => g.rom_path === activeRom) : null) ||
+        selectedGame ||
+        null;
+      setInGameActiveGame(runningGame);
+      setInGameScreenshot(payload.screenshot_path || null);
+      setInGamePauseOpen(true);
+    });
+
+    const unlistenClose = onInGamePauseClose(() => {
+      setInGamePauseOpen(false);
+    });
+
+    return () => {
+      unlistenOpen.then((fn) => fn());
+      unlistenClose.then((fn) => fn());
+    };
+  }, [games, selectedGame]);
 
   // Hook 2: Genre Catalog & Dynamic Categories
   const {
@@ -1112,9 +1143,16 @@ function App() {
           }}
         />
 
+        <InGameOverlayModal
+          isOpen={inGamePauseOpen}
+          game={inGameActiveGame}
+          screenshotPath={inGameScreenshot}
+          onClose={() => setInGamePauseOpen(false)}
+        />
+
         <ControllerHUD
           section={section}
-          hasModalOpen={selectedGame !== null || castModalOpen || onboardingOpen || !!scanCompletedResult}
+          hasModalOpen={selectedGame !== null || castModalOpen || onboardingOpen || inGamePauseOpen || !!scanCompletedResult}
           selectedGameId={selectedGame?.id ?? null}
         />
 
