@@ -301,3 +301,44 @@ pub fn in_game_set_volume(volume: u32) -> Result<(), String> {
 pub fn in_game_quit(app: tauri::AppHandle) -> Result<(), String> {
     crate::emulator::quit_in_game(&app)
 }
+
+#[tauri::command]
+pub fn find_game_video(rom_path: String, game_id: String) -> Option<String> {
+    let p = Path::new(&rom_path);
+    let exts = ["mp4", "webm", "mkv", "avi"];
+
+    if let (Some(parent), Some(stem)) = (p.parent(), p.file_stem()) {
+        let stem_str = stem.to_string_lossy();
+
+        // 1. Same directory as ROM: <rom_dir>/<stem>.<ext>
+        for ext in &exts {
+            let candidate = parent.join(format!("{}.{}", stem_str, ext));
+            if candidate.is_file() {
+                return Some(candidate.to_string_lossy().to_string());
+            }
+        }
+
+        // 2. Subfolders "videos", "video", "snaps", "snap", "media"
+        let subdirs = ["videos", "video", "snaps", "snap", "media"];
+        for sub in &subdirs {
+            for ext in &exts {
+                let candidate = parent.join(sub).join(format!("{}.{}", stem_str, ext));
+                if candidate.is_file() {
+                    return Some(candidate.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    // 3. NewGame+ data directory: data/videos/<game_id>.<ext> or data/videos/<stem>.<ext>
+    let data_dir = crate::state::storage::get_data_dir().join("videos");
+    for ext in &exts {
+        let candidate = data_dir.join(format!("{}.{}", game_id, ext));
+        if candidate.is_file() {
+            return Some(candidate.to_string_lossy().to_string());
+        }
+    }
+
+    None
+}
+

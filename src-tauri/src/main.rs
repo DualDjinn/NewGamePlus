@@ -219,7 +219,8 @@ fn main() {
             commands::get_emulator_versions,
             commands::check_emulator_updates,
             commands::update_emulator,
-            commands::update_all_cores
+            commands::update_all_cores,
+            commands::find_game_video
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

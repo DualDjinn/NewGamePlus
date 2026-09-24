@@ -1,6 +1,6 @@
 import { useState, useEffect, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
-import type { Section, Game } from "../types";
+import type { Section, Game, LayoutStyle } from "../types";
 import { HomeIcon, LibraryIcon, HeartIcon, GearIcon, TagIcon, CastIcon, MaximizeIcon, MinimizeIcon, BookIcon } from "./icons";
 import { VinylPlayer } from "./VinylPlayer";
 import { getLocalizedGenreName, normalizeGenre } from "../lib/genreLocalization";
@@ -16,7 +16,7 @@ interface Props {
   onSelectGenre: (name: string) => void;
   company?: string;
   games?: Game[];
-  layoutStyle?: "classic" | "immersive";
+  layoutStyle?: LayoutStyle;
   currentProfile?: string;
   profiles?: string[];
   onProfileSwitch?: (name: string) => void;
@@ -50,7 +50,8 @@ export default function Sidebar({
   const { t } = useTranslation();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const isImmersive = layoutStyle === "immersive";
-  const isCollapsed = isImmersive ? true : collapsed;
+  const isArcade = layoutStyle === "arcade";
+  const isCollapsed = isImmersive || isArcade ? true : collapsed;
 
   const navItems: { section: Section; icon: ComponentType; label: string }[] = [
     { section: "home", icon: HomeIcon, label: t("sidebar.home") },
@@ -71,12 +72,16 @@ export default function Sidebar({
   }, [profileMenuOpen]);
 
   return (
-    <aside className={`sidebar ${isCollapsed ? "collapsed" : ""} ${isImmersive ? "sidebar-immersive" : ""}`}>
+    <aside
+      className={`sidebar ${isCollapsed ? "collapsed" : ""} ${
+        isImmersive ? "sidebar-immersive" : ""
+      } ${isArcade ? "sidebar-arcade" : ""}`}
+    >
       <div
         className="sidebar-logo"
-        onClick={isImmersive ? undefined : onToggle}
-        title={isImmersive ? "GameFlix" : (isCollapsed ? t("sidebar.expand") : t("sidebar.collapse"))}
-        style={{ cursor: isImmersive ? "default" : "pointer" }}
+        onClick={isImmersive || isArcade ? undefined : onToggle}
+        title={isImmersive || isArcade ? "GameFlix" : isCollapsed ? t("sidebar.expand") : t("sidebar.collapse")}
+        style={{ cursor: isImmersive || isArcade ? "default" : "pointer" }}
       >
         {isCollapsed ? "NG+" : "NewGame+"}
       </div>

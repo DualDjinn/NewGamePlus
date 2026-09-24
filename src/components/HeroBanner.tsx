@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { Game } from "../types";
+import type { Game, LayoutStyle } from "../types";
 import { launchGame, getCoverUrl } from "../lib/tauri";
 import { getFranchiseGames } from "../lib/franchises";
 import GameCard from "./GameCard";
@@ -12,7 +12,7 @@ interface Props {
   allGames?: Game[];
   onSelect?: (game: Game) => void;
   onFavoriteChanged?: (gameId: string, isFav: boolean) => void;
-  layoutStyle?: "classic" | "immersive";
+  layoutStyle?: LayoutStyle;
 }
 
 export default function HeroBanner({

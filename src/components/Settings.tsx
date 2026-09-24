@@ -31,7 +31,7 @@ import {
   getMusicFolders,
   onEmulatorUpdates,
 } from "../lib/tauri";
-import type { SortKey, Game, SettingsTab, GraphicsConsole } from "../types";
+import type { SortKey, Game, SettingsTab, GraphicsConsole, LayoutStyle } from "../types";
 import EmulatorsTab from "./EmulatorsTab";
 import ConfirmModal from "./ConfirmModal";
 import LibraryTab from "./settings/LibraryTab";
@@ -64,8 +64,8 @@ interface Props {
   games: Game[];
   theme?: string;
   onThemeChange?: (theme: string) => void;
-  layoutStyle?: "classic" | "immersive";
-  onLayoutStyleChange?: (style: "classic" | "immersive") => void;
+  layoutStyle?: LayoutStyle;
+  onLayoutStyleChange?: (style: LayoutStyle) => void;
   activeTab?: SettingsTab;
   onActiveTabChange?: (tab: SettingsTab) => void;
   activeGraphicsConsole?: GraphicsConsole;

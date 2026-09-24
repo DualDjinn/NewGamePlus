@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { changeAppLanguage } from "../../i18n";
+import type { LayoutStyle } from "../../types";
 
 export interface ThemeOption {
   id: string;
@@ -56,8 +57,8 @@ export const THEMES: ThemeOption[] = [
 export interface AppearanceTabProps {
   theme?: string;
   onThemeChange?: (theme: string) => void;
-  layoutStyle?: "classic" | "immersive";
-  onLayoutStyleChange?: (style: "classic" | "immersive") => void;
+  layoutStyle?: LayoutStyle;
+  onLayoutStyleChange?: (style: LayoutStyle) => void;
   splashEnabled?: boolean;
   onSplashEnabledChange?: (v: boolean) => void;
   splashSoundEnabled?: boolean;
@@ -144,7 +145,9 @@ export default function AppearanceTab({
               📑
             </div>
             <div className="settings-theme-info">
-              <span className="settings-theme-name">Estilo Clásico (Cards)</span>
+              <span className="settings-theme-name">
+                {t("settings.appearance.layoutClassic", "Estilo Clásico (Cards)")}
+              </span>
             </div>
           </button>
 
@@ -166,7 +169,33 @@ export default function AppearanceTab({
               🌌
             </div>
             <div className="settings-theme-info">
-              <span className="settings-theme-name">Estilo Inmersivo (Edge-to-Edge)</span>
+              <span className="settings-theme-name">
+                {t("settings.appearance.layoutImmersive", "Estilo Inmersivo (Edge-to-Edge)")}
+              </span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className={`settings-theme-card ${layoutStyle === "arcade" ? "active" : ""}`}
+            onClick={() => onLayoutStyleChange?.("arcade")}
+          >
+            <div
+              className="settings-theme-preview"
+              style={{
+                background: "linear-gradient(135deg, #1e0a3c, #00f0ff33)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "24px",
+              }}
+            >
+              🕹️
+            </div>
+            <div className="settings-theme-info">
+              <span className="settings-theme-name">
+                {t("settings.appearance.layoutArcade", "Arcade Wheel (HyperSpin)")}
+              </span>
             </div>
           </button>
         </div>

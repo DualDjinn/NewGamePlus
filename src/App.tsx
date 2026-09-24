@@ -16,6 +16,7 @@ import {
 } from "./lib/tauri";
 import InGameOverlayModal from "./components/InGameOverlayModal";
 import HeroBanner from "./components/HeroBanner";
+import ArcadeWheelLayout from "./components/ArcadeWheelLayout";
 import CategoryRow from "./components/CategoryRow";
 import GameCard from "./components/GameCard";
 import GameDetailModal from "./components/GameDetailModal";
@@ -505,6 +506,19 @@ function App() {
                 : "ArrowDown",
           })
         );
+      } else if (section === "home" && layoutStyle === "arcade") {
+        window.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key:
+              dir === "left"
+                ? "ArrowLeft"
+                : dir === "right"
+                ? "ArrowRight"
+                : dir === "up"
+                ? "ArrowUp"
+                : "ArrowDown",
+          })
+        );
       } else {
         moveFocus(dir);
       }
@@ -517,6 +531,8 @@ function App() {
           active.click();
         }
       } else if (selectedGame) {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      } else if (section === "home" && layoutStyle === "arcade") {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
       } else if (currentFocusedGame) {
         setSelectedGame(currentFocusedGame);
@@ -534,6 +550,10 @@ function App() {
       }
     },
     onFavorite: async () => {
+      if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
+        return;
+      }
       const target = selectedGame ?? currentFocusedGame;
       if (target) {
         try {
@@ -545,6 +565,10 @@ function App() {
       }
     },
     onQuickPlay: async () => {
+      if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "f" }));
+        return;
+      }
       const target = selectedGame ?? currentFocusedGame;
       if (target) {
         try {
@@ -564,6 +588,8 @@ function App() {
           const idx = SETTINGS_TABS.indexOf(curr);
           return SETTINGS_TABS[(idx - 1 + SETTINGS_TABS.length) % SETTINGS_TABS.length];
         });
+      } else if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
       } else {
         handlePrevTab();
       }
@@ -574,6 +600,8 @@ function App() {
           const idx = SETTINGS_TABS.indexOf(curr);
           return SETTINGS_TABS[(idx + 1) % SETTINGS_TABS.length];
         });
+      } else if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
       } else {
         handleNextTab();
       }
@@ -659,7 +687,7 @@ function App() {
     <MusicProvider games={games}>
       <div
         className={`app ${kioskMode ? "kiosk" : ""} ${
-          sidebarCollapsed || layoutStyle === "immersive" ? "sidebar-collapsed" : ""
+          sidebarCollapsed || layoutStyle === "immersive" || layoutStyle === "arcade" ? "sidebar-collapsed" : ""
         }`}
         data-theme={theme}
         data-layout-style={layoutStyle}
@@ -789,54 +817,64 @@ function App() {
 
             {loaded === true && section === "home" && games.length > 0 && (
               <>
-                <HeroBanner
-                  games={featured}
-                  allGames={games}
-                  onSelect={setSelectedGame}
-                  onFavoriteChanged={handleFavoriteChanged}
-                  layoutStyle={layoutStyle}
-                />
-                {layoutStyle === "classic" && searchQuery.trim() ? (
-                  <div style={{ padding: "0 48px 48px" }}>
-                    {searchResults.length > 0 ? (
-                      <CategoryRow
-                        title={t("search.searchResultsWithCount", { count: searchResults.length })}
-                        games={searchResults}
-                        onSelect={setSelectedGame}
-                        onFavoriteChanged={handleFavoriteChanged}
-                        focusedId={showNavFocus ? searchResults[flatFocusIdx]?.id : null}
-                      />
-                    ) : (
-                      <p
-                        style={{
-                          color: "#777",
-                          padding: "32px 0",
-                          textAlign: "center",
-                          fontSize: "16px",
-                        }}
-                      >
-                        {t("search.noResults", { query: searchQuery })}
-                      </p>
-                    )}
-                  </div>
+                {layoutStyle === "arcade" ? (
+                  <ArcadeWheelLayout
+                    games={games}
+                    onSelectGame={setSelectedGame}
+                    onFavoriteChanged={handleFavoriteChanged}
+                  />
                 ) : (
-                  homeRows.map((row, rowIdx) => {
-                    const isRowActive = homeFocus.row === rowIdx;
-                    const focusedIdInRow =
-                      showNavFocus && isRowActive && row.games.length > 0
-                        ? row.games[Math.min(homeFocus.col, row.games.length - 1)]?.id
-                        : null;
-                    return (
-                      <CategoryRow
-                        key={row.id}
-                        title={row.title}
-                        games={row.games}
-                        onSelect={setSelectedGame}
-                        onFavoriteChanged={handleFavoriteChanged}
-                        focusedId={focusedIdInRow}
-                      />
-                    );
-                  })
+                  <>
+                    <HeroBanner
+                      games={featured}
+                      allGames={games}
+                      onSelect={setSelectedGame}
+                      onFavoriteChanged={handleFavoriteChanged}
+                      layoutStyle={layoutStyle}
+                    />
+                    {layoutStyle === "classic" && searchQuery.trim() ? (
+                      <div style={{ padding: "0 48px 48px" }}>
+                        {searchResults.length > 0 ? (
+                          <CategoryRow
+                            title={t("search.searchResultsWithCount", { count: searchResults.length })}
+                            games={searchResults}
+                            onSelect={setSelectedGame}
+                            onFavoriteChanged={handleFavoriteChanged}
+                            focusedId={showNavFocus ? searchResults[flatFocusIdx]?.id : null}
+                          />
+                        ) : (
+                          <p
+                            style={{
+                              color: "#777",
+                              padding: "32px 0",
+                              textAlign: "center",
+                              fontSize: "16px",
+                            }}
+                          >
+                            {t("search.noResults", { query: searchQuery })}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      homeRows.map((row, rowIdx) => {
+                        const isRowActive = homeFocus.row === rowIdx;
+                        const focusedIdInRow =
+                          showNavFocus && isRowActive && row.games.length > 0
+                            ? row.games[Math.min(homeFocus.col, row.games.length - 1)]?.id
+                            : null;
+                        return (
+                          <CategoryRow
+                            key={row.id}
+                            title={row.title}
+                            games={row.games}
+                            onSelect={setSelectedGame}
+                            onFavoriteChanged={handleFavoriteChanged}
+                            focusedId={focusedIdInRow}
+                          />
+                        );
+                      })
+                    )}
+                  </>
                 )}
               </>
             )}

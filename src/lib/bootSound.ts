@@ -135,3 +135,28 @@ export function playBootSound(options: BootSoundOptions = {}): void {
     bellOsc.stop(bellTime + 1.25);
   });
 }
+
+/**
+ * Plays a mechanical/neon arcade wheel tick sound for HyperSpin/LaunchBox navigation.
+ */
+export function playWheelTick(volume = 0.25): void {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(580, now);
+  osc.frequency.exponentialRampToValueAtTime(160, now + 0.035);
+
+  gain.gain.setValueAtTime(Math.min(0.5, Math.max(0.01, volume * 0.35)), now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.045);
+}
+

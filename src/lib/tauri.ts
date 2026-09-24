@@ -504,3 +504,12 @@ export function onEmulatorUpdates(cb: (infos: EmulatorInfo[]) => void) {
   return listen<EmulatorInfo[]>("emulator-updates-available", (e) => cb(e.payload));
 }
 
+export async function findGameVideo(romPath: string, gameId: string): Promise<string | null> {
+  try {
+    return await invoke<string | null>("find_game_video", { romPath, gameId });
+  } catch {
+    return null;
+  }
+}
+
+

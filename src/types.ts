@@ -17,6 +17,7 @@ export interface Game {
   publisher?: string | null;
   release_year?: number | null;
   region?: string | null;
+  video_path?: string | null;
 }
 
 export interface SGDBLogo {
@@ -88,7 +89,7 @@ export interface ScanResult {
 }
 
 export type ThemeId = "gold" | "arcade" | "console" | "snes" | "crimson";
-export type LayoutStyle = "classic" | "immersive";
+export type LayoutStyle = "classic" | "immersive" | "arcade";
 
 export interface AppSettings {
   folders: string[];
