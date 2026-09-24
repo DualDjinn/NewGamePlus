@@ -4,6 +4,7 @@ import type { Game } from "../types";
 import { launchGame, getCoverUrl, findGameVideo, toggleFavorite } from "../lib/tauri";
 import { playWheelTick } from "../lib/bootSound";
 import { normalizeGenre, getLocalizedGenreName } from "../lib/genreLocalization";
+import { PLATFORM_COLORS, getPlatformCompany, getPlatformDisplayName } from "../lib/platforms";
 import { ConsoleIcon } from "./ConsoleIcon";
 import "./ArcadeWheelLayout.css";
 
@@ -44,19 +45,17 @@ export default function ArcadeWheelLayout({
 }: Props) {
   const { t } = useTranslation();
   const [categoryType, setCategoryType] = useState<"platforms" | "genres">(initialCategoryType);
-  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [selectedCatIndex, setSelectedCatIndex] = useState<number>(0);
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [isVideoMuted, setIsVideoMuted] = useState<boolean>(true);
-  const wheelContainerRef = useRef<HTMLDivElement>(null);
-  const categoryListRef = useRef<HTMLDivElement>(null);
   const lastNavTimeRef = useRef<number>(0);
 
-  // Sync if parent updates initialCategoryType (e.g. user toggles between Home and Genres)
+  // Sync if parent changes initialCategoryType (e.g. from Home to Genres)
   useEffect(() => {
     if (initialCategoryType) {
       setCategoryType(initialCategoryType);
-      setSelectedCategory("ALL");
+      setSelectedCatIndex(0);
       setSelectedIndex(0);
     }
   }, [initialCategoryType]);
@@ -86,8 +85,9 @@ export default function ArcadeWheelLayout({
   }, [games]);
 
   const currentCategories = categoryType === "platforms" ? platforms : genres;
+  const selectedCategory = currentCategories[selectedCatIndex] || "ALL";
 
-  // Filter games based on category
+  // Filter games based on selected category
   const filteredGames = useMemo(() => {
     if (selectedCategory === "ALL") return games;
     if (categoryType === "platforms") {
@@ -96,26 +96,17 @@ export default function ArcadeWheelLayout({
     return games.filter((g) => g.genre && normalizeGenre(g.genre) === selectedCategory);
   }, [games, categoryType, selectedCategory]);
 
-  // Safe selected game
+  // Safe active game
   const activeGame: Game | null = useMemo(() => {
     if (filteredGames.length === 0) return null;
     const clamped = Math.max(0, Math.min(selectedIndex, filteredGames.length - 1));
     return filteredGames[clamped] || null;
   }, [filteredGames, selectedIndex]);
 
-  // Reset selected index when category changes
+  // Reset selected game index when category changes
   useEffect(() => {
     setSelectedIndex(0);
-  }, [selectedCategory, categoryType]);
-
-  // Auto-scroll active category into view
-  useEffect(() => {
-    if (!categoryListRef.current) return;
-    const activeEl = categoryListRef.current.querySelector<HTMLElement>(".arcade-category-item.active");
-    if (activeEl) {
-      activeEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-  }, [selectedCategory, categoryType]);
+  }, [selectedCatIndex, categoryType]);
 
   // Check for local video snap whenever active game changes
   useEffect(() => {
@@ -159,14 +150,15 @@ export default function ArcadeWheelLayout({
   const changeCategory = useCallback(
     (delta: number) => {
       if (currentCategories.length <= 1) return;
-      setSelectedCategory((curr) => {
-        const idx = currentCategories.indexOf(curr);
-        const nextIdx = (idx + delta + currentCategories.length) % currentCategories.length;
-        playWheelTick(0.32);
-        return currentCategories[nextIdx];
+      setSelectedCatIndex((prev) => {
+        let next = prev + delta;
+        if (next < 0) next = currentCategories.length - 1;
+        if (next >= currentCategories.length) next = 0;
+        playWheelTick(0.35);
+        return next;
       });
     },
-    [currentCategories]
+    [currentCategories.length]
   );
 
   const handlePlayGame = useCallback(
@@ -199,7 +191,6 @@ export default function ArcadeWheelLayout({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if an input is focused
       if (
         document.activeElement instanceof HTMLInputElement ||
         document.activeElement instanceof HTMLTextAreaElement
@@ -209,7 +200,7 @@ export default function ArcadeWheelLayout({
 
       const now = Date.now();
       if (now - lastNavTimeRef.current < 75) {
-        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
           e.preventDefault();
           return;
         }
@@ -225,14 +216,16 @@ export default function ArcadeWheelLayout({
         changeIndex(1);
       } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
         e.preventDefault();
+        lastNavTimeRef.current = now;
         changeCategory(-1);
       } else if (e.key === "ArrowRight" || e.key === "PageDown") {
         e.preventDefault();
+        lastNavTimeRef.current = now;
         changeCategory(1);
       } else if (e.key === "Tab") {
         e.preventDefault();
         setCategoryType((prev) => (prev === "platforms" ? "genres" : "platforms"));
-        setSelectedCategory("ALL");
+        setSelectedCatIndex(0);
         playWheelTick(0.35);
       } else if (e.key === "Enter") {
         e.preventDefault();
@@ -253,24 +246,30 @@ export default function ArcadeWheelLayout({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [changeIndex, changeCategory, handlePlayGame, handleToggleFav, onSelectGame, activeGame]);
 
-  // Mouse wheel navigation
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault();
-      const now = Date.now();
-      if (now - lastNavTimeRef.current < 85) return;
-      lastNavTimeRef.current = now;
-      if (e.deltaY > 0) {
-        changeIndex(1);
-      } else if (e.deltaY < 0) {
-        changeIndex(-1);
-      }
-    },
-    [changeIndex]
-  );
+  // Visible items for LEFT (Categories / Consoles) 3D wheel
+  const visibleCategories = useMemo(() => {
+    if (currentCategories.length === 0) return [];
+    const radius = 5;
+    const items: { category: string; index: number; diff: number }[] = [];
 
-  // Render items within a visible window for high performance
-  const visibleItems = useMemo(() => {
+    for (let offset = -radius; offset <= radius; offset++) {
+      let idx = selectedCatIndex + offset;
+      if (currentCategories.length >= radius * 2 + 1) {
+        idx = ((idx % currentCategories.length) + currentCategories.length) % currentCategories.length;
+      }
+      if (idx >= 0 && idx < currentCategories.length) {
+        items.push({
+          category: currentCategories[idx],
+          index: idx,
+          diff: offset,
+        });
+      }
+    }
+    return items;
+  }, [currentCategories, selectedCatIndex]);
+
+  // Visible items for RIGHT (Games) 3D wheel
+  const visibleGames = useMemo(() => {
     if (filteredGames.length === 0) return [];
     const radius = 5;
     const items: { game: Game; index: number; diff: number }[] = [];
@@ -306,7 +305,7 @@ export default function ArcadeWheelLayout({
   }, [activeGame]);
 
   return (
-    <div className="arcade-wheel-layout" onWheel={handleWheel}>
+    <div className="arcade-wheel-layout">
       {/* Immersive Background Fanart with ambient glow */}
       {globalBg && (
         <div
@@ -320,17 +319,28 @@ export default function ArcadeWheelLayout({
       {/* Main 3-Column Arcade Stage Container */}
       <div className="arcade-stage-container">
         {/* ========================================================
-            COLUMN 1 (LEFT): Consolas / Categorías / Géneros
+            COLUMN 1 (LEFT): Ruleta 3D de Consolas / Géneros
            ======================================================== */}
-        <aside className="arcade-category-sidebar">
-          {/* Top Switcher: Consolas / Géneros */}
-          <div className="arcade-category-tabs">
+        <section
+          className="arcade-wheel-section arcade-wheel-left"
+          onWheel={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const now = Date.now();
+            if (now - lastNavTimeRef.current < 85) return;
+            lastNavTimeRef.current = now;
+            if (e.deltaY > 0) changeCategory(1);
+            else if (e.deltaY < 0) changeCategory(-1);
+          }}
+        >
+          {/* Wheel Mode Pill Switcher */}
+          <div className="arcade-wheel-top-pills">
             <button
               type="button"
-              className={`arcade-tab-btn ${categoryType === "platforms" ? "active" : ""}`}
+              className={`arcade-pill-toggle ${categoryType === "platforms" ? "active" : ""}`}
               onClick={() => {
                 setCategoryType("platforms");
-                setSelectedCategory("ALL");
+                setSelectedCatIndex(0);
                 playWheelTick(0.3);
               }}
             >
@@ -338,10 +348,10 @@ export default function ArcadeWheelLayout({
             </button>
             <button
               type="button"
-              className={`arcade-tab-btn ${categoryType === "genres" ? "active" : ""}`}
+              className={`arcade-pill-toggle ${categoryType === "genres" ? "active" : ""}`}
               onClick={() => {
                 setCategoryType("genres");
-                setSelectedCategory("ALL");
+                setSelectedCatIndex(0);
                 playWheelTick(0.3);
               }}
             >
@@ -349,64 +359,100 @@ export default function ArcadeWheelLayout({
             </button>
           </div>
 
-          <div className="arcade-category-header">
-            <span className="arcade-category-header-title">
-              {categoryType === "platforms" ? "SISTEMAS" : "GÉNEROS"}
-            </span>
-            <span className="arcade-category-header-count">
-              {currentCategories.length > 1 ? currentCategories.length - 1 : 0}
-            </span>
+          <div className="arcade-wheel-guide top" onClick={() => changeCategory(-1)}>
+            <span className="arcade-arrow">▲</span>
           </div>
 
-          <div className="arcade-category-list" ref={categoryListRef}>
-            {currentCategories.map((cat) => {
-              const isActive = cat === selectedCategory;
-              const count =
-                cat === "ALL"
-                  ? games.length
-                  : categoryType === "platforms"
-                  ? games.filter((g) => g.platform === cat).length
-                  : games.filter((g) => g.genre && normalizeGenre(g.genre) === cat).length;
+          <div className="arcade-wheel-viewport left-viewport">
+            <div className="arcade-wheel-track">
+              {visibleCategories.map(({ category: cat, index, diff }) => {
+                const isSelected = diff === 0;
+                const translateY = diff * 74;
+                const translateZ = -Math.abs(diff) * 52;
+                const rotateX = diff * 8.5;
+                const rotateY = -16; // Curving into center from the left!
+                const scale = isSelected ? 1.15 : Math.max(0.72, 1 - Math.abs(diff) * 0.08);
+                const opacity = Math.max(0.2, 1 - Math.abs(diff) * 0.16);
 
-              const label =
-                cat === "ALL"
-                  ? t("catalog.all", "Todos")
-                  : categoryType === "platforms"
-                  ? cat
-                  : getLocalizedGenreName(cat, t);
+                const count =
+                  cat === "ALL"
+                    ? games.length
+                    : categoryType === "platforms"
+                    ? games.filter((g) => g.platform === cat).length
+                    : games.filter((g) => g.genre && normalizeGenre(g.genre) === cat).length;
 
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  className={`arcade-category-item ${isActive ? "active" : ""}`}
-                  onClick={() => {
-                    setSelectedCategory(cat);
-                    playWheelTick(0.25);
-                  }}
-                >
-                  <span className="arcade-cat-icon">
-                    {cat === "ALL" ? (
-                      "✨"
-                    ) : categoryType === "platforms" ? (
-                      <ConsoleIcon platform={cat} size={17} />
-                    ) : (
-                      GENRE_ICONS[cat] || "🏷️"
-                    )}
-                  </span>
-                  <span className="arcade-cat-label" title={label}>
-                    {label}
-                  </span>
-                  <span className="arcade-cat-count">{count}</span>
-                  {isActive && <span className="arcade-cat-active-line" />}
-                </button>
-              );
-            })}
+                const label =
+                  cat === "ALL"
+                    ? categoryType === "platforms"
+                      ? "TODAS LAS CONSOLAS"
+                      : "TODOS LOS GÉNEROS"
+                    : categoryType === "platforms"
+                    ? getPlatformDisplayName(cat)
+                    : getLocalizedGenreName(cat, t);
+
+                const brandColor =
+                  categoryType === "platforms"
+                    ? PLATFORM_COLORS[cat] || "var(--accent, #00f0ff)"
+                    : "#00f0ff";
+
+                return (
+                  <div
+                    key={`${cat}-${diff}`}
+                    className={`arcade-wheel-item arcade-cat-item ${isSelected ? "selected" : ""}`}
+                    style={{
+                      transform: `translateY(${translateY}px) translateZ(${translateZ}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`,
+                      opacity,
+                      zIndex: 100 - Math.abs(diff),
+                    }}
+                    onClick={() => {
+                      setSelectedCatIndex(index);
+                      playWheelTick(0.25);
+                    }}
+                  >
+                    {isSelected && <div className="arcade-wheel-reticle left-reticle" />}
+
+                    <div
+                      className="arcade-wheel-card arcade-cat-card"
+                      style={{ borderLeftColor: brandColor }}
+                    >
+                      <div
+                        className="arcade-cat-icon-badge"
+                        style={{ background: `${brandColor}22`, borderColor: `${brandColor}66` }}
+                      >
+                        {cat === "ALL" ? (
+                          <span className="arcade-all-star">✨</span>
+                        ) : categoryType === "platforms" ? (
+                          <ConsoleIcon platform={cat} size={22} />
+                        ) : (
+                          <span className="arcade-genre-symbol">{GENRE_ICONS[cat] || "🏷️"}</span>
+                        )}
+                      </div>
+
+                      <div className="arcade-cat-card-info">
+                        <span className="arcade-cat-card-name" title={label}>
+                          {label}
+                        </span>
+                        <div className="arcade-cat-card-sub">
+                          <span className="arcade-cat-count-pill">{count} JUEGOS</span>
+                          {categoryType === "platforms" && cat !== "ALL" && (
+                            <span className="arcade-cat-company">{getPlatformCompany(cat)}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </aside>
+
+          <div className="arcade-wheel-guide bottom" onClick={() => changeCategory(1)}>
+            <span className="arcade-arrow">▼</span>
+          </div>
+        </section>
 
         {/* ========================================================
-            COLUMN 2 (CENTER): Arcade Showcase Monitor & HUD
+            COLUMN 2 (CENTER): Arcade Showcase Monitor & Big HUD
            ======================================================== */}
         <main className="arcade-showcase-section">
           {activeGame ? (
@@ -544,22 +590,39 @@ export default function ArcadeWheelLayout({
         </main>
 
         {/* ========================================================
-            COLUMN 3 (RIGHT): HyperSpin 3D Vertical Wheel of Games
+            COLUMN 3 (RIGHT): Ruleta 3D de Juegos
            ======================================================== */}
-        <section className="arcade-wheel-section">
+        <section
+          className="arcade-wheel-section arcade-wheel-right"
+          onWheel={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const now = Date.now();
+            if (now - lastNavTimeRef.current < 85) return;
+            lastNavTimeRef.current = now;
+            if (e.deltaY > 0) changeIndex(1);
+            else if (e.deltaY < 0) changeIndex(-1);
+          }}
+        >
+          {/* Wheel Header Badge */}
+          <div className="arcade-wheel-top-pills right-header">
+            <span className="arcade-games-count-badge">
+              🎮 JUEGOS ({filteredGames.length})
+            </span>
+          </div>
+
           <div className="arcade-wheel-guide top" onClick={() => changeIndex(-1)}>
             <span className="arcade-arrow">▲</span>
           </div>
 
-          <div className="arcade-wheel-viewport" ref={wheelContainerRef}>
+          <div className="arcade-wheel-viewport right-viewport">
             <div className="arcade-wheel-track">
-              {visibleItems.map(({ game, index, diff }) => {
+              {visibleGames.map(({ game, index, diff }) => {
                 const isSelected = diff === 0;
-                // 3D curved wheel angled toward the center monitor
                 const translateY = diff * 74;
                 const translateZ = -Math.abs(diff) * 52;
                 const rotateX = diff * 8.5;
-                const rotateY = 16; // Curving towards center from the right
+                const rotateY = 16; // Curving into center from the right!
                 const scale = isSelected ? 1.15 : Math.max(0.72, 1 - Math.abs(diff) * 0.08);
                 const opacity = Math.max(0.2, 1 - Math.abs(diff) * 0.16);
 
@@ -569,7 +632,7 @@ export default function ArcadeWheelLayout({
                 return (
                   <div
                     key={`${game.id}-${diff}`}
-                    className={`arcade-wheel-item ${isSelected ? "selected" : ""}`}
+                    className={`arcade-wheel-item arcade-game-item ${isSelected ? "selected" : ""}`}
                     style={{
                       transform: `translateY(${translateY}px) translateZ(${translateZ}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`,
                       opacity,
@@ -584,10 +647,8 @@ export default function ArcadeWheelLayout({
                       }
                     }}
                   >
-                    {/* Selected Neon Reticle */}
-                    {isSelected && <div className="arcade-wheel-reticle" />}
+                    {isSelected && <div className="arcade-wheel-reticle right-reticle" />}
 
-                    {/* Wheel Card Presentation */}
                     <div className="arcade-wheel-card">
                       {logoUrl ? (
                         <div className="arcade-wheel-logo-box">
@@ -633,8 +694,8 @@ export default function ArcadeWheelLayout({
 
       {/* Arcade Footer Instructions */}
       <footer className="arcade-bottom-hints">
-        <span>▲▼ Rueda Juegos (Joystick / Flechas)</span>
-        <span>◄► Cambiar {categoryType === "platforms" ? "Consola" : "Género"} (LB / RB)</span>
+        <span>◄► Ruleta {categoryType === "platforms" ? "Consolas" : "Géneros"} (LB / RB)</span>
+        <span>▲▼ Ruleta Juegos (Joystick / Flechas)</span>
         <span>[A] Jugar</span>
         <span>[X] Detalles</span>
         <span>[Y] Favorito</span>

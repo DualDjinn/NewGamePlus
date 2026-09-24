@@ -1,4 +1,4 @@
-/* ArcadeWheelLayout.css — Authentic 3-Column HyperSpin & LaunchBox 3D Arcade Presentation */
+/* ArcadeWheelLayout.css — Authentic Twin-Wheel HyperSpin & LaunchBox 3D Arcade Presentation */
 
 .arcade-wheel-layout {
   position: relative;
@@ -30,23 +30,24 @@
 .arcade-bg-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(6, 7, 10, 0.35) 0%, rgba(6, 7, 10, 0.88) 75%, #06070a 100%),
+  background: radial-gradient(circle at 50% 50%, rgba(6, 7, 10, 0.3) 0%, rgba(6, 7, 10, 0.88) 75%, #06070a 100%),
               linear-gradient(to bottom, rgba(6, 7, 10, 0.7) 0%, transparent 20%, transparent 80%, #06070a 100%);
   z-index: 1;
   pointer-events: none;
 }
 
 /* ============================================================
-   MAIN 3-COLUMN STAGE CONTAINER
+   MAIN 3-COLUMN STAGE CONTAINER (TWIN-WHEEL LAYOUT)
    ============================================================ */
 .arcade-stage-container {
   display: flex;
   flex-direction: row;
   align-items: stretch;
+  justify-content: space-between;
   width: 100%;
   height: calc(100% - 34px);
-  padding: 12px 18px 0 18px;
-  gap: 18px;
+  padding: 10px 16px 0 16px;
+  gap: 16px;
   box-sizing: border-box;
   overflow: hidden;
   position: relative;
@@ -54,41 +55,44 @@
 }
 
 /* ============================================================
-   COLUMN 1 (LEFT): Consolas / Géneros Sidebar
+   GENERIC 3D WHEEL SECTION (USED FOR BOTH LEFT & RIGHT)
    ============================================================ */
-.arcade-category-sidebar {
-  width: 250px;
-  min-width: 250px;
-  max-width: 250px;
+.arcade-wheel-section {
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: rgba(10, 13, 20, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  padding: 12px;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  overflow: visible;
+  padding: 4px 0;
   box-sizing: border-box;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  overflow: hidden;
 }
 
-.arcade-category-tabs {
+/* Top Pills & Mode Switcher */
+.arcade-wheel-top-pills {
   display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
-  margin-bottom: 10px;
+  width: 100%;
+  height: 32px;
+  z-index: 15;
 }
 
-.arcade-tab-btn {
+.arcade-pill-toggle {
   flex: 1;
-  padding: 8px 4px;
+  padding: 6px 4px;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.5px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(14, 18, 28, 0.8);
+  backdrop-filter: blur(12px);
   color: #94a3b8;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -96,134 +100,256 @@
   white-space: nowrap;
 }
 
-.arcade-tab-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+.arcade-pill-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
 
-.arcade-tab-btn.active {
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.22) 0%, rgba(0, 140, 255, 0.14) 100%);
-  border-color: rgba(0, 240, 255, 0.55);
+.arcade-pill-toggle.active {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.25) 0%, rgba(0, 140, 255, 0.15) 100%);
+  border-color: rgba(0, 240, 255, 0.6);
   color: #00f0ff;
-  box-shadow: 0 0 14px rgba(0, 240, 255, 0.22);
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.25);
 }
 
-.arcade-category-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 6px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  margin-bottom: 8px;
+.arcade-wheel-top-pills.right-header {
+  justify-content: center;
 }
 
-.arcade-category-header-title {
+.arcade-games-count-badge {
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
+  color: #00f0ff;
+  background: rgba(14, 18, 28, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  padding: 6px 14px;
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+}
+
+/* Guide Arrows */
+.arcade-wheel-guide {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.15s ease;
+  z-index: 10;
+  user-select: none;
+}
+
+.arcade-wheel-guide:hover {
+  color: #00f0ff;
+  transform: scale(1.25);
+}
+
+/* 3D Wheel Viewport & Track */
+.arcade-wheel-viewport {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arcade-wheel-viewport.left-viewport {
+  perspective: 1100px;
+  perspective-origin: 85% 50%;
+}
+
+.arcade-wheel-viewport.right-viewport {
+  perspective: 1100px;
+  perspective-origin: 15% 50%;
+}
+
+.arcade-wheel-track {
+  position: relative;
+  width: 100%;
+  height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+}
+
+.arcade-wheel-item {
+  position: absolute;
+  width: 265px;
+  height: 68px;
+  transform-style: preserve-3d;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.22s ease;
+  cursor: pointer;
+}
+
+.arcade-wheel-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(20, 24, 34, 0.94) 0%, rgba(12, 14, 20, 0.96) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.arcade-wheel-item.selected .arcade-wheel-card {
+  border-color: rgba(0, 240, 255, 0.85);
+  box-shadow: 0 0 28px rgba(0, 240, 255, 0.35),
+              inset 0 0 16px rgba(0, 240, 255, 0.15);
+}
+
+.arcade-wheel-reticle {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid #00f0ff;
+  border-radius: 16px;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.65);
+  pointer-events: none;
+  z-index: 10;
+  animation: arcadeReticlePulse 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes arcadeReticlePulse {
+  0% {
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.45);
+    border-color: #00f0ff;
+  }
+  100% {
+    box-shadow: 0 0 28px rgba(0, 240, 255, 0.85);
+    border-color: #67e8f9;
+  }
+}
+
+/* Left Wheel: Platform / Console Cards */
+.arcade-cat-card {
+  border-left-width: 4px;
+}
+
+.arcade-cat-icon-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.arcade-all-star {
+  font-size: 20px;
+}
+
+.arcade-genre-symbol {
+  font-size: 22px;
+}
+
+.arcade-cat-card-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 3px;
+  flex: 1;
+}
+
+.arcade-cat-card-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.2px;
+}
+
+.arcade-cat-card-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.arcade-cat-count-pill {
+  font-size: 10px;
+  font-weight: 800;
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.arcade-cat-company {
+  font-size: 10px;
+  font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
 }
 
-.arcade-category-header-count {
-  font-size: 11px;
-  font-weight: 700;
-  color: #00f0ff;
-  background: rgba(0, 240, 255, 0.12);
-  padding: 2px 7px;
-  border-radius: 999px;
-}
-
-.arcade-category-list {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-right: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
-}
-
-.arcade-category-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.arcade-category-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
-  border-radius: 4px;
-}
-
-.arcade-category-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: 8px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: #cbd5e1;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  text-align: left;
+/* Right Wheel: Game Cards */
+.arcade-wheel-logo-box {
   width: 100%;
-  box-sizing: border-box;
-}
-
-.arcade-category-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-}
-
-.arcade-category-item.active {
-  background: linear-gradient(90deg, rgba(0, 240, 255, 0.18) 0%, rgba(0, 240, 255, 0.04) 100%);
-  border-color: rgba(0, 240, 255, 0.35);
-  color: #fff;
-  font-weight: 600;
-  box-shadow: 0 2px 10px rgba(0, 240, 255, 0.12);
-}
-
-.arcade-cat-icon {
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  width: 22px;
-  flex-shrink: 0;
 }
 
-.arcade-cat-label {
-  flex: 1;
+.arcade-wheel-logo-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.8));
+}
+
+.arcade-wheel-badge-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+}
+
+.arcade-wheel-thumb-img {
+  width: 44px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.arcade-wheel-text-wrap {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 2px;
+}
+
+.arcade-wheel-title {
   font-size: 13px;
+  font-weight: 700;
+  color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.arcade-cat-count {
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 2px 7px;
-  border-radius: 999px;
-}
-
-.arcade-category-item.active .arcade-cat-count {
-  background: rgba(0, 240, 255, 0.18);
+.arcade-wheel-platform-tag {
+  font-size: 10px;
+  font-weight: 800;
   color: #00f0ff;
-}
-
-.arcade-cat-active-line {
-  position: absolute;
-  left: 0;
-  top: 15%;
-  bottom: 15%;
-  width: 3px;
-  background: #00f0ff;
-  border-radius: 0 3px 3px 0;
-  box-shadow: 0 0 10px #00f0ff;
+  letter-spacing: 0.5px;
 }
 
 /* ============================================================
@@ -232,6 +358,7 @@
 .arcade-showcase-section {
   flex: 1;
   min-width: 0;
+  max-width: 1020px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -239,11 +366,11 @@
   justify-content: center;
   padding: 0 10px;
   overflow: hidden;
+  margin: 0 auto;
 }
 
 .arcade-showcase-panel {
   width: 100%;
-  max-width: 1050px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -619,167 +746,6 @@
 .arcade-empty-icon {
   font-size: 48px;
   opacity: 0.6;
-}
-
-/* ============================================================
-   COLUMN 3 (RIGHT): 3D Curved Vertical Wheel of Games
-   ============================================================ */
-.arcade-wheel-section {
-  width: 290px;
-  min-width: 290px;
-  max-width: 290px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: visible;
-}
-
-.arcade-wheel-guide {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.4);
-  padding: 4px;
-  cursor: pointer;
-  transition: color 0.15s ease, transform 0.15s ease;
-  z-index: 10;
-}
-
-.arcade-wheel-guide:hover {
-  color: #00f0ff;
-  transform: scale(1.2);
-}
-
-.arcade-wheel-viewport {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  perspective: 1100px;
-  perspective-origin: 15% 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.arcade-wheel-track {
-  position: relative;
-  width: 100%;
-  height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform-style: preserve-3d;
-}
-
-.arcade-wheel-item {
-  position: absolute;
-  width: 260px;
-  height: 68px;
-  transform-style: preserve-3d;
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.22s ease;
-  cursor: pointer;
-}
-
-.arcade-wheel-card {
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(20, 24, 34, 0.92) 0%, rgba(12, 14, 20, 0.94) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  box-sizing: border-box;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.arcade-wheel-item.selected .arcade-wheel-card {
-  border-color: rgba(0, 240, 255, 0.85);
-  box-shadow: 0 0 28px rgba(0, 240, 255, 0.35),
-              inset 0 0 16px rgba(0, 240, 255, 0.15);
-}
-
-.arcade-wheel-reticle {
-  position: absolute;
-  inset: -4px;
-  border: 2px solid #00f0ff;
-  border-radius: 16px;
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.6);
-  pointer-events: none;
-  z-index: 10;
-  animation: arcadeReticlePulse 1.8s ease-in-out infinite alternate;
-}
-
-@keyframes arcadeReticlePulse {
-  0% {
-    box-shadow: 0 0 16px rgba(0, 240, 255, 0.45);
-    border-color: #00f0ff;
-  }
-  100% {
-    box-shadow: 0 0 28px rgba(0, 240, 255, 0.85);
-    border-color: #67e8f9;
-  }
-}
-
-.arcade-wheel-logo-box {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.arcade-wheel-logo-img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.8));
-}
-
-.arcade-wheel-badge-box {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  height: 100%;
-}
-
-.arcade-wheel-thumb-img {
-  width: 44px;
-  height: 52px;
-  object-fit: cover;
-  border-radius: 6px;
-  flex-shrink: 0;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-}
-
-.arcade-wheel-text-wrap {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  gap: 2px;
-}
-
-.arcade-wheel-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.arcade-wheel-platform-tag {
-  font-size: 10px;
-  font-weight: 800;
-  color: #00f0ff;
-  letter-spacing: 0.5px;
 }
 
 /* ============================================================
