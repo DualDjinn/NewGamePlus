@@ -164,7 +164,7 @@ export default function Sidebar({
       )}
 
       <div className="sidebar-bottom">
-        {!isImmersive && (
+        {!(isImmersive || isArcade) && (
           <>
             <div className="sidebar-vinyl-wrap">
               <VinylPlayer games={games} collapsed={isCollapsed} mode={isCollapsed ? "collapsed" : "sidebar"} />
@@ -188,7 +188,7 @@ export default function Sidebar({
           </>
         )}
 
-        {isImmersive && (
+        {(isImmersive || isArcade) && (
           <div className="sidebar-immersive-bottom-actions">
             {onToggleFullscreen && (
               <button

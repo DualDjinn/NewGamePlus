@@ -21,7 +21,8 @@
   overflow: visible;
 }
 
-.sidebar.sidebar-immersive {
+.sidebar.sidebar-immersive,
+.sidebar.sidebar-arcade {
   overflow: visible !important;
 }
 

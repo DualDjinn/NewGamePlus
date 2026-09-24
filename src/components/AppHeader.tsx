@@ -258,7 +258,7 @@ export default function AppHeader(props: AppHeaderProps) {
       </div>
 
       <div className="app-header-right">
-        {layoutStyle === "immersive" ? (
+        {layoutStyle === "immersive" || layoutStyle === "arcade" ? (
           <VinylPlayer games={games} mode="navbar" />
         ) : (
           <div className="app-header-actions">

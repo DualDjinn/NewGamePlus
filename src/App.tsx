@@ -506,7 +506,7 @@ function App() {
                 : "ArrowDown",
           })
         );
-      } else if (section === "home" && layoutStyle === "arcade") {
+      } else if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade") {
         window.dispatchEvent(
           new KeyboardEvent("keydown", {
             key:
@@ -532,7 +532,7 @@ function App() {
         }
       } else if (selectedGame) {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
-      } else if (section === "home" && layoutStyle === "arcade") {
+      } else if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade") {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
       } else if (currentFocusedGame) {
         setSelectedGame(currentFocusedGame);
@@ -550,7 +550,7 @@ function App() {
       }
     },
     onFavorite: async () => {
-      if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
+      if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade" && !selectedGame) {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
         return;
       }
@@ -565,7 +565,7 @@ function App() {
       }
     },
     onQuickPlay: async () => {
-      if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
+      if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade" && !selectedGame) {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "f" }));
         return;
       }
@@ -588,7 +588,7 @@ function App() {
           const idx = SETTINGS_TABS.indexOf(curr);
           return SETTINGS_TABS[(idx - 1 + SETTINGS_TABS.length) % SETTINGS_TABS.length];
         });
-      } else if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
+      } else if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade" && !selectedGame) {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
       } else {
         handlePrevTab();
@@ -600,7 +600,7 @@ function App() {
           const idx = SETTINGS_TABS.indexOf(curr);
           return SETTINGS_TABS[(idx + 1) % SETTINGS_TABS.length];
         });
-      } else if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
+      } else if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade" && !selectedGame) {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
       } else {
         handleNextTab();
@@ -820,6 +820,7 @@ function App() {
                 {layoutStyle === "arcade" ? (
                   <ArcadeWheelLayout
                     games={games}
+                    initialCategoryType="platforms"
                     onSelectGame={setSelectedGame}
                     onFavoriteChanged={handleFavoriteChanged}
                   />
@@ -989,7 +990,16 @@ function App() {
               </div>
             )}
 
-            {loaded === true && section === "genre" && selectedGenre && (
+            {loaded === true && (section === "genre" || section === "genres") && layoutStyle === "arcade" && (
+              <ArcadeWheelLayout
+                games={games}
+                initialCategoryType="genres"
+                onSelectGame={setSelectedGame}
+                onFavoriteChanged={handleFavoriteChanged}
+              />
+            )}
+
+            {loaded === true && section === "genre" && selectedGenre && layoutStyle !== "arcade" && (
               <div className="library-container">
                 <div className="genre-view-header">
                   <button
@@ -1071,7 +1081,7 @@ function App() {
               </div>
             )}
 
-            {loaded === true && section === "genres" && (
+            {loaded === true && section === "genres" && layoutStyle !== "arcade" && (
               <div className="genres-container">
                 <div className="genres-header">
                   <div className="genres-header-info">
