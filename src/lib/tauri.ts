@@ -36,12 +36,18 @@ export async function scanAndFetchCores(folders: string[]): Promise<ScanResult> 
 
 const launchAudio = typeof Audio !== "undefined" ? new Audio("/sounds/game_launch.mp3") : null;
 let activeLaunchedRomPath: string | null = null;
+let isGameLaunching = false;
 
 export function getActiveLaunchedRomPath(): string | null {
   return activeLaunchedRomPath;
 }
 
 export async function launchGame(romPath: string): Promise<string> {
+  if (isGameLaunching || activeLaunchedRomPath !== null) {
+    console.warn("Un juego ya se está ejecutando o iniciando.");
+    return "Juego ya en ejecución";
+  }
+  isGameLaunching = true;
   activeLaunchedRomPath = romPath;
   if (launchAudio) {
     const sfxVol = parseFloat(localStorage.getItem("gameflix_sfx_volume") ?? "0.8");
@@ -55,6 +61,7 @@ export async function launchGame(romPath: string): Promise<string> {
   try {
     return await invoke<string>("launch_game", { romPath });
   } finally {
+    isGameLaunching = false;
     activeLaunchedRomPath = null;
     window.dispatchEvent(new CustomEvent("game-closed"));
   }

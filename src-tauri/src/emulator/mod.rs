@@ -19,6 +19,11 @@ use std::sync::atomic::Ordering;
 use tauri::{Emitter, Manager};
 
 pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<String, String> {
+    if GAME_RUNNING.load(Ordering::SeqCst) {
+        log_error("Intento de lanzar juego cuando ya hay un emulador activo");
+        return Err("Ya hay un juego en ejecución.".into());
+    }
+
     if !Path::new(&rom_path).exists() {
         return Err(format!("ROM no encontrada: {}", rom_path));
     }

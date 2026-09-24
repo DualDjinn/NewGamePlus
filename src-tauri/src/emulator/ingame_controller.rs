@@ -81,13 +81,12 @@ pub fn get_retroarch_hwnd() -> Option<windows::Win32::Foundation::HWND> {
 pub fn send_retroarch_command(cmd: &str) -> Result<(), String> {
     let socket = UdpSocket::bind("127.0.0.1:0").map_err(|e| format!("Error binding UDP: {}", e))?;
     socket
-        .set_write_timeout(Some(Duration::from_millis(500)))
+        .set_write_timeout(Some(Duration::from_millis(300)))
         .map_err(|e| e.to_string())?;
 
-    let packet = format!("{}\n", cmd);
-    socket
-        .send_to(packet.as_bytes(), RETROARCH_UDP_ADDR)
-        .map_err(|e| format!("Error enviando comando '{}' a RetroArch: {}", cmd, e))?;
+    let packet_nl = format!("{}\n", cmd);
+    let _ = socket.send_to(packet_nl.as_bytes(), RETROARCH_UDP_ADDR);
+    let _ = socket.send_to(cmd.as_bytes(), RETROARCH_UDP_ADDR);
 
     Ok(())
 }
@@ -281,7 +280,7 @@ pub fn start_global_hotkey_listener(app: AppHandle, stop_flag: Arc<AtomicBool>) 
 
                 let is_down = is_esc_down || is_gamepad_down;
 
-                if is_down && !was_pressed && last_toggle.elapsed() > Duration::from_millis(350) {
+                if is_down && !was_pressed && last_toggle.elapsed() > Duration::from_millis(600) {
                     last_toggle = std::time::Instant::now();
                     let is_running = GAME_RUNNING.load(Ordering::Relaxed);
                     if is_running {
@@ -301,41 +300,28 @@ pub fn start_global_hotkey_listener(app: AppHandle, stop_flag: Arc<AtomicBool>) 
     });
 }
 
-/// Pauses RetroArch, captures a frame screenshot, hides RetroArch window, and shows NewGame+ pause cards
-#[allow(dead_code)]
+/// Pauses RetroArch and shows NewGame+ pause cards directly on top of the game
 pub fn pause_in_game(app: &AppHandle) -> Result<(), String> {
-    // 1. Pause RetroArch emulation
+    // 1. Send pause command to RetroArch (and focus loss will also pause via pause_nonactive = true)
     let _ = send_retroarch_command("PAUSE_TOGGLE");
     OVERLAY_OPEN.store(true, Ordering::SeqCst);
 
-    // 2. Allow RetroArch frame presentation to settle
-    std::thread::sleep(Duration::from_millis(120));
+    // 2. Capture screenshot asynchronously for savestate thumbnails without freezing the UI thread
+    std::thread::spawn(|| {
+        let _ = capture_screen_to_bmp();
+    });
 
-    // 3. Capture screenshot of paused game frame
-    let screenshot_path = capture_screen_to_bmp().ok();
-
-    // 4. Hide RetroArch window completely so NewGame+ has uninterrupted display ownership
-    #[cfg(target_os = "windows")]
-    {
-        use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE};
-        if let Some(ra_hwnd) = get_retroarch_hwnd() {
-            unsafe {
-                let _ = ShowWindow(ra_hwnd, SW_HIDE);
-            }
-        }
-    }
-
-    // 5. Show and focus main NewGame+ window at full screen
+    // 3. Elevate and focus main NewGame+ window directly over RetroArch (without hiding RetroArch!)
     if let Some(window) = app.get_webview_window("main") {
-        let _ = window.unminimize();
         let _ = window.set_always_on_top(true);
+        let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
     }
 
-    // 6. Notify frontend to mount InGameOverlayModal with captured frame
+    // 4. Notify frontend to mount InGameOverlayModal
     let payload = PauseOpenPayload {
-        screenshot_path,
+        screenshot_path: None,
         game_id: get_active_game_id(),
     };
     let _ = app.emit("in-game-pause-open", payload);
@@ -349,29 +335,24 @@ pub fn resume_in_game(app: &AppHandle) -> Result<(), String> {
 
     let _ = app.emit("in-game-pause-close", ());
 
-    // 1. Hide NewGame+ main window again
+    // 1. Hide NewGame+ main window
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.set_always_on_top(false);
         let _ = window.hide();
     }
 
-    // 2. Restore and elevate RetroArch window
+    // 2. Restore foreground focus directly to RetroArch
     #[cfg(target_os = "windows")]
     {
-        use windows::Win32::UI::WindowsAndMessaging::{
-            SetForegroundWindow, ShowWindow, SW_RESTORE, SW_SHOW,
-        };
+        use windows::Win32::UI::WindowsAndMessaging::SetForegroundWindow;
         if let Some(hwnd) = get_retroarch_hwnd() {
             unsafe {
-                let _ = ShowWindow(hwnd, SW_SHOW);
-                let _ = ShowWindow(hwnd, SW_RESTORE);
                 let _ = SetForegroundWindow(hwnd);
             }
         }
     }
 
     // 3. Unpause RetroArch
-    std::thread::sleep(Duration::from_millis(100));
     let _ = send_retroarch_command("PAUSE_TOGGLE");
 
     Ok(())

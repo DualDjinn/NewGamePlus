@@ -29,6 +29,7 @@ export default function InGameOverlayModal({ isOpen, game, screenshotPath, onClo
   const [showMappingModal, setShowMappingModal] = useState<boolean>(false);
   const [showSlotsPanel, setShowSlotsPanel] = useState<boolean>(false);
   const [slots, setSlots] = useState<SaveSlotInfo[]>([]);
+  const openTimeRef = useRef<number>(Date.now());
   const notificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchSlots = useCallback(async () => {
@@ -52,6 +53,7 @@ export default function InGameOverlayModal({ isOpen, game, screenshotPath, onClo
         })
         .catch(() => {});
       setSelectedCardIdx(0);
+      openTimeRef.current = Date.now();
       setShowControlsModal(false);
       setShowMappingModal(false);
       setShowSlotsPanel(false);
@@ -153,6 +155,10 @@ export default function InGameOverlayModal({ isOpen, game, screenshotPath, onClo
 
       if (e.key === "Escape") {
         e.preventDefault();
+        // Prevent opening keypress from immediately triggering resume
+        if (Date.now() - openTimeRef.current < 450) {
+          return;
+        }
         handleResume();
         return;
       }

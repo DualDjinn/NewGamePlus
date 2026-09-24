@@ -58,7 +58,25 @@ function App() {
   const [inGamePauseOpen, setInGamePauseOpen] = useState(false);
   const [inGameScreenshot, setInGameScreenshot] = useState<string | null>(null);
   const [inGameActiveGame, setInGameActiveGame] = useState<Game | null>(null);
+  const [isGameRunning, setIsGameRunning] = useState(false);
   const prevSectionRef = useRef<Section>(section);
+
+  useEffect(() => {
+    const handleLaunch = () => {
+      setIsGameRunning(true);
+      setSelectedGame(null); // Ensure detail modal is closed so it cannot capture keys while playing
+    };
+    const handleClose = () => {
+      setIsGameRunning(false);
+      setInGamePauseOpen(false);
+    };
+    window.addEventListener("game-launched", handleLaunch);
+    window.addEventListener("game-closed", handleClose);
+    return () => {
+      window.removeEventListener("game-launched", handleLaunch);
+      window.removeEventListener("game-closed", handleClose);
+    };
+  }, []);
 
   // Hook 1: Library & Persistent State Management
   const {
@@ -562,12 +580,12 @@ function App() {
     },
     onToggleSidebar: () => setSidebarCollapsed((v) => !v),
     onToggleMenu: () => setSection((s) => (s === "settings" ? "home" : "settings")),
-  });
+  }, !isGameRunning && !inGamePauseOpen);
 
   // Global keyboard navigation
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (selectedGame) return;
+      if (isGameRunning || inGamePauseOpen || selectedGame) return;
 
       const target = e.target as HTMLElement | null;
       if (
