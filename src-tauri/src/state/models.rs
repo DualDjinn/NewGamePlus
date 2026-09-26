@@ -112,6 +112,14 @@ pub struct Profile {
     pub cheevos_hardcore: bool,
     #[serde(default)]
     pub steamgriddb_api_key: Option<String>,
+    #[serde(default)]
+    pub screenscraper_user: Option<String>,
+    #[serde(default)]
+    pub screenscraper_pass: Option<String>,
+    #[serde(default)]
+    pub screenscraper_dev_id: Option<String>,
+    #[serde(default)]
+    pub screenscraper_dev_pass: Option<String>,
 }
 
 pub fn default_music_volume() -> f32 {
@@ -144,6 +152,8 @@ pub struct AppSettings {
     pub music_volume: f32,
     #[serde(default)]
     pub music_folders: Vec<String>,
+    #[serde(default)]
+    pub video_folders: Vec<String>,
     #[serde(default)]
     pub last_emulator_check_secs: u64,
     #[serde(default = "default_auto_update_check")]
@@ -240,6 +250,7 @@ impl Default for ControllerMapping {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[allow(dead_code)]
 pub struct SaveSlotInfo {
     pub slot: u32,
     pub has_save: bool,
@@ -281,6 +292,10 @@ impl Default for AppState {
                     ra_token: None,
                     cheevos_hardcore: false,
                     steamgriddb_api_key: None,
+                    screenscraper_user: None,
+                    screenscraper_pass: None,
+                    screenscraper_dev_id: None,
+                    screenscraper_dev_pass: None,
                 }],
                 current_profile: "Por defecto".into(),
                 platform_cores: HashMap::new(),
@@ -291,6 +306,7 @@ impl Default for AppState {
                 graphics: GraphicsSettings::default(),
                 music_volume: default_music_volume(),
                 music_folders: Vec::new(),
+                video_folders: Vec::new(),
                 last_emulator_check_secs: 0,
                 auto_update_check: default_auto_update_check(),
                 controller_mapping: ControllerMapping::default(),
@@ -298,3 +314,11 @@ impl Default for AppState {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LocalVideoStats {
+    pub total_games: usize,
+    pub games_with_video: usize,
+    pub games_missing_video: usize,
+}
+

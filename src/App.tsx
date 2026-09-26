@@ -42,6 +42,7 @@ function App() {
   const { t } = useTranslation();
   const [section, setSection] = useState<Section>("home");
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [selectedGameAction, setSelectedGameAction] = useState<"edit" | "hero" | "logo" | "video" | null>(null);
   const [showNavFocus, setShowNavFocus] = useState(false);
   const [homeFocus, setHomeFocus] = useState<{ row: number; col: number }>({ row: 0, col: 0 });
   const [flatFocusIdx, setFlatFocusIdx] = useState<number>(0);
@@ -506,7 +507,7 @@ function App() {
                 : "ArrowDown",
           })
         );
-      } else if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade") {
+      } else if (section === "home" && layoutStyle === "arcade") {
         window.dispatchEvent(
           new KeyboardEvent("keydown", {
             key:
@@ -532,7 +533,7 @@ function App() {
         }
       } else if (selectedGame) {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
-      } else if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade") {
+      } else if (section === "home" && layoutStyle === "arcade") {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
       } else if (currentFocusedGame) {
         setSelectedGame(currentFocusedGame);
@@ -550,7 +551,7 @@ function App() {
       }
     },
     onFavorite: async () => {
-      if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade" && !selectedGame) {
+      if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
         return;
       }
@@ -565,7 +566,7 @@ function App() {
       }
     },
     onQuickPlay: async () => {
-      if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade" && !selectedGame) {
+      if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "f" }));
         return;
       }
@@ -588,7 +589,7 @@ function App() {
           const idx = SETTINGS_TABS.indexOf(curr);
           return SETTINGS_TABS[(idx - 1 + SETTINGS_TABS.length) % SETTINGS_TABS.length];
         });
-      } else if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade" && !selectedGame) {
+      } else if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
       } else {
         handlePrevTab();
@@ -600,7 +601,7 @@ function App() {
           const idx = SETTINGS_TABS.indexOf(curr);
           return SETTINGS_TABS[(idx + 1) % SETTINGS_TABS.length];
         });
-      } else if ((section === "home" || section === "genres" || section === "genre") && layoutStyle === "arcade" && !selectedGame) {
+      } else if (section === "home" && layoutStyle === "arcade" && !selectedGame) {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
       } else {
         handleNextTab();
@@ -821,8 +822,22 @@ function App() {
                   <ArcadeWheelLayout
                     games={games}
                     initialCategoryType="platforms"
-                    onSelectGame={setSelectedGame}
                     onFavoriteChanged={handleFavoriteChanged}
+                    onGameUpdated={(updated) => {
+                      setGames((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+                    }}
+                    onHeroChanged={(gameId, newHeroPath) => {
+                      setGames((prev) =>
+                        prev.map((g) => (g.id === gameId ? { ...g, hero_path: newHeroPath } : g))
+                      );
+                    }}
+                    onLogoChanged={(gameId, newLogoPath) => {
+                      setGames((prev) =>
+                        prev.map((g) => (g.id === gameId ? { ...g, logo_path: newLogoPath } : g))
+                      );
+                    }}
+                    onOpenSettings={() => setSection("settings")}
+                    onBack={() => handleLayoutStyleChange("classic")}
                   />
                 ) : (
                   <>
@@ -990,16 +1005,7 @@ function App() {
               </div>
             )}
 
-            {loaded === true && (section === "genre" || section === "genres") && layoutStyle === "arcade" && (
-              <ArcadeWheelLayout
-                games={games}
-                initialCategoryType="genres"
-                onSelectGame={setSelectedGame}
-                onFavoriteChanged={handleFavoriteChanged}
-              />
-            )}
-
-            {loaded === true && section === "genre" && selectedGenre && layoutStyle !== "arcade" && (
+            {loaded === true && section === "genre" && selectedGenre && (
               <div className="library-container">
                 <div className="genre-view-header">
                   <button
@@ -1081,7 +1087,7 @@ function App() {
               </div>
             )}
 
-            {loaded === true && section === "genres" && layoutStyle !== "arcade" && (
+            {loaded === true && section === "genres" && (
               <div className="genres-container">
                 <div className="genres-header">
                   <div className="genres-header-info">
@@ -1155,7 +1161,11 @@ function App() {
         {selectedGame && (
           <GameDetailModal
             game={selectedGame}
-            onClose={() => setSelectedGame(null)}
+            initialAction={selectedGameAction}
+            onClose={() => {
+              setSelectedGame(null);
+              setSelectedGameAction(null);
+            }}
             onFavoriteChanged={handleFavoriteChanged}
             onHeroChanged={(gameId, newHeroPath) => {
               setGames((prev) =>

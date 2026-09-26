@@ -1,12 +1,13 @@
 {
   "identifier": "default",
   "description": "Default permissions for gameFlix",
-  "windows": ["main"],
+  "windows": ["main", "ingame"],
   "permissions": [
     "core:default",
     "core:window:allow-set-fullscreen",
     "core:window:allow-set-decorations",
     "core:window:allow-set-focus",
-    "dialog:default"
+    "dialog:default",
+    "global-shortcut:default"
   ]
 }

@@ -330,7 +330,8 @@
 .modal-row-tags-tools {
   height: 10%;
   flex: 10;
-  min-height: 0;
+  min-height: 40px;
+  max-height: 48px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -338,6 +339,7 @@
   gap: 12px;
   padding-right: 48px; /* Margen para no chocar con el botón de cerrar */
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .modal-platform-badge-wrap {
@@ -379,7 +381,9 @@
 
 .modal-action-tools {
   display: flex;
+  align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .modal-tool-btn {
@@ -398,6 +402,9 @@
   align-items: center;
   gap: 6px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
 }
 
 .modal-tool-btn:hover {
@@ -416,6 +423,92 @@
   outline-offset: 2px;
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(245, 166, 35, 0.35);
+}
+
+.modal-tool-btn.modal-video-btn {
+  position: relative;
+  overflow: hidden;
+  min-width: 156px;
+  justify-content: center;
+}
+
+.modal-tool-btn.modal-video-btn.downloading {
+  border-color: rgba(74, 222, 128, 0.5);
+  background: rgba(12, 18, 28, 0.85);
+  cursor: wait;
+}
+
+.modal-btn-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.35) 0%, rgba(74, 222, 128, 0.6) 100%);
+  border-right: 2px solid #4ade80;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.6);
+  transition: width 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.modal-btn-content {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.modal-tool-btn.has-video {
+  border-color: rgba(74, 222, 128, 0.4);
+  color: #86efac;
+}
+
+.modal-tool-btn.has-video:hover {
+  background: rgba(74, 222, 128, 0.2);
+  border-color: rgba(74, 222, 128, 0.6);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(74, 222, 128, 0.25);
+}
+
+.modal-scrape-feedback {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-left: 10px;
+  animation: fadeIn 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.modal-scrape-feedback.success {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.modal-scrape-feedback.error {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.modal-btn-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: modal-spin 0.75s linear infinite;
+  display: inline-block;
+}
+
+@keyframes modal-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Fila 2: 40% del espacio disponible - Hero libre (sin card) con difuminación arriba y abajo + Nombre del juego */
@@ -491,18 +584,6 @@
   pointer-events: auto;
 }
 
-.modal-title-edit-wrap {
-  grid-column: 1;
-  grid-row: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-  pointer-events: auto;
-}
 
 .modal-title {
   font-family: var(--font-title);
@@ -612,25 +693,42 @@
 
 /* Modo edición del título */
 .modal-title-edit-wrap {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
   width: 100%;
+  max-width: 680px;
+  min-width: 0;
+  pointer-events: auto;
+  z-index: 10;
 }
 
 .modal-title-edit-input {
-  font-size: 32px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: 26px;
   font-weight: 800;
   color: #fff;
-  background: rgba(10, 12, 16, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(10, 14, 20, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1.5px solid #f5a623;
   border-radius: 10px;
-  padding: 6px 14px;
+  padding: 8px 16px;
   outline: none;
-  box-shadow: 0 0 16px rgba(245, 166, 35, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  box-sizing: border-box;
+  box-shadow: 0 0 20px rgba(245, 166, 35, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.modal-title-edit-input:focus {
+  border-color: #ffb833;
+  box-shadow: 0 0 24px rgba(245, 166, 35, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .modal-title-edit-actions {
@@ -839,12 +937,12 @@
 /* --- Hero Picker Overlay Modal --- */
 
 .hero-picker-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(6px);
-  z-index: 100;
-  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1098,4 +1196,180 @@
   object-fit: contain;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7));
 }
+
+/* ==========================================================================
+   Save States Slot List Styles (saveState.md)
+   ========================================================================== */
+.save-list {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .save-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .save-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.save-cell {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.save-cell:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(96, 165, 250, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.save-cell.save-selected {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.12);
+  box-shadow: 0 0 0 2px #3b82f6, 0 8px 24px rgba(59, 130, 246, 0.3);
+}
+
+.save-cell.save-cell-empty {
+  opacity: 0.65;
+  border-style: dashed;
+}
+
+.save-cell.save-cell-empty:hover {
+  opacity: 0.9;
+}
+
+.save-cell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.save-slot-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.save-size {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.save-thumb-wrapper {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.save-thumb-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #64748b;
+}
+
+.save-empty-icon {
+  font-size: 1.5rem;
+}
+
+.save-empty-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.save-cell-info {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+}
+
+.save-date {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.save-empty-label {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+.save-cell-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.save-btn-load {
+  flex: 1;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.save-btn-load:hover:not(:disabled) {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  transform: translateY(-1px);
+}
+
+.save-btn-delete {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.save-btn-delete:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.35);
+  color: white;
+}
+
 

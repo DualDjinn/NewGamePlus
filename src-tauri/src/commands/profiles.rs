@@ -23,6 +23,10 @@ pub fn create_profile(name: String) -> Result<(), String> {
         ra_token: None,
         cheevos_hardcore: false,
         steamgriddb_api_key: None,
+        screenscraper_user: None,
+        screenscraper_pass: None,
+        screenscraper_dev_id: None,
+        screenscraper_dev_pass: None,
     });
     save_state(&state);
     Ok(())

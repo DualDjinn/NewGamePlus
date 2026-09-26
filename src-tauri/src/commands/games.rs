@@ -2,7 +2,7 @@ use crate::emulator::launch_game_runner;
 use crate::metadata::{self, GameMetadata};
 use crate::platforms;
 use crate::state::lock_state;
-use crate::state::models::{ControllerMapping, Game, SaveSlotInfo};
+use crate::state::models::{ControllerMapping, Game};
 use crate::state::storage::save_state;
 use std::fs;
 use std::path::Path;
@@ -259,23 +259,53 @@ pub fn update_game_title(
 }
 
 #[tauri::command]
-pub fn in_game_resume(app: tauri::AppHandle) -> Result<(), String> {
-    crate::emulator::resume_in_game(&app)
+pub fn save_slot(slot_num: u8) -> Result<crate::emulator::SaveSlot, String> {
+    crate::emulator::save_slot(slot_num)
 }
 
 #[tauri::command]
-pub fn get_savestate_slots(game_id: String) -> Result<Vec<SaveSlotInfo>, String> {
-    Ok(crate::emulator::get_savestate_slots_for_game(&game_id))
+pub fn load_slot(game_id: String, file: String) -> Result<String, String> {
+    crate::emulator::load_slot(game_id, file)
 }
 
 #[tauri::command]
-pub fn in_game_save_state(game_id: Option<String>, slot: Option<u32>) -> Result<String, String> {
-    crate::emulator::save_state_slot(game_id, slot.unwrap_or(1))
+pub fn list_slots(game_id: String) -> Result<Vec<crate::emulator::SaveSlot>, String> {
+    crate::emulator::list_slots(game_id)
 }
 
 #[tauri::command]
-pub fn in_game_load_state(slot: Option<u32>) -> Result<String, String> {
-    crate::emulator::load_state_slot(slot.unwrap_or(1))
+pub fn delete_slot(game_id: String, file: String) -> Result<(), String> {
+    crate::emulator::delete_slot(game_id, file)
+}
+
+#[tauri::command]
+pub fn running_game() -> Result<Option<crate::emulator::RunningGameInfo>, String> {
+    crate::emulator::running_game()
+}
+
+#[tauri::command]
+pub fn is_game_running() -> Result<bool, String> {
+    crate::emulator::is_game_running()
+}
+
+#[tauri::command]
+pub fn ingame_continue(app: tauri::AppHandle) -> Result<(), String> {
+    crate::emulator::ingame_continue(app)
+}
+
+#[tauri::command]
+pub fn ingame_quit(app: tauri::AppHandle) -> Result<String, String> {
+    crate::emulator::ingame_quit(app)
+}
+
+#[tauri::command]
+pub fn ingame_volume(steps: i32) -> Result<(), String> {
+    crate::emulator::ingame_volume(steps)
+}
+
+#[tauri::command]
+pub fn ingame_mute() -> Result<(), String> {
+    crate::emulator::ingame_mute()
 }
 
 #[tauri::command]
@@ -292,19 +322,8 @@ pub fn save_controller_mapping(mapping: ControllerMapping) -> Result<(), String>
     Ok(())
 }
 
-#[tauri::command]
-pub fn in_game_set_volume(volume: u32) -> Result<(), String> {
-    crate::emulator::set_retroarch_volume(volume)
-}
-
-#[tauri::command]
-pub fn in_game_quit(app: tauri::AppHandle) -> Result<(), String> {
-    crate::emulator::quit_in_game(&app)
-}
-
-#[tauri::command]
-pub fn find_game_video(rom_path: String, game_id: String) -> Option<String> {
-    let p = Path::new(&rom_path);
+pub fn resolve_game_video(rom_path: &str, game_id: &str, video_folders: &[String]) -> Option<String> {
+    let p = Path::new(rom_path);
     let exts = ["mp4", "webm", "mkv", "avi"];
 
     if let (Some(parent), Some(stem)) = (p.parent(), p.file_stem()) {
@@ -328,9 +347,26 @@ pub fn find_game_video(rom_path: String, game_id: String) -> Option<String> {
                 }
             }
         }
+
+        // 3. Custom video folders configured in AppSettings:
+        for vf in video_folders {
+            let vf_path = Path::new(vf);
+            for ext in &exts {
+                let candidate = vf_path.join(format!("{}.{}", stem_str, ext));
+                if candidate.is_file() {
+                    return Some(candidate.to_string_lossy().to_string());
+                }
+                if let Some(platform_dir) = parent.file_name() {
+                    let sub_candidate = vf_path.join(platform_dir).join(format!("{}.{}", stem_str, ext));
+                    if sub_candidate.is_file() {
+                        return Some(sub_candidate.to_string_lossy().to_string());
+                    }
+                }
+            }
+        }
     }
 
-    // 3. NewGame+ data directory: data/videos/<game_id>.<ext> or data/videos/<stem>.<ext>
+    // 4. NewGame+ data directory: data/videos/<game_id>.<ext>
     let data_dir = crate::state::storage::get_data_dir().join("videos");
     for ext in &exts {
         let candidate = data_dir.join(format!("{}.{}", game_id, ext));
@@ -340,5 +376,35 @@ pub fn find_game_video(rom_path: String, game_id: String) -> Option<String> {
     }
 
     None
+}
+
+#[tauri::command]
+pub fn find_game_video(rom_path: String, game_id: String) -> Option<String> {
+    let video_folders = {
+        let state = crate::state::lock_state();
+        state.settings.video_folders.clone()
+    };
+    resolve_game_video(&rom_path, &game_id, &video_folders)
+}
+
+#[tauri::command]
+pub fn scan_local_videos() -> Result<crate::state::models::LocalVideoStats, String> {
+    let state = crate::state::lock_state();
+    let total_games = state.games.len();
+    let video_folders = state.settings.video_folders.clone();
+    let mut games_with_video = 0;
+
+    for game in &state.games {
+        if resolve_game_video(&game.rom_path, &game.id, &video_folders).is_some() {
+            games_with_video += 1;
+        }
+    }
+
+    let games_missing_video = total_games.saturating_sub(games_with_video);
+    Ok(crate::state::models::LocalVideoStats {
+        total_games,
+        games_with_video,
+        games_missing_video,
+    })
 }
 

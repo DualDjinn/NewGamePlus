@@ -56,6 +56,8 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     let safe_profile = profile_name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
     let saves_dir = get_data_dir().join("saves").join(&safe_profile);
     let states_dir = get_data_dir().join("states").join(&safe_profile);
+    let ra_states_dir = get_data_dir().join("ra_states");
+    let _ = fs::create_dir_all(&ra_states_dir);
 
     let all_bios_folders = {
         let state = lock_state();
@@ -147,7 +149,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
     }
 
     let saves_str = saves_dir.to_string_lossy().replace('\\', "/");
-    let states_str = states_dir.to_string_lossy().replace('\\', "/");
+    let ra_states_str = ra_states_dir.to_string_lossy().replace('\\', "/");
     let system_str = system_dir.to_string_lossy().replace('\\', "/");
 
     let ra_dir = ra_exe.parent().unwrap_or(Path::new("."));
@@ -231,11 +233,11 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
 
     let mut full_cfg = format!(
         "menu_driver = \"ozone\"\n\
-         input_menu_toggle = \"escape\"\n\
-         input_menu_toggle_gamepad_combo = \"2\"\n\
+         input_menu_toggle = \"f1\"\n\
+         input_menu_toggle_gamepad_combo = \"0\"\n\
          input_quit_gamepad_combo = \"0\"\n\
-         input_enable_hotkey = \"\"\n\
-         input_exit_emulator = \"nul\"\n\
+         input_enable_hotkey = \"escape\"\n\
+         input_exit_emulator = \"escape\"\n\
          quit_press_twice = \"true\"\n\
          quit_on_close_content = \"2\"\n\
          load_dummy_on_core_shutdown = \"false\"\n\
@@ -320,7 +322,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          video_fullscreen_x = \"0\"\n\
          video_fullscreen_y = \"0\"\n\
          video_vsync = \"true\"\n\
-         video_driver = \"glcore\"\n\
+         video_driver = \"d3d11\"\n\
          audio_enable = \"true\"\n\
          audio_driver = \"{}\"\n\
          audio_wasapi_exclusive_mode = \"false\"\n\
@@ -334,17 +336,18 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          audio_mixer_volume = \"0.0\"\n\
          audio_mute_enable = \"false\"\n\
          audio_mixer_mute_enable = \"false\"\n\
-         savestate_auto_load = \"false\"\n\
+         savestate_auto_load = \"true\"\n\
          savestate_auto_save = \"false\"\n\
+         savestate_auto_index = \"false\"\n\
+         savestate_thumbnail_enable = \"true\"\n\
          savestate_file_compression = \"false\"\n\
-         savestate_thumbnail_enable = \"false\"\n\
          save_file_compression = \"false\"\n\
          autosave_interval = \"10\"\n\
          block_sram_overwrite = \"true\"\n\
          savefiles_in_content_dir = \"false\"\n\
          savestates_in_content_dir = \"false\"\n\
          sort_savefiles_enable = \"true\"\n\
-         sort_savestates_enable = \"true\"\n\
+         sort_savestates_enable = \"false\"\n\
          config_save_on_exit = \"false\"\n\
          global_core_options = \"true\"\n\
          core_options_path = \"{}\"\n\
@@ -362,7 +365,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
         config_dir_str,
         system_str,
         saves_str,
-        states_str
+        ra_states_str
     );
 
     full_cfg.push_str(&format!(
@@ -514,3 +517,19 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
 
     Ok((ra_exe, cfg_path))
 }
+
+pub fn clear_stale_autos() {
+    let ra_states_dir = get_data_dir().join("ra_states");
+    if let Ok(entries) = fs::read_dir(&ra_states_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                if name.ends_with(".auto") || name.ends_with(".auto.png") {
+                    let _ = fs::remove_file(&path);
+                }
+            }
+        }
+    }
+}
+

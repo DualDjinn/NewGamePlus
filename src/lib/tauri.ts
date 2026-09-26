@@ -42,6 +42,19 @@ export function getActiveLaunchedRomPath(): string | null {
   return activeLaunchedRomPath;
 }
 
+// Global listener: whenever RetroArch or any emulator exits, reset running state and dispatch "game-closed"
+if (typeof window !== "undefined") {
+  try {
+    listen<string>("retroarch-exited", (e) => {
+      isGameLaunching = false;
+      activeLaunchedRomPath = null;
+      window.dispatchEvent(new CustomEvent("game-closed", { detail: { romPath: e.payload } }));
+    }).catch(() => {});
+  } catch {
+    // Non-Tauri environment fallback
+  }
+}
+
 export async function launchGame(romPath: string): Promise<string> {
   if (isGameLaunching || activeLaunchedRomPath !== null) {
     console.warn("Un juego ya se está ejecutando o iniciando.");
@@ -57,13 +70,24 @@ export async function launchGame(romPath: string): Promise<string> {
       console.warn("No se pudo reproducir el sonido de inicio:", err);
     });
   }
-  window.dispatchEvent(new CustomEvent("game-launched"));
+  window.dispatchEvent(new CustomEvent("game-launched", { detail: { romPath } }));
   try {
-    return await invoke<string>("launch_game", { romPath });
-  } finally {
+    const result = await invoke<string>("launch_game", { romPath });
+    // Standalone emulator that exited synchronously:
+    if (result === "Game exited cleanly") {
+      isGameLaunching = false;
+      activeLaunchedRomPath = null;
+      window.dispatchEvent(new CustomEvent("game-closed", { detail: { romPath } }));
+    }
+    return result;
+  } catch (err) {
+    // Launch failed: reset state and dispatch game-closed so music and UI resume
     isGameLaunching = false;
     activeLaunchedRomPath = null;
-    window.dispatchEvent(new CustomEvent("game-closed"));
+    window.dispatchEvent(new CustomEvent("game-closed", { detail: { romPath } }));
+    throw err;
+  } finally {
+    isGameLaunching = false;
   }
 }
 
@@ -431,26 +455,92 @@ export async function toggleWindowFullscreen(): Promise<boolean> {
   }
 }
 
+export interface SaveSlot {
+  file: string;
+  thumbnail: string | null;
+  modified: number;
+  size: number;
+}
+
+export interface RunningGameInfo {
+  rom_path: string;
+  game_id: string;
+  game_name: string;
+}
+
 export interface PauseOpenPayload {
   screenshot_path?: string | null;
   game_id?: string | null;
 }
 
-// In-Game Pause Overlay controls
-export async function inGameResume(): Promise<void> {
-  return invoke<void>("in_game_resume");
+// In-Game Save State & Overlay Controls (saveState.md)
+export async function saveSlot(slotNum: number): Promise<SaveSlot> {
+  return invoke<SaveSlot>("save_slot", { slotNum });
 }
 
-export async function inGameSaveState(gameId?: string | null, slot?: number): Promise<string> {
-  return invoke<string>("in_game_save_state", { gameId: gameId ?? null, slot });
+export async function loadSlot(gameId: string, file: string): Promise<string> {
+  return invoke<string>("load_slot", { gameId, file });
+}
+
+export async function listSlots(gameId: string): Promise<SaveSlot[]> {
+  return invoke<SaveSlot[]>("list_slots", { gameId });
+}
+
+export async function deleteSlot(gameId: string, file: string): Promise<void> {
+  return invoke<void>("delete_slot", { gameId, file });
+}
+
+export async function runningGame(): Promise<RunningGameInfo | null> {
+  return invoke<RunningGameInfo | null>("running_game");
+}
+
+export async function isGameRunning(): Promise<boolean> {
+  return invoke<boolean>("is_game_running");
+}
+
+export async function ingameContinue(): Promise<void> {
+  return invoke<void>("ingame_continue");
+}
+
+export async function ingameQuit(): Promise<string> {
+  return invoke<string>("ingame_quit");
+}
+
+export async function ingameVolume(steps: number): Promise<void> {
+  return invoke<void>("ingame_volume", { steps });
+}
+
+export async function ingameMute(): Promise<void> {
+  return invoke<void>("ingame_mute");
+}
+
+// Backward compatibility helpers
+export async function inGameResume(): Promise<void> {
+  return ingameContinue();
+}
+
+export async function inGameSaveState(_gameId?: string | null, slot?: number): Promise<string> {
+  const s = await saveSlot(slot ?? 1);
+  return `Estado guardado en ${s.file}`;
 }
 
 export async function inGameLoadState(slot?: number): Promise<string> {
-  return invoke<string>("in_game_load_state", { slot });
+  const game = await runningGame();
+  if (!game) throw new Error("No hay juego en ejecución");
+  return loadSlot(game.game_id, `slot_${slot ?? 1}.state`);
 }
 
 export async function getSavestateSlots(gameId: string): Promise<SaveSlotInfo[]> {
-  return invoke<SaveSlotInfo[]>("get_savestate_slots", { gameId });
+  const slots = await listSlots(gameId);
+  return [1, 2, 3, 4, 5].map((slotNum) => {
+    const found = slots.find((s) => s.file === `slot_${slotNum}.state`);
+    return {
+      slot: slotNum,
+      has_save: !!found,
+      screenshot_path: found?.thumbnail ?? null,
+      timestamp_str: found ? new Date(found.modified * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null,
+    };
+  });
 }
 
 export async function getControllerMapping(): Promise<ControllerMapping> {
@@ -462,11 +552,11 @@ export async function saveControllerMapping(mapping: ControllerMapping): Promise
 }
 
 export async function inGameSetVolume(volume: number): Promise<void> {
-  return invoke<void>("in_game_set_volume", { volume });
+  return invoke<void>("in_game_volume", { steps: volume > 50 ? 1 : -1 });
 }
 
 export async function inGameQuit(): Promise<void> {
-  return invoke<void>("in_game_quit");
+  await ingameQuit();
 }
 
 export function onInGamePauseOpen(cb: (payload: PauseOpenPayload) => void) {
@@ -511,5 +601,112 @@ export async function findGameVideo(romPath: string, gameId: string): Promise<st
     return null;
   }
 }
+
+export interface ScreenScraperConfigStatus {
+  has_dev_credentials: boolean;
+  dev_id: string | null;
+  has_user_credentials: boolean;
+  username: string | null;
+}
+
+export interface ScrapeResult {
+  success: boolean;
+  video_path: string | null;
+  logo_path: string | null;
+  message: string;
+}
+
+export async function saveScreenscraperConfig(
+  devId: string,
+  devPass: string,
+  user?: string | null,
+  pass?: string | null
+): Promise<void> {
+  return await invoke("save_screenscraper_config", {
+    devId,
+    devPass,
+    user: user || null,
+    pass: pass || null,
+  });
+}
+
+export async function getScreenscraperConfig(): Promise<ScreenScraperConfigStatus> {
+  return await invoke<ScreenScraperConfigStatus>("get_screenscraper_config");
+}
+
+export async function clearScreenscraperConfig(): Promise<void> {
+  return await invoke("clear_screenscraper_config");
+}
+
+export async function scrapeGameVideo(
+  gameId: string,
+  romPath: string,
+  platform: string,
+  gameName: string,
+  downloadLogo?: boolean
+): Promise<ScrapeResult> {
+  return await invoke<ScrapeResult>("scrape_game_video", {
+    gameId,
+    romPath,
+    platform,
+    gameName,
+    downloadLogo: downloadLogo ?? true,
+  });
+}
+
+export interface ScrapeVideoProgressPayload {
+  game_id: string;
+  percent: number;
+  stage: string;
+}
+
+export function onScrapeVideoProgress(cb: (payload: ScrapeVideoProgressPayload) => void) {
+  return listen<ScrapeVideoProgressPayload>("scrape-video-progress", (e) => cb(e.payload));
+}
+
+export interface LocalVideoStats {
+  total_games: number;
+  games_with_video: number;
+  games_missing_video: number;
+}
+
+export async function saveVideoFolders(folders: string[]): Promise<void> {
+  return await invoke("save_video_folders", { folders });
+}
+
+export async function getVideoFolders(): Promise<string[]> {
+  return await invoke<string[]>("get_video_folders");
+}
+
+export async function scanLocalVideos(): Promise<LocalVideoStats> {
+  return await invoke<LocalVideoStats>("scan_local_videos");
+}
+
+export interface BatchScrapeProgressEvent {
+  current_index: number;
+  total: number;
+  game_id: string;
+  game_name: string;
+  status: "downloading" | "success" | "skipped" | "failed" | "completed" | "cancelled";
+  percent: number;
+  downloaded_count: number;
+  skipped_count: number;
+  failed_count: number;
+}
+
+export async function scrapeLibraryVideos(onlyMissing: boolean): Promise<void> {
+  return await invoke("scrape_library_videos", { onlyMissing });
+}
+
+export async function cancelScrapeLibraryVideos(): Promise<void> {
+  return await invoke("cancel_scrape_library_videos");
+}
+
+export function onScrapeBatchProgress(cb: (payload: BatchScrapeProgressEvent) => void) {
+  return listen<BatchScrapeProgressEvent>("scrape-batch-progress", (e) => cb(e.payload));
+}
+
+
+
 
 

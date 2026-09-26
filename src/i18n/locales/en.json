@@ -167,7 +167,21 @@
       "romFolders": "Game Folders (ROMs)",
       "addFolder": "Add Folder",
       "rescan": "Scan Games Now",
-      "noFolders": "No game folders configured yet."
+      "noFolders": "No game folders configured yet.",
+      "videoFolders": "Video / Snap Folders",
+      "videoFoldersSubtitle": "External directories where you store gameplay videos (.mp4) for your games.",
+      "addVideoFolder": "Add Video Folder",
+      "noVideoFolders": "No external video folders configured yet. (Searching inside ROM folders by default)",
+      "scanLocalVideos": "Scan Local Videos",
+      "scanningLocalVideos": "Checking videos...",
+      "videoStats": "🎮 {{withVideo}} of {{total}} games with video ({{percent}}%)",
+      "batchScrapeTitle": "Batch Gameplay Download (ScreenScraper)",
+      "batchScrapeSubtitle": "Automatically download videos and logos for your entire library in the background.",
+      "batchScrapeOnlyMissing": "Only games without video",
+      "batchScrapeStart": "▶ Start Batch Download",
+      "batchScrapeCancel": "✕ Cancel",
+      "batchScrapeCancelled": "Download cancelled",
+      "batchScrapeCompleted": "Batch download completed! {{downloaded}} downloaded, {{skipped}} skipped, {{failed}} failed."
     },
     "confirm": {
       "folderTitle": "Remove Game Folder",
@@ -176,6 +190,8 @@
       "biosDesc": "Do you want to remove this BIOS path? Emulators may require these files to start games from consoles with special firmware.",
       "musicTitle": "Remove Music Folder",
       "musicDesc": "Do you want to remove this music folder? Audio files will remain intact on your drive.",
+      "videoTitle": "Remove Video Folder",
+      "videoDesc": "Do you want to remove this video folder? Physical files will remain on your drive, but videos will no longer be automatically linked to your games.",
       "profileTitle": "Delete Profile",
       "profileDesc": "Are you sure you want to delete profile \"{{name}}\"? Its associated favorites and independent play records will be lost.",
       "delete": "Delete",
@@ -185,7 +201,11 @@
     "sound": {
       "musicVolume": "Background Music Volume",
       "sfxVolume": "Sound Effects (SFX)",
-      "tracks": "Available Tracks"
+      "tracks": "Available Tracks",
+      "mutePreviewVideo": "Mute Preview / Gameplay Videos",
+      "mutePreviewVideoDesc": "When enabled, snap and preview videos in the Arcade wheel will play without audio.",
+      "previewVideoVolume": "Preview Videos Volume",
+      "previewVideoVolumeDesc": "Audio volume level for gameplay videos in the Arcade view monitor."
     },
     "system": {
       "kioskMode": "Kiosk Mode / Lock",
@@ -255,5 +275,47 @@
     "detectedDevices": "Devices detected on your Wi-Fi network:",
     "noDevices": "No additional multimedia receivers detected automatically. Click \"Scan devices\" to search again.",
     "footerTip": "Tip: Keep your PC connected to your 5 GHz Wi-Fi or Ethernet cable for maximum stream stability."
+  },
+  "arcade": {
+    "play": "PLAY",
+    "playShortcut": "[ Enter / Button A ]",
+    "details": "DETAILS",
+    "detailsTooltip": "View details, achievements and artwork (Space / Button X)",
+    "favoriteTooltip": "Toggle favorite (Key F / Button Y)",
+    "previewBadgeVideo": "VIDEO SNAP",
+    "previewBadgeFallback": "PREVIEW",
+    "soundMuted": "MUTE",
+    "soundAudio": "AUDIO",
+    "muteAudio": "Mute audio",
+    "unmuteAudio": "Unmute audio",
+    "developedBy": "Developed by",
+    "emptyGames": "No games available in this selection.",
+    "allConsoles": "ALL CONSOLES",
+    "gamesCount": "GAMES",
+    "consolesTitle": "CONSOLES",
+    "gamesTitle": "GAMES",
+    "searchPlaceholder": "Search games, consoles, genres...",
+    "randomGame": "Random",
+    "options": "Options",
+    "back": "Back",
+    "expandWheel": "Expand wheel",
+    "collapseWheel": "Collapse wheel",
+    "matchesCount": "{{count}} matches",
+    "hintWheelGames": "Games Wheel (Left)",
+    "hintWheelConsoles": "Consoles Wheel (Right - LB / RB)",
+    "hintPlay": "[A] Play",
+    "hintDetails": "[X] Details",
+    "hintFav": "[Y] Favorite",
+    "hintAudio": "[M] Video Audio"
+  },
+  "gameDetail": {
+    "downloadGameplay": "Download Gameplay",
+    "downloadingGameplay": "Downloading...",
+    "gameplayReady": "✓ Gameplay ready",
+    "changeHero": "Change Hero",
+    "chooseHero": "Choose Hero",
+    "changeLogo": "Change Logo",
+    "chooseLogo": "Choose Logo",
+    "fixMatch": "Identify game / fix artwork"
   }
 }

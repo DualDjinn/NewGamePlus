@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import type { Game, GameMetadata, GameAchievementProgress, SGDBHero, SGDBLogo } from "../types";
@@ -19,15 +19,25 @@ import {
   removeGameLogo,
   onRetroarchExited,
   updateGameTitle,
+  findGameVideo,
+  scrapeGameVideo,
+  getScreenscraperConfig,
+  onScrapeVideoProgress,
+  loadSlot,
+  listSlots,
+  deleteSlot,
+  type SaveSlot,
 } from "../lib/tauri";
 import { PLATFORM_COLORS } from "../lib/platforms";
 import { ConsoleIcon } from "./ConsoleIcon";
 import AchievementList from "./AchievementList";
+import SlotList from "./SlotList";
 import FixMatchModal from "./FixMatchModal";
 import "./GameDetailModal.css";
 
 interface Props {
   game: Game;
+  initialAction?: "edit" | "hero" | "logo" | "video" | null;
   onClose: () => void;
   onFavoriteChanged?: (gameId: string, isFav: boolean) => void;
   onHeroChanged?: (gameId: string, heroPath: string | null) => void;
@@ -47,6 +57,7 @@ function formatPlayTime(seconds?: number | null): string {
 
 export default function GameDetailModal({
   game,
+  initialAction,
   onClose,
   onFavoriteChanged,
   onHeroChanged,
@@ -62,9 +73,27 @@ export default function GameDetailModal({
   const [editedTitle, setEditedTitle] = useState("");
   const [titleSaving, setTitleSaving] = useState(false);
 
+  const [hasVideo, setHasVideo] = useState(false);
+  const [scrapingVideo, setScrapingVideo] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+
   useEffect(() => {
     setCurrentGame(game);
+    findGameVideo(game.rom_path, game.id)
+      .then((v) => setHasVideo(!!v))
+      .catch(() => setHasVideo(false));
   }, [game]);
+
+  useEffect(() => {
+    const unlisten = onScrapeVideoProgress((payload) => {
+      if (payload.game_id === currentGame.id) {
+        setDownloadProgress(payload.percent);
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [currentGame.id]);
 
   function handleStartEditTitle() {
     setEditedTitle(currentGame.display_name || metadata?.display_name || currentGame.name);
@@ -146,6 +175,44 @@ export default function GameDetailModal({
   const [logoActionLoading, setLogoActionLoading] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
 
+  // Save States (saveState.md)
+  const [bottomTab, setBottomTab] = useState<"saves" | "achievements">("achievements");
+  const [saveSlots, setSaveSlots] = useState<SaveSlot[]>([]);
+
+  const fetchSaveSlots = useCallback(async () => {
+    try {
+      const s = await listSlots(currentGame.id);
+      setSaveSlots(s);
+    } catch (err) {
+      console.error("Error listing save slots:", err);
+    }
+  }, [currentGame.id]);
+
+  useEffect(() => {
+    fetchSaveSlots();
+  }, [fetchSaveSlots]);
+
+  const handleColdLoad = async (file: string) => {
+    try {
+      const res = await loadSlot(currentGame.id, file);
+      if (res === "staged") {
+        onClose();
+        await launchGame(currentGame.rom_path);
+      }
+    } catch (err) {
+      console.error("Cold load failed:", err);
+    }
+  };
+
+  const handleDeleteSlot = async (file: string) => {
+    try {
+      await deleteSlot(currentGame.id, file);
+      await fetchSaveSlots();
+    } catch (err) {
+      console.error("Delete slot failed:", err);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     setCoverSrc(getCoverUrl(game.cover_path));
@@ -202,15 +269,16 @@ export default function GameDetailModal({
       if (exitedRomPath === game.rom_path) {
         setTimeout(() => {
           handleRefreshAchievements();
+          fetchSaveSlots();
         }, 500);
       }
     });
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [game.rom_path]);
+  }, [game.rom_path, fetchSaveSlots]);
 
-  type ModalFocusTarget = "play" | "fav" | "fix-match" | "hero-picker" | "logo-picker" | "close";
+  type ModalFocusTarget = "play" | "fav" | "fix-match" | "hero-picker" | "logo-picker" | "video-downloader" | "close";
   const [modalFocus, setModalFocus] = useState<ModalFocusTarget>("play");
 
   useEffect(() => {
@@ -258,7 +326,8 @@ export default function GameDetailModal({
           if (prev === "fav") return "play";
           if (prev === "hero-picker") return "fix-match";
           if (prev === "logo-picker") return "hero-picker";
-          if (prev === "close") return "logo-picker";
+          if (prev === "video-downloader") return "logo-picker";
+          if (prev === "close") return "video-downloader";
           return "play";
         });
       } else if (e.key === "ArrowRight") {
@@ -268,7 +337,8 @@ export default function GameDetailModal({
           if (prev === "fav") return "play";
           if (prev === "fix-match") return "hero-picker";
           if (prev === "hero-picker") return "logo-picker";
-          if (prev === "logo-picker") return "close";
+          if (prev === "logo-picker") return "video-downloader";
+          if (prev === "video-downloader") return "close";
           return "play";
         });
       } else if (e.key === "ArrowUp") {
@@ -295,6 +365,8 @@ export default function GameDetailModal({
           handleOpenHeroPicker();
         } else if (modalFocus === "logo-picker") {
           handleOpenLogoPicker();
+        } else if (modalFocus === "video-downloader") {
+          handleDownloadVideo();
         } else if (modalFocus === "close") {
           onClose();
         }
@@ -507,6 +579,82 @@ export default function GameDetailModal({
     }
   }
 
+  async function handleDownloadVideo() {
+    setScrapingVideo(true);
+    setDownloadProgress(3);
+    try {
+      const cfg = await getScreenscraperConfig();
+      if (!cfg.has_dev_credentials) {
+        window.dispatchEvent(
+          new CustomEvent("app-error", {
+            detail: "Configura tus credenciales de ScreenScraper en Configuración > Integraciones",
+          })
+        );
+        return;
+      }
+
+      const res = await scrapeGameVideo(
+        currentGame.id,
+        currentGame.rom_path,
+        currentGame.platform,
+        currentGame.display_name || metadata?.display_name || currentGame.name,
+        !currentGame.logo_path
+      );
+
+      if (res.success) {
+        setDownloadProgress(100);
+        if (res.video_path) {
+          setHasVideo(true);
+        }
+        let updatedGame = { ...currentGame };
+        if (res.logo_path) {
+          setLogoSrc(getCoverUrl(res.logo_path));
+          updatedGame = { ...updatedGame, logo_path: res.logo_path };
+          setCurrentGame(updatedGame);
+          onLogoChanged?.(currentGame.id, res.logo_path);
+        }
+        onGameUpdated?.(updatedGame);
+        window.dispatchEvent(
+          new CustomEvent("game-video-updated", {
+            detail: {
+              gameId: currentGame.id,
+              videoPath: res.video_path,
+              logoPath: res.logo_path,
+            },
+          })
+        );
+      } else {
+        window.dispatchEvent(
+          new CustomEvent("app-error", {
+            detail: res.message || "No se pudo descargar el gameplay",
+          })
+        );
+      }
+    } catch (err) {
+      const msg = typeof err === "string" ? err : err instanceof Error ? err.message : "Error al descargar gameplay";
+      window.dispatchEvent(
+        new CustomEvent("app-error", {
+          detail: msg,
+        })
+      );
+    } finally {
+      setScrapingVideo(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!initialAction) return;
+    if (initialAction === "hero") {
+      handleOpenHeroPicker();
+    } else if (initialAction === "logo") {
+      handleOpenLogoPicker();
+    } else if (initialAction === "edit") {
+      setShowFixMatch(true);
+    } else if (initialAction === "video") {
+      handleDownloadVideo();
+    }
+  }, [initialAction]);
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
@@ -629,7 +777,7 @@ export default function GameDetailModal({
                   <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
                   <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
                 </svg>
-                <span>{currentGame.hero_path || heroSrc ? "Cambiar Hero" : "Elegir Hero"}</span>
+                <span>{currentGame.hero_path || heroSrc ? t("gameDetail.changeHero", "Cambiar Hero") : t("gameDetail.chooseHero", "Elegir Hero")}</span>
               </button>
               <button
                 type="button"
@@ -642,7 +790,44 @@ export default function GameDetailModal({
                   <path d="M9 20h6" />
                   <path d="M12 4v16" />
                 </svg>
-                <span>{currentGame.logo_path || logoSrc ? "Cambiar Logo" : "Elegir Logo"}</span>
+                <span>{currentGame.logo_path || logoSrc ? t("gameDetail.changeLogo", "Cambiar Logo") : t("gameDetail.chooseLogo", "Elegir Logo")}</span>
+              </button>
+              <button
+                type="button"
+                className={`modal-tool-btn modal-video-btn ${hasVideo ? "has-video" : ""} ${scrapingVideo ? "downloading" : ""} ${modalFocus === "video-downloader" ? "focused" : ""}`}
+                onClick={handleDownloadVideo}
+                disabled={scrapingVideo}
+                title={hasVideo ? "Volver a descargar gameplay video de ScreenScraper.fr" : "Descargar gameplay video de ScreenScraper.fr"}
+              >
+                {scrapingVideo && (
+                  <div
+                    className="modal-btn-progress-fill"
+                    style={{ width: `${downloadProgress}%` }}
+                  />
+                )}
+                <span className="modal-btn-content">
+                  {scrapingVideo ? (
+                    <>
+                      <span className="modal-btn-spinner" />
+                      <span>{downloadProgress > 0 ? `${downloadProgress}%` : t("gameDetail.downloadingGameplay", "Descargando...")}</span>
+                    </>
+                  ) : hasVideo ? (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>{t("gameDetail.gameplayReady", "✓ Gameplay listo")}</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="23 7 16 12 23 17 23 7" />
+                        <rect width="14" height="14" x="1" y="5" rx="2" ry="2" />
+                      </svg>
+                      <span>{t("gameDetail.downloadGameplay", "Descargar Gameplay")}</span>
+                    </>
+                  )}
+                </span>
               </button>
             </div>
           </div>
@@ -673,6 +858,7 @@ export default function GameDetailModal({
                       if (e.key === "Escape") setIsEditingTitle(false);
                     }}
                     autoFocus
+                    onFocus={(e) => e.target.select()}
                     placeholder="Nombre del juego..."
                   />
                   <div className="modal-title-edit-actions">
@@ -829,10 +1015,57 @@ export default function GameDetailModal({
             )}
           </div>
 
-          {/* Fila 4: Logros RetroAchievements */}
-          {hasRACredentials && (
-            <div className="modal-row-achievements">
-              {achievementsLoading ? (
+          {/* Fila 4: Pestañas de Partidas Guardadas y Logros */}
+          <div className="modal-row-achievements" style={{ display: "flex", flexDirection: "column" }}>
+            <div className="modal-row-tabs" style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+              {hasRACredentials && (
+                <button
+                  type="button"
+                  className={`modal-row-tab-btn ${bottomTab === "achievements" ? "active" : ""}`}
+                  style={{
+                    background: bottomTab === "achievements" ? "rgba(59, 130, 246, 0.25)" : "rgba(255, 255, 255, 0.05)",
+                    border: bottomTab === "achievements" ? "1px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.1)",
+                    color: bottomTab === "achievements" ? "#ffffff" : "#94a3b8",
+                    padding: "4px 12px",
+                    borderRadius: "8px",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setBottomTab("achievements")}
+                >
+                  🏆 RetroAchievements
+                </button>
+              )}
+              <button
+                type="button"
+                className={`modal-row-tab-btn ${bottomTab === "saves" ? "active" : ""}`}
+                style={{
+                  background: bottomTab === "saves" ? "rgba(59, 130, 246, 0.25)" : "rgba(255, 255, 255, 0.05)",
+                  border: bottomTab === "saves" ? "1px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.1)",
+                  color: bottomTab === "saves" ? "#ffffff" : "#94a3b8",
+                  padding: "4px 12px",
+                  borderRadius: "8px",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+                onClick={() => setBottomTab("saves")}
+              >
+                💾 Partidas Guardadas ({saveSlots.length})
+              </button>
+            </div>
+
+            {bottomTab === "saves" ? (
+              <div style={{ overflowY: "auto", flex: 1, paddingRight: "4px" }}>
+                <SlotList
+                  slots={saveSlots}
+                  onLoad={handleColdLoad}
+                  onDelete={handleDeleteSlot}
+                />
+              </div>
+            ) : hasRACredentials ? (
+              achievementsLoading ? (
                 <div className="achievements-loading-box">
                   <span className="meta-loading">Cargando logros de RetroAchievements...</span>
                 </div>
@@ -861,9 +1094,9 @@ export default function GameDetailModal({
                     </span>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
+              )
+            ) : null}
+          </div>
         </div>
 
         {/* Hero Picker Overlay */}

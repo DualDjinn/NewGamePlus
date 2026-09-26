@@ -3,6 +3,7 @@ pub mod curated;
 pub mod headers;
 pub mod libretro;
 pub mod n3ds;
+pub mod screenscraper;
 pub mod steamgrid;
 
 pub use libretro::download_file;

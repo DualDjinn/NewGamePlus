@@ -167,7 +167,21 @@
       "romFolders": "Carpetas de Juegos (ROMs)",
       "addFolder": "Agregar Carpeta",
       "rescan": "Escanear Juegos Ahora",
-      "noFolders": "No has configurado ninguna carpeta de juegos todavía."
+      "noFolders": "No has configurado ninguna carpeta de juegos todavía.",
+      "videoFolders": "Carpetas de Videos / Snaps",
+      "videoFoldersSubtitle": "Directorios externos donde guardas videos de gameplay (.mp4) de tus juegos.",
+      "addVideoFolder": "Agregar Carpeta de Videos",
+      "noVideoFolders": "No has configurado carpetas de videos externas aún. (Buscando en carpetas de ROMs por defecto)",
+      "scanLocalVideos": "Escanear Videos Locales",
+      "scanningLocalVideos": "Verificando videos...",
+      "videoStats": "🎮 {{withVideo}} de {{total}} juegos con video ({{percent}}%)",
+      "batchScrapeTitle": "Descarga Masiva de Gameplays (ScreenScraper)",
+      "batchScrapeSubtitle": "Descarga automáticamente los videos y logos de toda tu biblioteca en segundo plano.",
+      "batchScrapeOnlyMissing": "Solo juegos sin video",
+      "batchScrapeStart": "▶ Iniciar Descarga Masiva",
+      "batchScrapeCancel": "✕ Cancelar",
+      "batchScrapeCancelled": "Descarga cancelada",
+      "batchScrapeCompleted": "¡Descarga masiva completada! {{downloaded}} descargados, {{skipped}} omitidos, {{failed}} fallidos."
     },
     "confirm": {
       "folderTitle": "Quitar Carpeta de Juegos",
@@ -176,6 +190,8 @@
       "biosDesc": "¿Deseas quitar esta ruta de BIOS? Los emuladores podrían requerir estos archivos para iniciar juegos de consolas con firmware especial.",
       "musicTitle": "Quitar Carpeta de Música",
       "musicDesc": "¿Deseas quitar esta carpeta de música? Los archivos de audio permanecerán intactos en tu disco.",
+      "videoTitle": "Quitar Carpeta de Videos",
+      "videoDesc": "¿Deseas quitar esta carpeta de videos? Los archivos físicos permanecerán intactos en tu disco, pero los videos dejarán de asociarse automáticamente a tus juegos.",
       "profileTitle": "Eliminar Perfil",
       "profileDesc": "¿Estás seguro de que deseas eliminar el perfil \"{{name}}\"? Se perderán sus favoritos y registros de juego independientes.",
       "delete": "Eliminar",
@@ -185,7 +201,11 @@
     "sound": {
       "musicVolume": "Volumen de Música de Fondo",
       "sfxVolume": "Efectos de Sonido (SFX)",
-      "tracks": "Pistas Disponibles"
+      "tracks": "Pistas Disponibles",
+      "mutePreviewVideo": "Silenciar Videos de Preview / Gameplay",
+      "mutePreviewVideoDesc": "Si está activado, los videos de snap y previews en la ruleta Arcade se reproducirán sin sonido.",
+      "previewVideoVolume": "Volumen de Videos Preview",
+      "previewVideoVolumeDesc": "Nivel de audio para los videos de gameplay en el monitor de la vista Arcade."
     },
     "system": {
       "kioskMode": "Modo Kiosco / Bloqueo",
@@ -255,5 +275,47 @@
     "detectedDevices": "Dispositivos detectados en tu red Wi-Fi:",
     "noDevices": "No se detectaron receptores multimedia adicionales automáticamente. Pulsa \"Buscar dispositivos\" para escanear de nuevo.",
     "footerTip": "Tip: Mantén tu PC conectada a tu red Wi-Fi de 5 GHz o por cable Ethernet para máxima estabilidad visual."
+  },
+  "arcade": {
+    "play": "JUGAR",
+    "playShortcut": "[ Enter / Botón A ]",
+    "details": "DETALLES",
+    "detailsTooltip": "Ver detalles, logros y carátulas (Espacio / Botón X)",
+    "favoriteTooltip": "Alternar favorito (Tecla F / Botón Y)",
+    "previewBadgeVideo": "VIDEO SNAP",
+    "previewBadgeFallback": "PREVIEW",
+    "soundMuted": "MUDO",
+    "soundAudio": "AUDIO",
+    "muteAudio": "Silenciar audio",
+    "unmuteAudio": "Activar audio",
+    "developedBy": "Desarrollado por",
+    "emptyGames": "No hay juegos disponibles en esta selección.",
+    "allConsoles": "TODAS LAS CONSOLAS",
+    "gamesCount": "JUEGOS",
+    "consolesTitle": "CONSOLAS",
+    "gamesTitle": "JUEGOS",
+    "searchPlaceholder": "Buscar juego, consola o género...",
+    "randomGame": "Aleatorio",
+    "options": "Opciones",
+    "back": "Volver",
+    "expandWheel": "Expandir ruleta",
+    "collapseWheel": "Contraer ruleta",
+    "matchesCount": "{{count}} coincidencias",
+    "hintWheelGames": "Ruleta Juegos (Izquierda)",
+    "hintWheelConsoles": "Ruleta Consolas (Derecha - LB / RB)",
+    "hintPlay": "[A] Jugar",
+    "hintDetails": "[X] Detalles",
+    "hintFav": "[Y] Favorito",
+    "hintAudio": "[M] Audio Video"
+  },
+  "gameDetail": {
+    "downloadGameplay": "Descargar Gameplay",
+    "downloadingGameplay": "Descargando...",
+    "gameplayReady": "✓ Gameplay listo",
+    "changeHero": "Cambiar Hero",
+    "chooseHero": "Elegir Hero",
+    "changeLogo": "Cambiar Logo",
+    "chooseLogo": "Elegir Logo",
+    "fixMatch": "Identificar juego / corregir carátula"
   }
 }

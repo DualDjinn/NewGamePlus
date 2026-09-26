@@ -41,6 +41,9 @@ fn main() {
     // Migrar saves compartidos al perfil activo
     migrate_legacy_saves(&profile_name, &get_retroarch_exe());
 
+    // Limpiar autosaves residuales al arrancar la aplicación
+    crate::emulator::clear_stale_autos();
+
     save_state(&initial);
     {
         let mut state = lock_state();
@@ -50,7 +53,19 @@ fn main() {
     // 2. Iniciar Tauri Application
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
+            // F9: Menú in-game (overlay para guardar y cargar estados)
+            use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+            let handle_f9 = app.handle().clone();
+            if let Err(e) = app.global_shortcut().on_shortcut("F9", move |_app, _shortcut, event| {
+                if event.state() == ShortcutState::Pressed {
+                    let _ = crate::emulator::toggle_ingame_overlay(&handle_f9);
+                }
+            }) {
+                eprintln!("Global shortcut F9 failed: {}", e);
+            }
+
             let state = lock_state();
             if state.settings.kiosk_mode {
                 let handle = app.handle();
@@ -208,19 +223,32 @@ fn main() {
             commands::stop_sunshine,
             commands::download_sunshine_portable,
             commands::pair_moonlight_pin,
-            commands::in_game_resume,
-            commands::in_game_save_state,
-            commands::in_game_load_state,
-            commands::in_game_set_volume,
-            commands::in_game_quit,
-            commands::get_savestate_slots,
+            commands::save_slot,
+            commands::load_slot,
+            commands::list_slots,
+            commands::delete_slot,
+            commands::running_game,
+            commands::is_game_running,
+            commands::ingame_continue,
+            commands::ingame_quit,
+            commands::ingame_volume,
+            commands::ingame_mute,
             commands::get_controller_mapping,
             commands::save_controller_mapping,
             commands::get_emulator_versions,
             commands::check_emulator_updates,
             commands::update_emulator,
             commands::update_all_cores,
-            commands::find_game_video
+            commands::find_game_video,
+            commands::save_screenscraper_config,
+            commands::get_screenscraper_config,
+            commands::clear_screenscraper_config,
+            commands::scrape_game_video,
+            commands::save_video_folders,
+            commands::get_video_folders,
+            commands::scan_local_videos,
+            commands::scrape_library_videos,
+            commands::cancel_scrape_library_videos
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

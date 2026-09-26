@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getPlatformCompany, getPlatformDisplayName, PLATFORM_COLORS } from "../platforms";
+import { getPlatformCompany, getPlatformDisplayName, PLATFORM_COLORS, getPlatformLogo } from "../platforms";
 
 describe("platforms", () => {
   describe("getPlatformCompany", () => {
@@ -53,6 +53,26 @@ describe("platforms", () => {
       expect(PLATFORM_COLORS.SNES).toBeDefined();
       expect(PLATFORM_COLORS.PS1).toBeDefined();
       expect(PLATFORM_COLORS.MEGA_DRIVE).toBeDefined();
+    });
+  });
+
+  describe("getPlatformLogo", () => {
+    it("should return the correct logo image path for supported consoles", () => {
+      expect(getPlatformLogo("snes")).toBe("/logos/Nintendo/SNES.png");
+      expect(getPlatformLogo("GBA")).toBe("/logos/Nintendo/GBA.png");
+      expect(getPlatformLogo("3DS")).toBe("/logos/Nintendo/3DS.png");
+      expect(getPlatformLogo("GAMECUBE")).toBe("/logos/Nintendo/NGC.png");
+      expect(getPlatformLogo("PS1")).toBe("/logos/Playstation/PS1.png");
+      expect(getPlatformLogo("PS2")).toBe("/logos/Playstation/ps2.png");
+      expect(getPlatformLogo("mega_drive")).toBe("/logos/Sega/SMD.png");
+      expect(getPlatformLogo("mame")).toBe("/logos/Mame/Mame.png");
+      expect(getPlatformLogo("neogeo")).toBe("/logos/NeoGeo/NeoGeo.png");
+      expect(getPlatformLogo("pc")).toBe("/logos/PC/PC.png");
+    });
+
+    it("should return null for platforms without a dedicated logo", () => {
+      expect(getPlatformLogo("unknown_platform")).toBeNull();
+      expect(getPlatformLogo("")).toBeNull();
     });
   });
 });

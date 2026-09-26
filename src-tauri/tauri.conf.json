@@ -20,6 +20,16 @@
         "fullscreen": false,
         "maximized": true,
         "decorations": true
+      },
+      {
+        "label": "ingame",
+        "title": "gameFlix Menu",
+        "fullscreen": true,
+        "transparent": true,
+        "decorations": false,
+        "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true
       }
     ],
     "security": {

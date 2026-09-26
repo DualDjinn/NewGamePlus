@@ -196,6 +196,8 @@ pub fn migrate_profile_secrets(p: &mut crate::state::models::Profile) {
         &mut p.ra_api_key,
         &mut p.ra_token,
         &mut p.steamgriddb_api_key,
+        &mut p.screenscraper_pass,
+        &mut p.screenscraper_dev_pass,
     ] {
         if let Some(v) = slot {
             if !v.starts_with(PREFIX) && !v.trim().is_empty() {

@@ -17,6 +17,9 @@ import {
   saveSteamGridDBKey,
   getSteamGridDBKey,
   clearSteamGridDBKey,
+  saveScreenscraperConfig,
+  getScreenscraperConfig,
+  clearScreenscraperConfig,
   saveBiosFolders,
   getBiosFolders,
   getGraphicsSettings,
@@ -30,6 +33,14 @@ import {
   saveMusicFolders,
   getMusicFolders,
   onEmulatorUpdates,
+  saveVideoFolders,
+  getVideoFolders,
+  scanLocalVideos,
+  scrapeLibraryVideos,
+  cancelScrapeLibraryVideos,
+  onScrapeBatchProgress,
+  type LocalVideoStats,
+  type BatchScrapeProgressEvent,
 } from "../lib/tauri";
 import type { SortKey, Game, SettingsTab, GraphicsConsole, LayoutStyle } from "../types";
 import EmulatorsTab from "./EmulatorsTab";
@@ -132,7 +143,7 @@ export default function Settings({
   const [savedToast, setSavedToast] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
-    type: "rom-folder" | "bios-folder" | "music-folder" | "profile" | null;
+    type: "rom-folder" | "bios-folder" | "music-folder" | "video-folder" | "profile" | null;
     target: string;
     title: string;
     message: string;
@@ -145,6 +156,15 @@ export default function Settings({
     message: "",
     variant: "danger",
   });
+
+  // Video folders and stats state
+  const [videoFolders, setVideoFolders] = useState<string[]>([]);
+  const [videoStats, setVideoStats] = useState<LocalVideoStats | null>(null);
+  const [scanningLocalVideos, setScanningLocalVideos] = useState(false);
+
+  // ScreenScraper batch scraping state
+  const [isBatchScraping, setIsBatchScraping] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<BatchScrapeProgressEvent | null>(null);
 
   // Graphics state
   const [graphics, setGraphics] = useState<GraphicsSettings>({
@@ -167,6 +187,17 @@ export default function Settings({
   const [sgdbLinked, setSgdbLinked] = useState(false);
   const [sgdbFeedback, setSgdbFeedback] = useState<{ msg: string; isError: boolean } | null>(null);
   const [sgdbLoading, setSgdbLoading] = useState(false);
+
+  // ScreenScraper state
+  const [ssDevId, setSsDevId] = useState("");
+  const [ssDevPass, setSsDevPass] = useState("");
+  const [ssUser, setSsUser] = useState("");
+  const [ssPass, setSsPass] = useState("");
+  const [ssLinked, setSsLinked] = useState(false);
+  const [ssDevIdSaved, setSsDevIdSaved] = useState<string | null>(null);
+  const [ssUserSaved, setSsUserSaved] = useState<string | null>(null);
+  const [ssFeedback, setSsFeedback] = useState<{ msg: string; isError: boolean } | null>(null);
+  const [ssLoading, setSsLoading] = useState(false);
 
   // BIOS folders state
   const [biosFolders, setBiosFolders] = useState<string[]>([]);
@@ -202,6 +233,41 @@ export default function Settings({
     }
     return 0.8;
   });
+
+  // Video preview audio state (Arcade / Showcase)
+  const [previewVideoMuted, setPreviewVideoMuted] = useState<boolean>(() => {
+    const saved = localStorage.getItem("gameflix_preview_video_muted");
+    return saved === "true";
+  });
+  const [previewVideoVolume, setPreviewVideoVolume] = useState<number>(() => {
+    const saved = localStorage.getItem("gameflix_preview_video_volume");
+    if (saved !== null) {
+      const parsed = parseFloat(saved);
+      if (!isNaN(parsed)) return Math.max(0, Math.min(1, parsed));
+    }
+    return 0.7;
+  });
+
+  function handlePreviewVideoMutedChange(muted: boolean) {
+    setPreviewVideoMuted(muted);
+    localStorage.setItem("gameflix_preview_video_muted", muted.toString());
+    window.dispatchEvent(
+      new CustomEvent("preview-audio-settings-changed", {
+        detail: { muted, volume: previewVideoVolume },
+      })
+    );
+  }
+
+  function handlePreviewVideoVolumeChange(val: number) {
+    const clamped = Math.max(0, Math.min(1, val));
+    setPreviewVideoVolume(clamped);
+    localStorage.setItem("gameflix_preview_video_volume", clamped.toString());
+    window.dispatchEvent(
+      new CustomEvent("preview-audio-settings-changed", {
+        detail: { muted: previewVideoMuted, volume: clamped },
+      })
+    );
+  }
 
   // Region preference
   const [regionPref, setRegionPref] = useState<string>(
@@ -286,6 +352,13 @@ export default function Settings({
         setSgdbLinked(true);
       }
     });
+    getScreenscraperConfig().then((cfg) => {
+      if (cfg.has_dev_credentials) {
+        setSsLinked(true);
+        setSsDevIdSaved(cfg.dev_id);
+        setSsUserSaved(cfg.username);
+      }
+    });
     getBiosFolders()
       .then((folders) => {
         if (folders && folders.length > 0) {
@@ -302,6 +375,20 @@ export default function Settings({
       })
       .catch(console.error);
 
+    getVideoFolders()
+      .then((folders) => {
+        if (folders && folders.length > 0) {
+          setVideoFolders(folders);
+        }
+      })
+      .catch(console.error);
+
+    scanLocalVideos()
+      .then((stats) => {
+        if (stats) setVideoStats(stats);
+      })
+      .catch(console.error);
+
     getMusicVolume()
       .then((vol) => {
         if (typeof vol === "number" && !isNaN(vol)) {
@@ -312,6 +399,22 @@ export default function Settings({
       })
       .catch(console.error);
   }, [currentProfile]);
+
+  // Listener para progreso de descarga masiva de ScreenScraper
+  useEffect(() => {
+    const unlisten = onScrapeBatchProgress((payload) => {
+      setBatchProgress(payload);
+      if (payload.status === "completed" || payload.status === "cancelled") {
+        setIsBatchScraping(false);
+        scanLocalVideos().then((st) => setVideoStats(st)).catch(() => {});
+      } else {
+        setIsBatchScraping(true);
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
 
   // Sincronizar volumen si cambia desde el widget del vinilo
   useEffect(() => {
@@ -504,6 +607,65 @@ export default function Settings({
     });
   }
 
+  async function handleAddVideoFolder() {
+    let path;
+    try {
+      path = await open({ directory: true, title: "Seleccionar carpeta de videos (.mp4) de juegos" });
+    } catch (e) {
+      console.error("Video folder dialog failed:", e);
+      window.dispatchEvent(new CustomEvent("app-error", { detail: "Error al abrir selector de carpeta de videos" }));
+      return;
+    }
+    if (path && !videoFolders.includes(path)) {
+      const next = [...videoFolders, path];
+      setVideoFolders(next);
+      await saveVideoFolders(next).catch(console.error);
+      handleScanLocalVideos();
+    }
+  }
+
+  function requestRemoveVideoFolder(path: string) {
+    setConfirmDialog({
+      isOpen: true,
+      type: "video-folder",
+      target: path,
+      title: t("settings.confirm.videoTitle", "Quitar Carpeta de Videos"),
+      message: t("settings.confirm.videoDesc", "¿Deseas quitar esta carpeta de videos?"),
+      variant: "danger",
+    });
+  }
+
+  async function handleScanLocalVideos() {
+    setScanningLocalVideos(true);
+    try {
+      const stats = await scanLocalVideos();
+      setVideoStats(stats);
+    } catch (e) {
+      console.error("Failed to scan local videos:", e);
+    } finally {
+      setScanningLocalVideos(false);
+    }
+  }
+
+  async function handleStartBatchScrape(onlyMissing: boolean) {
+    setIsBatchScraping(true);
+    try {
+      await scrapeLibraryVideos(onlyMissing);
+    } catch (e) {
+      setIsBatchScraping(false);
+      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al iniciar descarga masiva";
+      window.dispatchEvent(new CustomEvent("app-error", { detail: msg }));
+    }
+  }
+
+  async function handleCancelBatchScrape() {
+    try {
+      await cancelScrapeLibraryVideos();
+    } catch (e) {
+      console.error("Cancel batch scrape failed:", e);
+    }
+  }
+
   function requestDeleteProfile(name: string) {
     setConfirmDialog({
       isOpen: true,
@@ -531,6 +693,11 @@ export default function Settings({
       setMusicFolders(next);
       await saveMusicFolders(next).catch(console.error);
       handleScanMusic();
+    } else if (confirmDialog.type === "video-folder") {
+      const next = videoFolders.filter((f) => f !== confirmDialog.target);
+      setVideoFolders(next);
+      await saveVideoFolders(next).catch(console.error);
+      handleScanLocalVideos();
     } else if (confirmDialog.type === "profile") {
       const name = confirmDialog.target;
       if (profiles.length > 1) {
@@ -723,6 +890,45 @@ export default function Settings({
     }
   }
 
+  async function handleLinkScreenScraper() {
+    setSsFeedback(null);
+    if (!ssDevId.trim() || !ssDevPass.trim()) {
+      setSsFeedback({ msg: "Por favor ingresa usuario Dev y contraseña Dev", isError: true });
+      return;
+    }
+    setSsLoading(true);
+    try {
+      await saveScreenscraperConfig(ssDevId.trim(), ssDevPass.trim(), ssUser.trim(), ssPass.trim());
+      setSsLinked(true);
+      setSsDevIdSaved(ssDevId.trim());
+      setSsUserSaved(ssUser.trim() || null);
+      setSsDevPass("");
+      setSsPass("");
+      setSsFeedback({ msg: "¡ScreenScraper vinculado y verificado correctamente!", isError: false });
+    } catch (e) {
+      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al vincular ScreenScraper";
+      setSsFeedback({ msg, isError: true });
+    } finally {
+      setSsLoading(false);
+    }
+  }
+
+  async function handleUnlinkScreenScraper() {
+    try {
+      await clearScreenscraperConfig();
+      setSsLinked(false);
+      setSsDevIdSaved(null);
+      setSsUserSaved(null);
+      setSsDevId("");
+      setSsDevPass("");
+      setSsUser("");
+      setSsPass("");
+      setSsFeedback({ msg: "ScreenScraper desvinculado", isError: false });
+    } catch (e) {
+      setSsFeedback({ msg: "Error al desvincular ScreenScraper", isError: true });
+    }
+  }
+
   return (
     <div className="settings-container">
       {/* Sidebar Navigation */}
@@ -832,6 +1038,18 @@ export default function Settings({
             biosFolders={biosFolders}
             onAddBiosFolder={handleAddBiosFolder}
             onRequestRemoveBiosFolder={requestRemoveBiosFolder}
+            videoFolders={videoFolders}
+            onAddVideoFolder={handleAddVideoFolder}
+            onRequestRemoveVideoFolder={requestRemoveVideoFolder}
+            videoStats={videoStats}
+            onScanLocalVideos={handleScanLocalVideos}
+            scanningLocalVideos={scanningLocalVideos}
+            ssLinked={ssLinked}
+            isBatchScraping={isBatchScraping}
+            batchProgress={batchProgress}
+            onStartBatchScrape={handleStartBatchScrape}
+            onCancelBatchScrape={handleCancelBatchScrape}
+            onNavigateToIntegrations={() => setActiveTab("integrations")}
             sortBy={sortBy}
             onSortByChange={setSortBy}
             regionPref={regionPref}
@@ -888,6 +1106,10 @@ export default function Settings({
             handleScanMusic={handleScanMusic}
             handleOpenMusicFolder={handleOpenMusicFolder}
             savedToast={savedToast}
+            previewVideoMuted={previewVideoMuted}
+            handlePreviewVideoMutedChange={handlePreviewVideoMutedChange}
+            previewVideoVolume={previewVideoVolume}
+            handlePreviewVideoVolumeChange={handlePreviewVideoVolumeChange}
           />
         )}
 
@@ -924,6 +1146,25 @@ export default function Settings({
             sgdbLoading={sgdbLoading}
             handleLinkSGDB={handleLinkSGDB}
             handleUnlinkSGDB={handleUnlinkSGDB}
+            ssDevId={ssDevId}
+            setSsDevId={setSsDevId}
+            ssDevPass={ssDevPass}
+            setSsDevPass={setSsDevPass}
+            ssUser={ssUser}
+            setSsUser={setSsUser}
+            ssPass={ssPass}
+            setSsPass={setSsPass}
+            ssLinked={ssLinked}
+            ssDevIdSaved={ssDevIdSaved}
+            ssUserSaved={ssUserSaved}
+            ssFeedback={ssFeedback}
+            ssLoading={ssLoading}
+            handleLinkScreenScraper={handleLinkScreenScraper}
+            handleUnlinkScreenScraper={handleUnlinkScreenScraper}
+            isBatchScraping={isBatchScraping}
+            batchProgress={batchProgress}
+            handleStartBatchScrape={handleStartBatchScrape}
+            handleCancelBatchScrape={handleCancelBatchScrape}
           />
         )}
 

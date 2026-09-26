@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { GraphicsSettings } from "../../lib/tauri";
 
 export interface SoundTabProps {
@@ -19,6 +20,10 @@ export interface SoundTabProps {
   handleScanMusic: () => void;
   handleOpenMusicFolder: () => void;
   savedToast: boolean;
+  previewVideoMuted: boolean;
+  handlePreviewVideoMutedChange: (muted: boolean) => void;
+  previewVideoVolume: number;
+  handlePreviewVideoVolumeChange: (val: number) => void;
 }
 
 export default function SoundTab({
@@ -40,7 +45,12 @@ export default function SoundTab({
   handleScanMusic,
   handleOpenMusicFolder,
   savedToast,
+  previewVideoMuted,
+  handlePreviewVideoMutedChange,
+  previewVideoVolume,
+  handlePreviewVideoVolumeChange,
 }: SoundTabProps) {
+  const { t } = useTranslation();
   return (
     <div className="settings-tab-panel">
       <div
@@ -246,6 +256,55 @@ export default function SoundTab({
             </span>
           </div>
         </div>
+
+        <div className="settings-divider" />
+
+        {/* Selector de Volumen y Silencio para Videos de Preview */}
+        <div className="settings-row-option">
+          <div>
+            <span className="settings-option-title">
+              {t("settings.sound.mutePreviewVideo", "Silenciar Videos de Preview / Gameplay")}
+            </span>
+            <p className="settings-option-desc">
+              {t("settings.sound.mutePreviewVideoDesc", "Si está activado, los videos de snap y previews en la ruleta Arcade se reproducirán sin sonido.")}
+            </p>
+          </div>
+          <label className="settings-toggle">
+            <input
+              type="checkbox"
+              checked={previewVideoMuted}
+              onChange={(e) => handlePreviewVideoMutedChange(e.target.checked)}
+            />
+            <span className="settings-toggle-slider" />
+          </label>
+        </div>
+
+        {!previewVideoMuted && (
+          <div className="settings-row-option" style={{ marginTop: "12px" }}>
+            <div>
+              <span className="settings-option-title">
+                {t("settings.sound.previewVideoVolume", "Volumen de Videos Preview")}: {Math.round(previewVideoVolume * 100)}%
+              </span>
+              <p className="settings-option-desc">
+                {t("settings.sound.previewVideoVolumeDesc", "Nivel de audio para los videos de gameplay en el monitor de la vista Arcade.")}
+              </p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={previewVideoVolume}
+                onChange={(e) => handlePreviewVideoVolumeChange(parseFloat(e.target.value))}
+                style={{ width: "180px", accentColor: "var(--primary, #f59e0b)", cursor: "pointer" }}
+              />
+              <span style={{ minWidth: "45px", fontWeight: 600, fontSize: "0.95rem" }}>
+                {Math.round(previewVideoVolume * 100)}%
+              </span>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Música de Fondo & Reproductor Vinilo */}

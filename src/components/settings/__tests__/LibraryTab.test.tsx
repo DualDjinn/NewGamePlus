@@ -83,4 +83,31 @@ describe("LibraryTab Component", () => {
     fireEvent.click(screen.getByRole("button", { name: "Plataforma" }));
     expect(onSortByChange).toHaveBeenCalledWith("platform");
   });
+
+  it("should render video folders and trigger onAddVideoFolder and onScanLocalVideos", () => {
+    const onAddVideoFolder = vi.fn();
+    const onScanLocalVideos = vi.fn();
+
+    render(
+      <LibraryTab
+        {...defaultProps}
+        videoFolders={["E:/Media/Videos"]}
+        videoStats={{ total_games: 10, games_with_video: 8, games_missing_video: 2 }}
+        onAddVideoFolder={onAddVideoFolder}
+        onScanLocalVideos={onScanLocalVideos}
+      />
+    );
+
+    expect(screen.getByText("E:/Media/Videos")).toBeInTheDocument();
+    expect(screen.getByText(/8 de 10 juegos con video/i)).toBeInTheDocument();
+
+    const addVideoBtn = screen.getByRole("button", { name: /\+ Agregar Carpeta de Videos/i });
+    fireEvent.click(addVideoBtn);
+    expect(onAddVideoFolder).toHaveBeenCalledTimes(1);
+
+    const scanVideosBtn = screen.getByRole("button", { name: /Escanear Videos Locales/i });
+    fireEvent.click(scanVideosBtn);
+    expect(onScanLocalVideos).toHaveBeenCalledTimes(1);
+  });
 });
+

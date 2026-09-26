@@ -92,7 +92,7 @@ pub(crate) fn fetch_achievements_internal(
         return Err(format!("ROM no encontrada: {}", rom_path));
     }
 
-    let (username, api_key, game_name, display_name) = {
+    let (username, api_key, game_name, display_name, game_platform) = {
         let state = lock_state();
         let profile_name = &state.settings.current_profile;
         let profile = state
@@ -110,15 +110,21 @@ pub(crate) fn fetch_achievements_internal(
             },
             None => return Ok(None),
         };
-        let game = state.games.iter().find(|g| g.rom_path == rom_path);
+        let normalized_target = rom_path.replace('/', "\\").to_lowercase();
+        let game = state.games.iter().find(|g| {
+            g.rom_path == rom_path || g.rom_path.replace('/', "\\").to_lowercase() == normalized_target
+        });
         let g_name = game.map(|g| g.name.clone());
         let d_name = game.and_then(|g| g.display_name.clone());
-        (creds.0, creds.1, g_name, d_name)
+        let g_plat = game.map(|g| g.platform.clone());
+        (creds.0, creds.1, g_name, d_name, g_plat)
     };
 
-    let platform = platforms::detect_platform(&rom_path)
-        .map(|info| info.platform.to_string())
-        .unwrap_or_default();
+    let platform = game_platform.unwrap_or_else(|| {
+        platforms::detect_platform(&rom_path)
+            .map(|info| info.platform.to_string())
+            .unwrap_or_default()
+    });
 
     if !achievements::ra_is_supported_platform(&platform) {
         return Ok(None);

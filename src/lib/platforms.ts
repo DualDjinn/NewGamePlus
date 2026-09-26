@@ -113,3 +113,75 @@ export function getPlatformCompany(platform: string): string {
   return PLATFORM_COMPANIES[platform.toUpperCase()] || "Otros";
 }
 
+export const PLATFORM_LOGOS: Record<string, string> = {
+  // Nintendo
+  "3DS": "/logos/Nintendo/3DS.png",
+  N3DS: "/logos/Nintendo/3DS.png",
+  GB: "/logos/Nintendo/GB.png",
+  GAMEBOY: "/logos/Nintendo/GB.png",
+  GBA: "/logos/Nintendo/GBA.png",
+  GAMEBOYADVANCE: "/logos/Nintendo/GBA.png",
+  GBC: "/logos/Nintendo/GBC.png",
+  GAMEBOYCOLOR: "/logos/Nintendo/GBC.png",
+  N64: "/logos/Nintendo/N64.png",
+  NINTENDO64: "/logos/Nintendo/N64.png",
+  NDS: "/logos/Nintendo/NDS.png",
+  DS: "/logos/Nintendo/NDS.png",
+  NES: "/logos/Nintendo/NES.png",
+  GAMECUBE: "/logos/Nintendo/NGC.png",
+  NGC: "/logos/Nintendo/NGC.png",
+  GC: "/logos/Nintendo/NGC.png",
+  SWITCH: "/logos/Nintendo/NintendoSwitch.png",
+  NINTENDOSWITCH: "/logos/Nintendo/NintendoSwitch.png",
+  SNES: "/logos/Nintendo/SNES.png",
+  SFC: "/logos/Nintendo/SNES.png",
+  WII: "/logos/Nintendo/WII.png",
+  WIIU: "/logos/Nintendo/WIIU.png",
+
+  // PlayStation
+  PS1: "/logos/Playstation/PS1.png",
+  PSX: "/logos/Playstation/PS1.png",
+  PLAYSTATION: "/logos/Playstation/PS1.png",
+  PS2: "/logos/Playstation/ps2.png",
+  PLAYSTATION2: "/logos/Playstation/ps2.png",
+  PS3: "/logos/Playstation/ps3.png",
+  PLAYSTATION3: "/logos/Playstation/ps3.png",
+  PSP: "/logos/Playstation/psp.png",
+  PSVITA: "/logos/Playstation/psvita.png",
+  VITA: "/logos/Playstation/psvita.png",
+
+  // Sega
+  MEGA_DRIVE: "/logos/Sega/SMD.png",
+  MEGADRIVE: "/logos/Sega/SMD.png",
+  GENESIS: "/logos/Sega/SMD.png",
+  SMD: "/logos/Sega/SMD.png",
+  SMS: "/logos/Sega/SMS.png",
+  MASTERSYSTEM: "/logos/Sega/SMS.png",
+
+  // Arcade / SNK
+  MAME: "/logos/Mame/Mame.png",
+  ARCADE: "/logos/Mame/Mame.png",
+  FBNEO: "/logos/Mame/Mame.png",
+  NEOGEO: "/logos/NeoGeo/NeoGeo.png",
+  NEO_GEO: "/logos/NeoGeo/NeoGeo.png",
+  NGP: "/logos/NeoGeo/NeoGeo.png",
+  NEOGEOPOCKET: "/logos/NeoGeo/NeoGeo.png",
+
+  // PC / Windows
+  PC: "/logos/PC/PC.png",
+  WINDOWS: "/logos/PC/PC.png",
+  JUEGOSDEPC: "/logos/PC/PC.png",
+  JUEGOS_DE_PC: "/logos/PC/PC.png",
+};
+
+export function getPlatformLogo(platform: string): string | null {
+  if (!platform) return null;
+  const upper = platform.toUpperCase().trim();
+  if (PLATFORM_LOGOS[upper]) return PLATFORM_LOGOS[upper];
+  const clean = upper.replace(/[\s\-_]+/g, "");
+  if (PLATFORM_LOGOS[clean]) return PLATFORM_LOGOS[clean];
+  const under = upper.replace(/\s+/g, "_");
+  if (PLATFORM_LOGOS[under]) return PLATFORM_LOGOS[under];
+  return null;
+}
+

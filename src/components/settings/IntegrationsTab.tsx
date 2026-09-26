@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { TrophyIcon } from "../icons";
+import type { BatchScrapeProgressEvent } from "../../lib/tauri";
 
 export interface IntegrationsTabProps {
   raUsername: string;
@@ -21,6 +23,26 @@ export interface IntegrationsTabProps {
   sgdbLoading: boolean;
   handleLinkSGDB: () => void;
   handleUnlinkSGDB: () => void;
+
+  ssDevId: string;
+  setSsDevId: (v: string) => void;
+  ssDevPass: string;
+  setSsDevPass: (v: string) => void;
+  ssUser: string;
+  setSsUser: (v: string) => void;
+  ssPass: string;
+  setSsPass: (v: string) => void;
+  ssLinked: boolean;
+  ssDevIdSaved: string | null;
+  ssUserSaved: string | null;
+  ssFeedback: { msg: string; isError: boolean } | null;
+  ssLoading: boolean;
+  handleLinkScreenScraper: () => void;
+  handleUnlinkScreenScraper: () => void;
+  isBatchScraping?: boolean;
+  batchProgress?: BatchScrapeProgressEvent | null;
+  handleStartBatchScrape?: (onlyMissing: boolean) => void;
+  handleCancelBatchScrape?: () => void;
 }
 
 export default function IntegrationsTab({
@@ -44,7 +66,28 @@ export default function IntegrationsTab({
   sgdbLoading,
   handleLinkSGDB,
   handleUnlinkSGDB,
+
+  ssDevId,
+  setSsDevId,
+  ssDevPass,
+  setSsDevPass,
+  ssUser,
+  setSsUser,
+  ssPass,
+  setSsPass,
+  ssLinked,
+  ssDevIdSaved,
+  ssUserSaved,
+  ssFeedback,
+  ssLoading,
+  handleLinkScreenScraper,
+  handleUnlinkScreenScraper,
+  isBatchScraping = false,
+  batchProgress,
+  handleStartBatchScrape,
+  handleCancelBatchScrape,
 }: IntegrationsTabProps) {
+  const [batchOnlyMissing, setBatchOnlyMissing] = useState(true);
   return (
     <div className="settings-tab-panel">
       <div className="settings-panel-header">
@@ -196,6 +239,169 @@ export default function IntegrationsTab({
           </p>
         )}
       </section>
+
+      {/* ScreenScraper.fr (Gameplay Snaps & Wheel Logos) */}
+      <section className="settings-card" id="settings-screenscraper">
+        <div className="settings-card-header">
+          <div>
+            <h3>🎬 ScreenScraper.fr (Gameplay Snaps &amp; Logos)</h3>
+            <p>Descarga videos de gameplay MP4 y logos transparentes de alta resolución para la ruleta Arcade.</p>
+          </div>
+          {ssLinked && <span className="settings-badge-ok">✓ Conectado</span>}
+        </div>
+
+        {ssLinked ? (
+          <div>
+            <div className="settings-account-linked">
+              <p className="settings-hint">
+                Conectado como Dev: <strong>{ssDevIdSaved || "Configurado"}</strong>
+                {ssUserSaved ? ` | Usuario: ${ssUserSaved}` : ""}
+              </p>
+              <button
+                type="button"
+                className="settings-btn-secondary"
+                onClick={handleUnlinkScreenScraper}
+              >
+                Desvincular ScreenScraper
+              </button>
+            </div>
+
+            <div className="settings-divider" />
+
+            {/* Descarga Masiva de Gameplays y Logos */}
+            <div style={{ marginTop: "14px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "10px" }}>
+                <div>
+                  <span className="settings-option-title" style={{ fontSize: "1rem" }}>
+                    Descarga Masiva de Gameplays y Logos
+                  </span>
+                  <p className="settings-option-desc">
+                    Descarga en segundo plano los videos y logos de toda tu colección automáticamente.
+                  </p>
+                </div>
+                {isBatchScraping ? (
+                  <button
+                    type="button"
+                    className="settings-btn-delete"
+                    style={{ padding: "6px 14px", borderRadius: "6px", fontSize: "0.85rem" }}
+                    onClick={handleCancelBatchScrape}
+                  >
+                    ✕ Cancelar
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="settings-btn-primary"
+                    onClick={() => handleStartBatchScrape?.(batchOnlyMissing)}
+                  >
+                    ▶ Iniciar Descarga Masiva
+                  </button>
+                )}
+              </div>
+
+              {!isBatchScraping && (
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.88rem", cursor: "pointer", color: "var(--text-muted, #94a3b8)" }}>
+                  <input
+                    type="checkbox"
+                    checked={batchOnlyMissing}
+                    onChange={(e) => setBatchOnlyMissing(e.target.checked)}
+                  />
+                  <span>Solo para juegos que no tengan video</span>
+                </label>
+              )}
+
+              {isBatchScraping && batchProgress && (
+                <div className="settings-scan-progress-box" style={{ marginTop: "10px" }}>
+                  <div className="settings-progress">
+                    <div className="settings-progress-bar" style={{ width: `${batchProgress.percent}%` }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", fontSize: "0.84rem" }}>
+                    <span style={{ fontWeight: 600, color: "var(--accent, #00f0ff)" }}>
+                      {batchProgress.status === "downloading" ? "Descargando:" : "Procesando:"} {batchProgress.game_name} ({batchProgress.current_index}/{batchProgress.total})
+                    </span>
+                    <span>{batchProgress.percent}%</span>
+                  </div>
+                  <p className="settings-progress-msg" style={{ marginTop: "4px" }}>
+                    ✓ {batchProgress.downloaded_count} descargados • ⏭ {batchProgress.skipped_count} omitidos • ⚠ {batchProgress.failed_count} fallidos
+                  </p>
+                </div>
+              )}
+
+              {!isBatchScraping && batchProgress && (batchProgress.status === "completed" || batchProgress.status === "cancelled") && (
+                <div style={{ marginTop: "10px", padding: "8px 12px", borderRadius: "6px", background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.2)", fontSize: "0.85rem" }}>
+                  <span>
+                    {batchProgress.status === "completed"
+                      ? `¡Descarga masiva completada! ${batchProgress.downloaded_count} descargados, ${batchProgress.skipped_count} omitidos, ${batchProgress.failed_count} fallidos.`
+                      : "Descarga cancelada"}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="settings-form-block">
+            <div className="settings-form-row">
+              <input
+                className="settings-input"
+                type="text"
+                placeholder="Usuario Desarrollador (Dev ID)*"
+                value={ssDevId}
+                onChange={(e) => setSsDevId(e.target.value)}
+              />
+              <input
+                className="settings-input"
+                type="password"
+                placeholder="Contraseña Desarrollador (Dev Password)*"
+                value={ssDevPass}
+                onChange={(e) => setSsDevPass(e.target.value)}
+              />
+            </div>
+
+            <div className="settings-form-row" style={{ marginTop: 8 }}>
+              <input
+                className="settings-input"
+                type="text"
+                placeholder="Usuario ScreenScraper (Opcional)"
+                value={ssUser}
+                onChange={(e) => setSsUser(e.target.value)}
+              />
+              <input
+                className="settings-input"
+                type="password"
+                placeholder="Contraseña ScreenScraper (Opcional)"
+                value={ssPass}
+                onChange={(e) => setSsPass(e.target.value)}
+              />
+            </div>
+
+            <div className="settings-form-footer">
+              <a
+                href="https://www.screenscraper.fr/"
+                target="_blank"
+                rel="noreferrer"
+                className="settings-link"
+              >
+                🔗 Obtener cuenta y clave API en ScreenScraper.fr
+              </a>
+              <button
+                type="button"
+                className="settings-btn-primary"
+                onClick={handleLinkScreenScraper}
+                disabled={ssLoading || !ssDevId.trim() || !ssDevPass.trim()}
+              >
+                {ssLoading ? "Conectando..." : "Guardar Credenciales"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {ssFeedback && (
+          <p className={`settings-feedback ${ssFeedback.isError ? "error" : "success"}`}>
+            {ssFeedback.msg}
+          </p>
+        )}
+      </section>
     </div>
   );
 }
+

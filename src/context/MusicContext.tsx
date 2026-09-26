@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { Game, MusicTrack } from "../types";
-import { getCoverUrl, getMusicTracks, saveMusicVolume, getMusicVolume } from "../lib/tauri";
+import { getCoverUrl, getMusicTracks, saveMusicVolume, getMusicVolume, onRetroarchExited } from "../lib/tauri";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { MUSIC_TRACKS } from "../data/musicTracks";
 
@@ -43,6 +43,13 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
   const userInteractedRef = useRef<boolean>(false);
   const fadeIntervalRef = useRef<number | null>(null);
   const isTransitioningRef = useRef<boolean>(false);
+
+  const isPlayingRef = useRef<boolean>(isPlaying);
+  isPlayingRef.current = isPlaying;
+  const volumeRef = useRef<number>(volume);
+  volumeRef.current = volume;
+  const isMutedRef = useRef<boolean>(isMuted);
+  isMutedRef.current = isMuted;
 
   const clearFade = () => {
     if (fadeIntervalRef.current !== null) {
@@ -250,31 +257,50 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
 
   useEffect(() => {
     function handleGameLaunched() {
-      if (audioRef.current) {
-        wasPlayingBeforeGameRef.current = !audioRef.current.paused;
-        if (wasPlayingBeforeGameRef.current) {
-          fadeOut(audioRef.current, 800);
+      const audio = audioRef.current;
+      if (audio) {
+        // Record if music was actively playing when game launched
+        const currentlyPlaying = (!audio.paused && !audio.ended) || isPlayingRef.current;
+        wasPlayingBeforeGameRef.current = currentlyPlaying;
+        if (currentlyPlaying) {
+          fadeOut(audio, 500);
         } else {
-          audioRef.current.pause();
+          audio.pause();
           setIsPlaying(false);
         }
       }
     }
 
     function handleGameClosed() {
-      if (wasPlayingBeforeGameRef.current && audioRef.current) {
-        fadeIn(audioRef.current, isMuted ? 0 : volume, 800);
+      const audio = audioRef.current;
+      if (wasPlayingBeforeGameRef.current && audio) {
+        // Reset flag so it only triggers once per game session
+        wasPlayingBeforeGameRef.current = false;
+        fadeIn(audio, isMutedRef.current ? 0 : volumeRef.current, 800);
       }
     }
 
     window.addEventListener("game-launched", handleGameLaunched);
     window.addEventListener("game-closed", handleGameClosed);
 
+    // Also listen directly to onRetroarchExited as a direct fallback
+    let unlistenRetroarch: (() => void) | null = null;
+    onRetroarchExited(() => {
+      handleGameClosed();
+    })
+      .then((unlisten) => {
+        unlistenRetroarch = unlisten;
+      })
+      .catch(() => {});
+
     return () => {
       window.removeEventListener("game-launched", handleGameLaunched);
       window.removeEventListener("game-closed", handleGameClosed);
+      if (unlistenRetroarch) {
+        unlistenRetroarch();
+      }
     };
-  }, [volume, isMuted]);
+  }, []);
 
   function togglePlay() {
     const audio = audioRef.current;

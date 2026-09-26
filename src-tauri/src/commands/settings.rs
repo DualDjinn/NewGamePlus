@@ -241,3 +241,22 @@ pub fn get_music_folders() -> Result<Vec<String>, String> {
     let state = lock_state();
     Ok(state.settings.music_folders.clone())
 }
+
+#[tauri::command]
+pub fn save_video_folders(folders: Vec<String>) -> Result<(), String> {
+    let mut state = lock_state();
+    let cleaned: Vec<String> = folders
+        .into_iter()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    state.settings.video_folders = cleaned;
+    save_state(&state);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_video_folders() -> Result<Vec<String>, String> {
+    let state = lock_state();
+    Ok(state.settings.video_folders.clone())
+}

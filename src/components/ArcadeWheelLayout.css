@@ -1,773 +1,1792 @@
-/* ArcadeWheelLayout.css — Authentic Twin-Wheel HyperSpin & LaunchBox 3D Arcade Presentation */
+/* ArcadeWheelLayout.css — osu! Song Select Style Layout for gameFlix */
 
-.arcade-wheel-layout {
+.osu-arcade-layout {
   position: relative;
   width: 100%;
   height: calc(100vh - 64px);
-  min-height: 560px;
+  min-height: 580px;
   display: flex;
   flex-direction: column;
-  background-color: #06070a;
+  background-color: #0b0d14;
   color: #f1f5f9;
   overflow: hidden;
   user-select: none;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 }
 
-/* Global Ambient Background */
-.arcade-global-bg {
+/* ============================================================
+   GLOBAL BACKGROUND HERO & CINEMATIC VIGNETTE
+   ============================================================ */
+.osu-global-backdrop {
   position: absolute;
-  inset: -20px;
+  inset: -24px;
   background-size: cover;
   background-position: center 30%;
-  filter: blur(28px) brightness(0.24) saturate(1.4);
+  filter: blur(28px) brightness(0.24) saturate(1.3);
   transform: scale(1.08);
-  transition: background-image 0.5s ease-out;
+  transition: background-image 0.45s ease-out;
   z-index: 0;
   pointer-events: none;
 }
 
-.arcade-bg-vignette {
+.osu-vignette-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(6, 7, 10, 0.3) 0%, rgba(6, 7, 10, 0.88) 75%, #06070a 100%),
-              linear-gradient(to bottom, rgba(6, 7, 10, 0.7) 0%, transparent 20%, transparent 80%, #06070a 100%);
+  background: radial-gradient(circle at 35% 45%, rgba(11, 13, 20, 0.35) 0%, rgba(11, 13, 20, 0.88) 75%, #0b0d14 100%),
+              linear-gradient(to bottom, rgba(11, 13, 20, 0.7) 0%, transparent 25%, transparent 75%, #0b0d14 100%);
   z-index: 1;
   pointer-events: none;
 }
 
 /* ============================================================
-   MAIN 3-COLUMN STAGE CONTAINER (TWIN-WHEEL LAYOUT)
+   MAIN TWO-PANEL STAGE:
+   LEFT (Showcase / Detail & Video): 65% width
+   RIGHT (Carousel & Consoles): 35% width
    ============================================================ */
-.arcade-stage-container {
+.osu-main-stage {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  justify-content: space-between;
   width: 100%;
-  height: calc(100% - 34px);
-  padding: 10px 16px 0 16px;
-  gap: 16px;
-  box-sizing: border-box;
-  overflow: hidden;
+  height: calc(100% - 56px);
   position: relative;
   z-index: 5;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* ============================================================
-   GENERIC 3D WHEEL SECTION (USED FOR BOTH LEFT & RIGHT)
+   LEFT PANEL: CINEMATIC SHOWCASE (65% Width)
    ============================================================ */
-.arcade-wheel-section {
-  width: 300px;
-  min-width: 300px;
-  max-width: 300px;
+.osu-showcase-panel {
+  width: 65%;
+  flex: 0 0 65%;
   height: 100%;
+  padding: 12px 22px 12px 26px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  overflow: visible;
-  padding: 4px 0;
-  box-sizing: border-box;
+  justify-content: flex-start;
+  overflow-y: auto;
+  gap: 12px;
+  transition: width 0.32s cubic-bezier(0.16, 1, 0.3, 1), flex-basis 0.32s cubic-bezier(0.16, 1, 0.3, 1), padding 0.32s ease;
+  z-index: 6;
 }
 
-/* Top Pills & Mode Switcher */
-.arcade-wheel-top-pills {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  height: 32px;
-  z-index: 15;
+/* Custom scrollbar for left panel */
+.osu-showcase-panel::-webkit-scrollbar {
+  width: 5px;
+}
+.osu-showcase-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
 }
 
-.arcade-pill-toggle {
-  flex: 1;
-  padding: 6px 4px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(14, 18, 28, 0.8);
-  backdrop-filter: blur(12px);
-  color: #94a3b8;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  text-align: center;
-  white-space: nowrap;
-}
 
-.arcade-pill-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-.arcade-pill-toggle.active {
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.25) 0%, rgba(0, 140, 255, 0.15) 100%);
-  border-color: rgba(0, 240, 255, 0.6);
-  color: #00f0ff;
-  box-shadow: 0 0 14px rgba(0, 240, 255, 0.25);
-}
-
-.arcade-wheel-top-pills.right-header {
-  justify-content: center;
-}
-
-.arcade-games-count-badge {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: #00f0ff;
-  background: rgba(14, 18, 28, 0.85);
-  border: 1px solid rgba(0, 240, 255, 0.3);
-  padding: 6px 14px;
-  border-radius: 8px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
-}
-
-/* Guide Arrows */
-.arcade-wheel-guide {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.4);
-  padding: 4px 12px;
-  cursor: pointer;
-  transition: color 0.15s ease, transform 0.15s ease;
-  z-index: 10;
-  user-select: none;
-}
-
-.arcade-wheel-guide:hover {
-  color: #00f0ff;
-  transform: scale(1.25);
-}
-
-/* 3D Wheel Viewport & Track */
-.arcade-wheel-viewport {
-  position: relative;
-  width: 100%;
-  flex: 1;
-  overflow: visible;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.arcade-wheel-viewport.left-viewport {
-  perspective: 1100px;
-  perspective-origin: 85% 50%;
-}
-
-.arcade-wheel-viewport.right-viewport {
-  perspective: 1100px;
-  perspective-origin: 15% 50%;
-}
-
-.arcade-wheel-track {
-  position: relative;
-  width: 100%;
-  height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform-style: preserve-3d;
-}
-
-.arcade-wheel-item {
-  position: absolute;
-  width: 265px;
-  height: 68px;
-  transform-style: preserve-3d;
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.22s ease;
-  cursor: pointer;
-}
-
-.arcade-wheel-card {
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(20, 24, 34, 0.94) 0%, rgba(12, 14, 20, 0.96) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  box-sizing: border-box;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.arcade-wheel-item.selected .arcade-wheel-card {
-  border-color: rgba(0, 240, 255, 0.85);
-  box-shadow: 0 0 28px rgba(0, 240, 255, 0.35),
-              inset 0 0 16px rgba(0, 240, 255, 0.15);
-}
-
-.arcade-wheel-reticle {
-  position: absolute;
-  inset: -4px;
-  border: 2px solid #00f0ff;
-  border-radius: 16px;
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.65);
-  pointer-events: none;
-  z-index: 10;
-  animation: arcadeReticlePulse 1.8s ease-in-out infinite alternate;
-}
-
-@keyframes arcadeReticlePulse {
-  0% {
-    box-shadow: 0 0 16px rgba(0, 240, 255, 0.45);
-    border-color: #00f0ff;
-  }
-  100% {
-    box-shadow: 0 0 28px rgba(0, 240, 255, 0.85);
-    border-color: #67e8f9;
-  }
-}
-
-/* Left Wheel: Platform / Console Cards */
-.arcade-cat-card {
-  border-left-width: 4px;
-}
-
-.arcade-cat-icon-badge {
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  flex-shrink: 0;
-  margin-right: 12px;
-}
-
-.arcade-all-star {
-  font-size: 20px;
-}
-
-.arcade-genre-symbol {
-  font-size: 22px;
-}
-
-.arcade-cat-card-info {
+.osu-showcase-card {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  gap: 3px;
-  flex: 1;
-}
-
-.arcade-cat-card-name {
-  font-size: 13px;
-  font-weight: 800;
-  color: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  letter-spacing: -0.2px;
-}
-
-.arcade-cat-card-sub {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.arcade-cat-count-pill {
-  font-size: 10px;
-  font-weight: 800;
-  color: #00f0ff;
-  background: rgba(0, 240, 255, 0.12);
-  padding: 1px 6px;
-  border-radius: 4px;
-}
-
-.arcade-cat-company {
-  font-size: 10px;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-}
-
-/* Right Wheel: Game Cards */
-.arcade-wheel-logo-box {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.arcade-wheel-logo-img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.8));
-}
-
-.arcade-wheel-badge-box {
-  display: flex;
-  align-items: center;
   gap: 12px;
   width: 100%;
   height: 100%;
-}
-
-.arcade-wheel-thumb-img {
-  width: 44px;
-  height: 52px;
-  object-fit: cover;
-  border-radius: 6px;
-  flex-shrink: 0;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-}
-
-.arcade-wheel-text-wrap {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  gap: 2px;
-}
-
-.arcade-wheel-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.arcade-wheel-platform-tag {
-  font-size: 10px;
-  font-weight: 800;
-  color: #00f0ff;
-  letter-spacing: 0.5px;
+  max-height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 /* ============================================================
-   COLUMN 2 (CENTER): Arcade Showcase Monitor & HUD (Expanded)
+   TOP CARD: FULL GAME DETAIL (Tools + Hero + Meta + Play)
    ============================================================ */
-.arcade-showcase-section {
-  flex: 1;
-  min-width: 0;
-  max-width: 1020px;
-  height: 100%;
+.osu-detail-top-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 0 10px;
-  overflow: hidden;
-  margin: 0 auto;
-}
-
-.arcade-showcase-panel {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-/* Arcade Monitor Bezel */
-.arcade-monitor-frame {
-  position: relative;
-  width: 100%;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #1c212c 0%, #0d0f15 100%);
-  padding: 10px;
+  gap: 8px;
+  background: rgba(14, 18, 28, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  flex: 0 0 calc(35% - 6px);
+  height: calc(35% - 6px);
+  max-height: calc(35% - 6px);
+  min-height: 0;
   box-sizing: border-box;
-  border: 2px solid rgba(0, 240, 255, 0.22);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8),
-              0 0 25px rgba(0, 240, 255, 0.08);
+  overflow: hidden;
 }
 
-.arcade-monitor-bezel {
-  border-radius: 10px;
-  overflow: hidden;
-  background: #000;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.arcade-monitor-screen {
-  position: relative;
-  width: 100%;
-  height: clamp(280px, 45vh, 480px);
-  background: #000;
-  overflow: hidden;
+/* Row 1: Tools & Platform Badge Row */
+.osu-detail-tools-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-}
-
-/* CRT Scanlines and Glass Reflection */
-.arcade-crt-scanlines {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    rgba(18, 16, 16, 0) 50%,
-    rgba(0, 0, 0, 0.32) 50%
-  );
-  background-size: 100% 4px;
-  pointer-events: none;
-  z-index: 10;
-  opacity: 0.65;
-}
-
-.arcade-crt-reflection {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    ellipse at 50% 15%,
-    rgba(255, 255, 255, 0.12) 0%,
-    rgba(255, 255, 255, 0) 65%
-  );
-  pointer-events: none;
-  z-index: 11;
-  opacity: 0.7;
-}
-
-/* HTML5 Video Snap Player */
-.arcade-snap-video {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #000;
-}
-
-/* Ken Burns Fallback Animation */
-.arcade-snap-kenburns {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #050608;
-}
-
-.arcade-kenburns-img {
-  position: absolute;
-  inset: -15%;
-  background-size: cover;
-  background-position: center;
-  filter: brightness(0.72) saturate(1.2);
-  animation: arcadeKenBurns 18s ease-in-out infinite alternate;
-}
-
-@keyframes arcadeKenBurns {
-  0% {
-    transform: scale(1.02) translate(0, 0);
-  }
-  50% {
-    transform: scale(1.14) translate(-2%, 2%);
-  }
-  100% {
-    transform: scale(1.22) translate(2%, -2%);
-  }
-}
-
-.arcade-kenburns-gradient {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at center, transparent 30%, rgba(6, 7, 10, 0.85) 100%),
-              linear-gradient(to bottom, rgba(6, 7, 10, 0.4) 0%, transparent 40%, rgba(6, 7, 10, 0.75) 100%);
-  z-index: 2;
-}
-
-.arcade-kenburns-logo {
-  position: relative;
-  z-index: 3;
-  max-width: 55%;
-  max-height: 48%;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 20px rgba(0, 240, 255, 0.35));
-  animation: arcadeLogoFloat 4.5s ease-in-out infinite alternate;
-}
-
-@keyframes arcadeLogoFloat {
-  0% {
-    transform: translateY(0) scale(1);
-  }
-  100% {
-    transform: translateY(-8px) scale(1.03);
-  }
-}
-
-.arcade-snap-watermark {
-  position: absolute;
-  bottom: 12px;
-  right: 14px;
-  z-index: 12;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(0, 0, 0, 0.6);
-  padding: 4px 8px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.arcade-pulse-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #00f0ff;
-  box-shadow: 0 0 8px #00f0ff;
-  animation: arcadePulse 1.2s infinite;
-}
-
-/* Monitor HUD */
-.arcade-monitor-hud {
-  position: absolute;
-  top: 12px;
-  left: 14px;
-  right: 14px;
-  z-index: 12;
-  display: flex;
   justify-content: space-between;
-  align-items: center;
-  pointer-events: auto;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.arcade-hud-badge {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #f1f5f9;
+.osu-detail-tools-actions {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
-.arcade-rec-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 8px #ef4444;
-  animation: arcadePulse 1s infinite;
-}
-
-@keyframes arcadePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-.arcade-sound-toggle-btn {
-  font-size: 11px;
-  font-weight: 700;
+.osu-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
   padding: 4px 10px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #f1f5f9;
+  color: #e2e8f0;
+  font-size: 11.5px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.arcade-sound-toggle-btn:hover {
-  background: rgba(0, 240, 255, 0.2);
+.osu-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.osu-tool-btn.osu-btn-edit-main {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  padding: 5px 12px;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.osu-tool-btn.osu-btn-edit-main:hover {
+  background: rgba(0, 240, 255, 0.16);
+  border-color: #00f0ff;
+  color: #00f0ff;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+}
+
+.osu-tool-btn.osu-video-btn.has-video {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.osu-tool-btn.osu-video-btn.downloading {
+  background: rgba(0, 240, 255, 0.15);
   border-color: #00f0ff;
   color: #00f0ff;
 }
 
-/* Game Metadata & Actions */
-.arcade-game-meta {
+.osu-btn-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #00f0ff 0%, #3b82f6 100%);
+  opacity: 0.35;
+  z-index: 1;
+  transition: width 0.2s ease;
+}
+
+.osu-tool-btn-content {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.osu-btn-spinner {
+  width: 11px;
+  height: 11px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: osuSpin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes osuSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Split Row: 50% Hero Column / 50% RetroAchievements (20% Summary + 30% List) */
+.osu-top-split-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  margin-top: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.osu-top-col-hero {
+  flex: 0 0 calc(50% - 7px);
+  max-width: calc(50% - 7px);
+  min-width: 0;
+  height: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 8px;
+  min-height: 0;
 }
 
-.arcade-meta-header {
+.osu-top-col-achievements {
+  flex: 0 0 calc(50% - 7px);
+  max-width: calc(50% - 7px);
+  min-width: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Hero Banner with Transparent Logo */
+.osu-hero-banner-wrap {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 90px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #111420;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  justify-content: center;
 }
 
-.arcade-platform-badge {
+.osu-hero-banner-img {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center 30%;
+  filter: brightness(0.85);
+  transform: scale(1.02);
+}
+
+.osu-hero-banner-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(11, 13, 20, 0.92) 0%, rgba(11, 13, 20, 0.2) 50%, rgba(11, 13, 20, 0.6) 100%);
+}
+
+.osu-banner-logo-box {
+  position: absolute;
+  inset: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+.osu-banner-logo-img {
+  max-width: 65%;
+  max-height: 90px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 12px rgba(0, 0, 0, 0.95));
+}
+
+.osu-banner-text-box {
+  position: absolute;
+  inset: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  text-align: center;
+}
+
+.osu-banner-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.2;
+}
+
+/* Metadata Chips Row */
+.osu-meta-tags-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.osu-platform-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
   border-radius: 6px;
-  background: rgba(0, 240, 255, 0.15);
-  border: 1px solid rgba(0, 240, 255, 0.3);
-  color: #00f0ff;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
+  border: 1px solid;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
 }
 
-.arcade-meta-pill {
+.osu-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 11.5px;
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.osu-meta-pill.year {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.osu-meta-pill.genre {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.osu-meta-pill.dev {
+  color: #e2e8f0;
+}
+
+.osu-meta-pill.pub {
+  color: #94a3b8;
+}
+
+.osu-meta-pill.region {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.osu-meta-pill.franchise {
+  color: #f472b6;
+  border-color: rgba(244, 114, 182, 0.3);
+}
+
+.osu-meta-pill.time {
+  color: #a78bfa;
+  border-color: rgba(167, 139, 250, 0.3);
+}
+
+/* RetroAchievements Section (Right 35% Column) */
+.osu-row-achievements {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.osu-achievements-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.osu-no-achievements-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 12px 14px;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.osu-no-achievements-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f5a623;
+  flex-shrink: 0;
+}
+
+.osu-no-achievements-notice.not-configured .osu-no-achievements-icon-wrap {
+  color: #94a3b8;
+}
+
+.osu-no-achievements-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.osu-no-achievements-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.osu-no-achievements-desc {
   font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.osu-no-achievements-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  margin-top: 2px;
+}
+
+.osu-no-achievements-retry-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.osu-no-achievements-retry-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Compact overrides for AchievementList inside top card: 20% Summary, 30% List (40% / 60% of achievements col) */
+.osu-top-col-achievements .achievement-horizontal-layout {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  gap: 10px;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.osu-top-col-achievements .achievement-summary-card {
+  flex: 0 0 calc(40% - 5px);
+  width: calc(40% - 5px);
+  min-width: 0;
+  max-width: none;
+  flex-shrink: 0;
+  height: 100%;
+  max-height: 100%;
+  padding: 14px 12px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.osu-top-col-achievements .achievement-summary-header {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  gap: 7px;
+}
+
+.osu-top-col-achievements .achievement-header-svg {
+  width: 16px;
+  height: 16px;
+}
+
+.osu-top-col-achievements .achievement-ring-box {
+  width: 96px;
+  height: 96px;
+  min-width: 96px;
+  min-height: 96px;
+  max-width: 96px;
+  max-height: 96px;
+}
+
+.osu-top-col-achievements .achievement-ring-pct {
+  font-size: 24px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+
+.osu-top-col-achievements .achievement-summary-stats {
+  padding: 8px 12px;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.osu-top-col-achievements .stat-count-unlocked {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f5a623;
+}
+
+.osu-top-col-achievements .stat-count-total {
+  font-size: 12px;
   font-weight: 600;
   color: #94a3b8;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 4px 9px;
-  border-radius: 6px;
 }
 
-.arcade-game-title {
-  margin: 0;
-  font-size: clamp(1.5rem, 2.2vw, 2.3rem);
-  font-weight: 900;
-  line-height: 1.15;
-  color: #ffffff;
-  letter-spacing: -0.5px;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
+.osu-top-col-achievements .summary-stat-points {
+  font-size: 12px;
+}
+
+.osu-top-col-achievements .stat-points-earned {
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.osu-top-col-achievements .stat-points-total {
+  color: #64748b;
+}
+
+.osu-top-col-achievements .achievement-refresh-btn {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+}
+
+.osu-top-col-achievements .achievement-refresh-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.osu-top-col-achievements .achievement-scroll-area,
+.osu-top-col-achievements .achievement-list-section {
+  flex: 0 0 calc(60% - 5px);
+  width: calc(60% - 5px);
+  min-width: 0;
+  max-width: none;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.osu-top-col-achievements .achievement-list-header {
+  padding: 0 2px;
+  margin-bottom: 3px;
+  flex-shrink: 0;
+}
+
+.osu-top-col-achievements .achievement-list-title {
+  font-size: 11px;
+}
+
+.osu-top-col-achievements .achievement-list-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+}
+
+.osu-top-col-achievements .achievement-items-col {
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  gap: 6px;
+  display: flex;
+  flex-direction: column;
+  padding-right: 4px;
+  box-sizing: border-box;
+}
+
+.osu-top-col-achievements .achievement-card {
+  padding: 6px 10px;
+  gap: 10px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.osu-top-col-achievements .achievement-badge-wrap {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.osu-top-col-achievements .achievement-badge-img {
+  width: 36px;
+  height: 36px;
+}
+
+.osu-top-col-achievements .achievement-info-name {
+  font-size: 12px;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.arcade-meta-dev {
-  margin: 0;
-  font-size: 12px;
-  color: #94a3b8;
+.osu-top-col-achievements .achievement-info-desc {
+  font-size: 10.5px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.arcade-meta-dev strong {
-  color: #cbd5e1;
+.osu-top-col-achievements .achievement-card-points {
+  font-size: 10.5px;
 }
 
-/* Action Button Bar */
-.arcade-action-bar {
+/* Row 5: Play Button & Favorite Toggle */
+.osu-showcase-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.arcade-btn-primary {
-  display: inline-flex;
-  align-items: center;
   gap: 10px;
-  padding: 12px 28px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #00f0ff 0%, #0088ff 100%);
-  border: none;
-  color: #040810;
-  font-weight: 900;
-  font-size: 15px;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 0 24px rgba(0, 240, 255, 0.45);
+  margin-top: 2px;
 }
 
-.arcade-btn-primary:hover {
-  transform: scale(1.04);
-  box-shadow: 0 0 34px rgba(0, 240, 255, 0.65);
-}
-
-.arcade-btn-shortcut {
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.75;
-}
-
-.arcade-btn-secondary {
+.osu-btn-play-large {
+  flex: 1;
+  height: 40px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 12px 22px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #f1f5f9;
-  font-weight: 700;
-  font-size: 13px;
+  justify-content: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 0 20px;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
   cursor: pointer;
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.4);
   transition: all 0.2s ease;
 }
 
-.arcade-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: scale(1.02);
+.osu-btn-play-large:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(16, 185, 129, 0.55);
 }
 
-.arcade-btn-icon-round {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+.osu-btn-play-large:active {
+  transform: translateY(0);
+}
+
+.osu-btn-favorite {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #cbd5e1;
+  color: #94a3b8;
   font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-.arcade-btn-icon-round:hover {
+.osu-btn-favorite:hover {
   background: rgba(255, 255, 255, 0.16);
+  color: #fbbf24;
+}
+
+.osu-btn-favorite.active {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: #fbbf24;
+  color: #fbbf24;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
+}
+
+/* ============================================================
+   BOTTOM CARD: LARGE WIDE VIDEO PREVIEW MONITOR (CRT FRAME)
+   ============================================================ */
+.osu-video-bottom-card {
+  width: 100%;
+  flex: 0 0 calc(65% - 6px);
+  height: calc(65% - 6px);
+  max-height: calc(65% - 6px);
+  min-height: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  background: radial-gradient(circle at center, #101422 0%, #05070c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.osu-video-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  background: transparent;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.osu-snap-video {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Cover Art Fallback inside Preview Monitor */
+.osu-video-cover-fallback {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.osu-cover-fallback-bg {
+  position: absolute;
+  inset: -20px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(24px) brightness(0.3) saturate(1.3);
+  transform: scale(1.15);
+  pointer-events: none;
+}
+
+.osu-cover-fallback-img {
+  position: relative;
+  z-index: 1;
+  max-width: 80%;
+  max-height: 80%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85), 0 0 1px rgba(255, 255, 255, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.osu-video-cover-fallback:hover .osu-cover-fallback-img {
+  transform: scale(1.02);
+}
+
+.osu-video-standby {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #161b2b 0%, #07090e 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.osu-standby-grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.osu-standby-text {
+  position: relative;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.osu-crt-scanlines {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.32) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  opacity: 0.55;
+  z-index: 2;
+}
+
+/* Game Logo Overlay on Video / Cover Preview (Top-Left) */
+.osu-video-logo-overlay {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  max-width: 325px;
+  max-height: 98px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.osu-video-logo-img {
+  max-width: 100%;
+  max-height: 98px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: left top;
+  filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.95)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.85));
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.osu-video-bottom-card:hover .osu-video-logo-img {
+  transform: scale(1.02);
+  filter: drop-shadow(0 6px 22px rgba(0, 0, 0, 1)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
+}
+
+.osu-media-badge-tag {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(8px);
+  z-index: 4;
+}
+
+.osu-rec-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.osu-media-badge-tag.is-video .osu-rec-dot {
+  background-color: #ef4444;
+  animation: osuPulseRec 1.4s infinite;
+}
+
+.osu-media-badge-tag.is-cover .osu-rec-dot {
+  background-color: #38bdf8;
+  animation: none;
+}
+
+@keyframes osuPulseRec {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.85); }
+}
+
+.osu-empty-showcase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60%;
+  color: #64748b;
+  gap: 12px;
+}
+
+.osu-empty-icon {
+  font-size: 48px;
+}
+
+/* ============================================================
+   RIGHT PANEL: OSU CAROUSEL & LIVE SEARCH (35% Width)
+   ============================================================ */
+.osu-carousel-section {
+  flex: 0 0 35%;
+  width: 35%;
+  min-width: 340px;
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 12, 18, 0.5);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  box-sizing: border-box;
+}
+
+/* Top Search Bar (osu! Search Style) */
+.osu-search-bar-container {
+  padding: 14px 20px 10px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(12, 15, 24, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  z-index: 10;
+}
+
+.osu-search-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.osu-search-count {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.3px;
+}
+
+.osu-search-input-box {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.osu-search-input {
+  width: 100%;
+  height: 38px;
+  background: rgba(20, 25, 40, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0 38px 0 14px;
+  color: #ffffff;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.osu-search-input:focus {
+  border-color: #38bdf8;
+  background: rgba(26, 33, 52, 0.95);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+}
+
+.osu-search-input::placeholder {
+  color: #64748b;
+}
+
+.osu-search-mag-icon {
+  position: absolute;
+  right: 12px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.osu-search-clear-btn {
+  position: absolute;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
   color: #fff;
-  transform: scale(1.06);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
 }
 
-.arcade-btn-icon-round.active {
-  background: rgba(234, 179, 8, 0.22);
-  border-color: #eab308;
-  color: #eab308;
-  box-shadow: 0 0 16px rgba(234, 179, 8, 0.35);
+.osu-search-clear-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
-.arcade-empty-stage {
+/* ============================================================
+   OSU CAROUSEL SCROLL CONTAINER & BEATMAP CARDS
+   ============================================================ */
+.osu-carousel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 18px 24px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar for Carousel */
+.osu-carousel-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.osu-carousel-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.osu-carousel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+}
+
+.osu-carousel-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.osu-carousel-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
   color: #64748b;
-  font-size: 16px;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.osu-carousel-empty span {
+  font-size: 32px;
+}
+
+/* Console Group Container */
+.osu-console-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Console Header (Option A "Logo Hero" with Dark Frosted Glass & LED Accent) */
+.osu-group-header {
+  height: 58px;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 12px;
+  padding: 0 18px;
+  margin: 4px 0 8px 0;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(16, 20, 32, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 5px solid var(--console-color, #00f0ff);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle ambient brand color light behind the logo */
+.osu-group-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 150px;
+  height: 100%;
+  background: radial-gradient(circle at 10% 50%, var(--console-color-glow, rgba(0, 240, 255, 0.15)) 0%, transparent 75%);
+  pointer-events: none;
+  opacity: 0.35;
+  transition: opacity 0.22s ease;
+}
+
+.osu-group-header:hover {
+  background: rgba(22, 28, 44, 0.92);
+  border-color: rgba(255, 255, 255, 0.16);
+  border-left-color: var(--console-color, #00f0ff);
+  transform: translateX(-3px) scale(1.008);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55), 0 0 14px var(--console-color-glow, rgba(0, 240, 255, 0.2));
+}
+
+.osu-group-header:hover::before {
+  opacity: 0.65;
+}
+
+/* Active / Expanded Console Card Highlight (Neón Glow Effect) */
+.osu-group-header.expanded {
+  background: linear-gradient(90deg, rgba(26, 34, 54, 0.95) 0%, rgba(18, 23, 38, 0.9) 100%);
+  border: 1.5px solid var(--console-color, #00f0ff);
+  border-left: 6px solid var(--console-color, #00f0ff);
+  box-shadow: 0 0 20px var(--console-color-glow, rgba(0, 240, 255, 0.35)), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: scale(1.015);
+}
+
+.osu-group-header.expanded::before {
+  opacity: 0.85;
+}
+
+.osu-group-header-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.osu-group-logo-box {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 48px;
+  max-width: 170px;
+  height: 42px;
+  flex-shrink: 0;
+}
+
+.osu-group-logo-img {
+  max-height: 38px;
+  max-width: 155px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: left center;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.85));
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease;
+}
+
+.osu-group-header:hover .osu-group-logo-img,
+.osu-group-header.expanded .osu-group-logo-img {
+  transform: scale(1.04);
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.12));
+}
+
+.osu-group-fallback-row {
+  display: flex;
+  align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
-.arcade-empty-icon {
-  font-size: 48px;
-  opacity: 0.6;
-}
-
-/* ============================================================
-   BOTTOM HINTS BAR
-   ============================================================ */
-.arcade-bottom-hints {
-  height: 34px;
-  min-height: 34px;
+.osu-group-icon-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  font-size: 11.5px;
+  min-width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: var(--console-color, #00f0ff);
+}
+
+.osu-group-title {
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 15px;
+  font-weight: 800;
+  color: #f1f5f9;
+  letter-spacing: 0.3px;
+}
+
+.osu-group-header-right {
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.osu-group-count-pill {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 4px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.osu-group-header.expanded .osu-group-count-pill {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.osu-group-count-num {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.osu-group-count-sub {
+  font-size: 10.5px;
   font-weight: 600;
-  color: #64748b;
-  background: rgba(6, 7, 10, 0.9);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  text-transform: lowercase;
+}
+
+/* Container for Cards within an open group */
+.osu-cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 4px;
+  margin-bottom: 6px;
+}
+
+/* ============================================================
+   INDIVIDUAL OSU BEATMAP / GAME CARD
+   ============================================================ */
+.osu-game-card {
+  height: 70px;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(90deg, rgba(22, 28, 44, 0.94) 0%, rgba(16, 20, 34, 0.88) 55%, rgba(12, 16, 28, 0.75) 100%);
+  border-radius: 8px 0 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: none;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  overflow: visible;
+  scroll-margin: 14px;
+}
+
+.osu-game-card:hover {
+  background: linear-gradient(90deg, rgba(32, 40, 64, 0.96) 0%, rgba(22, 28, 46, 0.9) 55%, rgba(16, 20, 36, 0.8) 100%);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateX(-6px);
+}
+
+/* ============================================================
+   ACTIVE SELECTION: JUTS OUT TO THE LEFT (osu! Hallmark)
+   ============================================================ */
+.osu-game-card.selected {
+  transform: translateX(-20px);
+  background: linear-gradient(90deg, rgba(42, 54, 86, 0.98) 0%, rgba(30, 38, 64, 0.94) 55%, rgba(20, 26, 46, 0.88) 100%);
+  border-color: #ffd700;
+  border-width: 1.5px;
+  box-shadow: -8px 0 22px rgba(255, 215, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.65);
+  z-index: 10;
+}
+
+/* Left Disc / Pip Indicator */
+.osu-card-pip {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 14px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.osu-card-pip.active {
+  box-shadow: 0 0 12px #ffd700;
+}
+
+.osu-pip-inner {
+  width: 6px;
+  height: 6px;
+  background-color: #ffffff;
+  border-radius: 50%;
+}
+
+.osu-card-pip.active .osu-pip-inner {
+  background-color: #0b0d14;
+}
+
+/* Card Body Text */
+.osu-card-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  max-width: 68%;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.osu-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.osu-card-title {
+  font-size: 22.5px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.3px;
+}
+
+.osu-game-card.selected .osu-card-title {
+  color: #fff;
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.45);
+}
+
+.osu-card-fav-star {
+  color: #fbbf24;
+  font-size: 18px;
+}
+
+/* Right Angled Slice Image (Cover / Hero) */
+.osu-card-angled-slice {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 36%;
+  clip-path: polygon(22% 0, 100% 0, 100% 100%, 0% 100%);
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.osu-card-slice-img {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.85);
+  transition: transform 0.25s ease;
+}
+
+.osu-game-card:hover .osu-card-slice-img,
+.osu-game-card.selected .osu-card-slice-img {
+  transform: scale(1.08);
+  filter: brightness(1);
+}
+
+.osu-card-slice-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.osu-card-slice-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(16, 20, 34, 0.9) 0%, rgba(16, 20, 34, 0.15) 50%, transparent 100%);
+}
+
+/* ============================================================
+   BOTTOM BAR: OSU SONG SELECT ACTION BAR
+   ============================================================ */
+.osu-bottom-bar {
+  height: 50px;
+  min-height: 50px;
+  background: rgba(11, 13, 20, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 40;
   box-sizing: border-box;
 }
 
-.arcade-bottom-hints span {
+.osu-bottom-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.osu-bottom-hints {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.osu-bottom-hints span {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* Generic Bottom Button */
+.osu-bottom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.osu-bottom-btn:hover {
+  transform: translateY(-2px);
+}
+
+.osu-bottom-btn:active {
+  transform: translateY(0);
+}
+
+/* Random Button (osu! Vivid Cyan / Teal) */
+.osu-btn-random {
+  background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+  padding: 0 20px;
+  box-shadow: 0 4px 14px rgba(0, 180, 216, 0.35);
+}
+
+.osu-btn-random:hover {
+  background: linear-gradient(135deg, #48cae4 0%, #00b4d8 100%);
+  box-shadow: 0 6px 18px rgba(0, 180, 216, 0.5);
+}
+
+/* Options Button (osu! Deep Purple / Slate) */
+.osu-btn-options {
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+  padding: 0 20px;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.osu-btn-options:hover {
+  background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.5);
+}
+
+.osu-btn-icon {
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   EDIT OPTIONS MODAL (4 Selections)
+   ============================================================ */
+.osu-edit-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(4, 6, 12, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: osuFadeIn 0.18s ease;
+}
+
+.osu-edit-modal-card {
+  width: 100%;
+  max-width: 550px;
+  background: rgba(14, 18, 30, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: osuModalSlide 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes osuModalSlide {
+  from {
+    transform: scale(0.95) translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.osu-edit-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.osu-edit-modal-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.osu-edit-modal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  border: 1px solid;
+  font-size: 10.5px;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.osu-edit-modal-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 440px;
+}
+
+.osu-edit-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.osu-edit-modal-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.osu-edit-modal-list {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.osu-edit-item-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.osu-edit-item-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(0, 240, 255, 0.35);
+  transform: translateX(4px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+}
+
+.osu-edit-item-card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.osu-edit-item-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.osu-edit-item-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.osu-edit-item-icon.icon-data {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
+}
+
+.osu-edit-item-icon.icon-hero {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #c084fc;
+}
+
+.osu-edit-item-icon.icon-logo {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
+.osu-edit-item-icon.icon-video {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.osu-edit-item-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.osu-edit-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.osu-edit-item-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f1f5f9;
+  letter-spacing: 0.2px;
+}
+
+.osu-edit-item-desc {
+  font-size: 11.5px;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.osu-edit-item-arrow {
+  font-size: 20px;
+  font-weight: 300;
+  color: #64748b;
+  margin-left: auto;
+  transition: transform 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.osu-edit-item-card:hover .osu-edit-item-arrow {
+  transform: translateX(3px);
+  color: #00f0ff;
+}
+
+.osu-edit-tag-ok {
+  background: rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #d8b4fe;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 4px;
+}
+
+.osu-edit-tag-video {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 4px;
+}
+
+.osu-edit-tag-downloading {
+  background: rgba(0, 240, 255, 0.2);
+  border: 1px solid #00f0ff;
+  color: #00f0ff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 4px;
+}
+
+.osu-edit-modal-footer {
+  padding: 12px 20px 14px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.osu-edit-hint {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
 }
