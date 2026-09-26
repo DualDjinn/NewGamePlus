@@ -83,7 +83,8 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
         let g = state.games.iter().find(|g| g.rom_path == rom_path);
         (
             g.map(|x| x.id.clone()).unwrap_or_default(),
-            g.map(|x| x.display_name.clone().unwrap_or_else(|| x.name.clone())).unwrap_or_default(),
+            g.map(|x| x.display_name.clone().unwrap_or_else(|| x.name.clone()))
+                .unwrap_or_default(),
         )
     };
 
@@ -241,7 +242,8 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
                     save_state(&state);
                 }
 
-                let _ = crate::commands::achievements::fetch_achievements_internal(rom_path_bg, true);
+                let _ =
+                    crate::commands::achievements::fetch_achievements_internal(rom_path_bg, true);
             });
         });
 

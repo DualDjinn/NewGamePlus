@@ -85,7 +85,8 @@ pub fn set_paused(port: u16, paused: bool) -> Result<(), String> {
 }
 
 fn check_slot_filename(file: &str) -> Result<(), String> {
-    if !file.ends_with(".state") || file.contains("..") || file.contains('/') || file.contains('\\') {
+    if !file.ends_with(".state") || file.contains("..") || file.contains('/') || file.contains('\\')
+    {
         return Err("Nombre de archivo de slot inválido".into());
     }
     Ok(())
@@ -94,7 +95,9 @@ fn check_slot_filename(file: &str) -> Result<(), String> {
 pub fn slot_path_for_rom(rom_path: &str) -> PathBuf {
     let p = Path::new(rom_path);
     let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("game");
-    get_data_dir().join("ra_states").join(format!("{}.state", stem))
+    get_data_dir()
+        .join("ra_states")
+        .join(format!("{}.state", stem))
 }
 
 fn find_fresh_slot(stem: &str, before: SystemTime) -> Option<(PathBuf, Option<PathBuf>)> {
@@ -107,7 +110,11 @@ fn find_fresh_slot(stem: &str, before: SystemTime) -> Option<(PathBuf, Option<Pa
             if let Ok(mtime) = meta.modified() {
                 if mtime >= before && meta.len() > 0 {
                     let png_file = ra_states_dir.join(format!("{}.state.png", stem));
-                    let png_opt = if png_file.is_file() { Some(png_file) } else { None };
+                    let png_opt = if png_file.is_file() {
+                        Some(png_file)
+                    } else {
+                        None
+                    };
                     return Some((state_file, png_opt));
                 }
             }
@@ -125,7 +132,11 @@ fn find_fresh_slot(stem: &str, before: SystemTime) -> Option<(PathBuf, Option<Pa
                         if let Ok(mtime) = meta.modified() {
                             if mtime >= before && meta.len() > 0 {
                                 let sub_png = path.join(format!("{}.state.png", stem));
-                                let png_opt = if sub_png.is_file() { Some(sub_png) } else { None };
+                                let png_opt = if sub_png.is_file() {
+                                    Some(sub_png)
+                                } else {
+                                    None
+                                };
                                 return Some((sub_state, png_opt));
                             }
                         }
@@ -177,9 +188,8 @@ pub fn save_slot(slot_num: u8) -> Result<SaveSlot, String> {
         }
     }
 
-    let (fresh_state, fresh_png) = detected.ok_or_else(|| {
-        "RetroArch no generó el archivo de guardado a tiempo.".to_string()
-    })?;
+    let (fresh_state, fresh_png) = detected
+        .ok_or_else(|| "RetroArch no generó el archivo de guardado a tiempo.".to_string())?;
 
     // Wait a brief moment to ensure write flush
     std::thread::sleep(Duration::from_millis(100));
@@ -220,10 +230,7 @@ pub fn save_slot(slot_num: u8) -> Result<SaveSlot, String> {
 pub fn load_slot(game_id: String, file: String) -> Result<String, String> {
     check_slot_filename(&file)?;
 
-    let src = get_data_dir()
-        .join("savestates")
-        .join(&game_id)
-        .join(&file);
+    let src = get_data_dir().join("savestates").join(&game_id).join(&file);
 
     if !src.exists() {
         return Err(format!("El archivo de guardado {} no existe.", file));
@@ -531,7 +538,10 @@ pub fn start_global_hotkey_listener(app: AppHandle, stop_flag: Arc<AtomicBool>) 
                     }
                 }
 
-                if is_gamepad_down && !was_pressed && last_toggle.elapsed() > Duration::from_millis(600) {
+                if is_gamepad_down
+                    && !was_pressed
+                    && last_toggle.elapsed() > Duration::from_millis(600)
+                {
                     last_toggle = std::time::Instant::now();
                     let _ = toggle_ingame_overlay(&app);
                 }

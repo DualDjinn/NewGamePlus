@@ -112,7 +112,8 @@ pub(crate) fn fetch_achievements_internal(
         };
         let normalized_target = rom_path.replace('/', "\\").to_lowercase();
         let game = state.games.iter().find(|g| {
-            g.rom_path == rom_path || g.rom_path.replace('/', "\\").to_lowercase() == normalized_target
+            g.rom_path == rom_path
+                || g.rom_path.replace('/', "\\").to_lowercase() == normalized_target
         });
         let g_name = game.map(|g| g.name.clone());
         let d_name = game.and_then(|g| g.display_name.clone());

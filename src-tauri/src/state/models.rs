@@ -321,4 +321,3 @@ pub struct LocalVideoStats {
     pub games_with_video: usize,
     pub games_missing_video: usize,
 }
-

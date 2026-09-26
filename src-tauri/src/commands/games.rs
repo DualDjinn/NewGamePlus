@@ -322,7 +322,11 @@ pub fn save_controller_mapping(mapping: ControllerMapping) -> Result<(), String>
     Ok(())
 }
 
-pub fn resolve_game_video(rom_path: &str, game_id: &str, video_folders: &[String]) -> Option<String> {
+pub fn resolve_game_video(
+    rom_path: &str,
+    game_id: &str,
+    video_folders: &[String],
+) -> Option<String> {
     let p = Path::new(rom_path);
     let exts = ["mp4", "webm", "mkv", "avi"];
 
@@ -357,7 +361,9 @@ pub fn resolve_game_video(rom_path: &str, game_id: &str, video_folders: &[String
                     return Some(candidate.to_string_lossy().to_string());
                 }
                 if let Some(platform_dir) = parent.file_name() {
-                    let sub_candidate = vf_path.join(platform_dir).join(format!("{}.{}", stem_str, ext));
+                    let sub_candidate = vf_path
+                        .join(platform_dir)
+                        .join(format!("{}.{}", stem_str, ext));
                     if sub_candidate.is_file() {
                         return Some(sub_candidate.to_string_lossy().to_string());
                     }
@@ -407,4 +413,3 @@ pub fn scan_local_videos() -> Result<crate::state::models::LocalVideoStats, Stri
         games_missing_video,
     })
 }
-

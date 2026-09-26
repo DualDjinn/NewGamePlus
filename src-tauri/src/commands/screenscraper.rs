@@ -39,7 +39,8 @@ fn get_active_credentials() -> Result<(String, String, Option<String>, Option<St
         .clone()
         .filter(|k| !k.trim().is_empty())
         .ok_or_else(|| {
-            "No hay usuario Dev de ScreenScraper configurado. Ve a Configuración > Integraciones.".to_string()
+            "No hay usuario Dev de ScreenScraper configurado. Ve a Configuración > Integraciones."
+                .to_string()
         })?;
 
     let dev_pass = secrets::reveal_opt(&profile.screenscraper_dev_pass)
@@ -53,8 +54,7 @@ fn get_active_credentials() -> Result<(String, String, Option<String>, Option<St
         .clone()
         .filter(|u| !u.trim().is_empty());
 
-    let pass = secrets::reveal_opt(&profile.screenscraper_pass)
-        .filter(|p| !p.trim().is_empty());
+    let pass = secrets::reveal_opt(&profile.screenscraper_pass).filter(|p| !p.trim().is_empty());
 
     Ok((dev_id, dev_pass, user, pass))
 }
@@ -102,7 +102,12 @@ pub fn save_screenscraper_config(
 pub fn get_screenscraper_config() -> Result<ScreenScraperConfigStatus, String> {
     let state = lock_state();
     let profile_name = &state.settings.current_profile;
-    if let Some(profile) = state.settings.profiles.iter().find(|p| &p.name == profile_name) {
+    if let Some(profile) = state
+        .settings
+        .profiles
+        .iter()
+        .find(|p| &p.name == profile_name)
+    {
         let has_dev = profile.screenscraper_dev_id.is_some()
             && secrets::reveal_opt(&profile.screenscraper_dev_pass).is_some();
         let has_user = profile.screenscraper_user.is_some()
@@ -143,8 +148,8 @@ pub fn clear_screenscraper_config() -> Result<(), String> {
     Ok(())
 }
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use crate::commands::games::resolve_game_video;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 static CANCEL_BATCH: AtomicBool = AtomicBool::new(false);
 static BATCH_RUNNING: AtomicBool = AtomicBool::new(false);
@@ -162,7 +167,10 @@ pub struct BatchScrapeProgress {
     pub failed_count: u32,
 }
 
+pub type ScrapeProgressCallback = Box<dyn Fn(u32, &str) + Send>;
+
 /// Helper central para descargar medios (video y/o logo) de un juego
+#[allow(clippy::too_many_arguments)]
 pub fn download_game_media_sync(
     dev_id: &str,
     dev_pass: &str,
@@ -173,26 +181,22 @@ pub fn download_game_media_sync(
     platform: &str,
     game_name: &str,
     download_logo: bool,
-    progress_fn: Option<Box<dyn Fn(u32, &str) + Send>>,
+    progress_fn: Option<ScrapeProgressCallback>,
 ) -> Result<ScrapeResult, String> {
     let rom_p = Path::new(rom_path);
     if !rom_p.exists() {
-        return Err(format!("No se encontró el archivo de ROM en '{}'", rom_path));
+        return Err(format!(
+            "No se encontró el archivo de ROM en '{}'",
+            rom_path
+        ));
     }
 
     if let Some(ref cb) = progress_fn {
         cb(5, "searching");
     }
 
-    let media_urls = screenscraper::fetch_game_media(
-        dev_id,
-        dev_pass,
-        user,
-        pass,
-        rom_p,
-        platform,
-        game_name,
-    )?;
+    let media_urls =
+        screenscraper::fetch_game_media(dev_id, dev_pass, user, pass, rom_p, platform, game_name)?;
 
     if let Some(ref cb) = progress_fn {
         cb(15, "starting_download");
@@ -203,21 +207,22 @@ pub fn download_game_media_sync(
 
     // 1. Descarga de Video Snap
     if let Some(video_url) = &media_urls.video_url {
-        let target_video_dest: PathBuf = if let (Some(parent), Some(stem)) = (rom_p.parent(), rom_p.file_stem()) {
-            let videos_folder = parent.join("videos");
-            let _ = std::fs::create_dir_all(&videos_folder);
-            if videos_folder.exists() {
-                videos_folder.join(format!("{}.mp4", stem.to_string_lossy()))
+        let target_video_dest: PathBuf =
+            if let (Some(parent), Some(stem)) = (rom_p.parent(), rom_p.file_stem()) {
+                let videos_folder = parent.join("videos");
+                let _ = std::fs::create_dir_all(&videos_folder);
+                if videos_folder.exists() {
+                    videos_folder.join(format!("{}.mp4", stem.to_string_lossy()))
+                } else {
+                    let fallback = get_data_dir().join("videos");
+                    let _ = std::fs::create_dir_all(&fallback);
+                    fallback.join(format!("{}.mp4", game_id))
+                }
             } else {
                 let fallback = get_data_dir().join("videos");
                 let _ = std::fs::create_dir_all(&fallback);
                 fallback.join(format!("{}.mp4", game_id))
-            }
-        } else {
-            let fallback = get_data_dir().join("videos");
-            let _ = std::fs::create_dir_all(&fallback);
-            fallback.join(format!("{}.mp4", game_id))
-        };
+            };
 
         match screenscraper::download_asset(
             video_url,
@@ -307,7 +312,10 @@ pub fn scrape_game_video(
     let (dev_id, dev_pass, user, pass) = get_active_credentials()?;
     let rom_p = Path::new(&rom_path);
     if !rom_p.exists() {
-        return Err(format!("No se encontró el archivo de ROM en '{}'", rom_path));
+        return Err(format!(
+            "No se encontró el archivo de ROM en '{}'",
+            rom_path
+        ));
     }
 
     let _ = app.emit(
@@ -343,21 +351,22 @@ pub fn scrape_game_video(
 
     // 1. Descarga de Video Snap
     if let Some(video_url) = &media_urls.video_url {
-        let target_video_dest: PathBuf = if let (Some(parent), Some(stem)) = (rom_p.parent(), rom_p.file_stem()) {
-            let videos_folder = parent.join("videos");
-            let _ = std::fs::create_dir_all(&videos_folder);
-            if videos_folder.exists() {
-                videos_folder.join(format!("{}.mp4", stem.to_string_lossy()))
+        let target_video_dest: PathBuf =
+            if let (Some(parent), Some(stem)) = (rom_p.parent(), rom_p.file_stem()) {
+                let videos_folder = parent.join("videos");
+                let _ = std::fs::create_dir_all(&videos_folder);
+                if videos_folder.exists() {
+                    videos_folder.join(format!("{}.mp4", stem.to_string_lossy()))
+                } else {
+                    let fallback = get_data_dir().join("videos");
+                    let _ = std::fs::create_dir_all(&fallback);
+                    fallback.join(format!("{}.mp4", game_id))
+                }
             } else {
                 let fallback = get_data_dir().join("videos");
                 let _ = std::fs::create_dir_all(&fallback);
                 fallback.join(format!("{}.mp4", game_id))
-            }
-        } else {
-            let fallback = get_data_dir().join("videos");
-            let _ = std::fs::create_dir_all(&fallback);
-            fallback.join(format!("{}.mp4", game_id))
-        };
+            };
 
         let app_handle = app.clone();
         let current_gid = game_id.clone();
@@ -471,11 +480,11 @@ pub fn cancel_scrape_library_videos() -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn scrape_library_videos(
-    app: tauri::AppHandle,
-    only_missing: bool,
-) -> Result<(), String> {
-    if BATCH_RUNNING.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
+pub fn scrape_library_videos(app: tauri::AppHandle, only_missing: bool) -> Result<(), String> {
+    if BATCH_RUNNING
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
         return Err("Ya hay una descarga masiva de videos en ejecución.".to_string());
     }
 
@@ -508,9 +517,16 @@ pub fn scrape_library_videos(
                         current_index: idx,
                         total,
                         game_id: game.id.clone(),
-                        game_name: game.display_name.clone().unwrap_or_else(|| game.name.clone()),
+                        game_name: game
+                            .display_name
+                            .clone()
+                            .unwrap_or_else(|| game.name.clone()),
                         status: "cancelled".to_string(),
-                        percent: if total > 0 { (idx as u32 * 100) / total as u32 } else { 0 },
+                        percent: if total > 0 {
+                            (idx as u32 * 100) / total as u32
+                        } else {
+                            0
+                        },
                         downloaded_count,
                         skipped_count,
                         failed_count,
@@ -520,12 +536,21 @@ pub fn scrape_library_videos(
                 return;
             }
 
-            let game_title = game.display_name.clone().unwrap_or_else(|| game.name.clone());
+            let game_title = game
+                .display_name
+                .clone()
+                .unwrap_or_else(|| game.name.clone());
 
             // Si only_missing es true y ya tiene video resoluble, omitir
-            if only_missing && resolve_game_video(&game.rom_path, &game.id, &video_folders).is_some() {
+            if only_missing
+                && resolve_game_video(&game.rom_path, &game.id, &video_folders).is_some()
+            {
                 skipped_count += 1;
-                let pct = if total > 0 { ((idx + 1) as u32 * 100) / total as u32 } else { 100 };
+                let pct = if total > 0 {
+                    ((idx + 1) as u32 * 100) / total as u32
+                } else {
+                    100
+                };
                 let _ = app.emit(
                     "scrape-batch-progress",
                     BatchScrapeProgress {
@@ -543,7 +568,11 @@ pub fn scrape_library_videos(
                 continue;
             }
 
-            let pct = if total > 0 { (idx as u32 * 100) / total as u32 } else { 0 };
+            let pct = if total > 0 {
+                (idx as u32 * 100) / total as u32
+            } else {
+                0
+            };
             let _ = app.emit(
                 "scrape-batch-progress",
                 BatchScrapeProgress {
@@ -583,7 +612,11 @@ pub fn scrape_library_videos(
                             "logoPath": res.logo_path,
                         }),
                     );
-                    let end_pct = if total > 0 { ((idx + 1) as u32 * 100) / total as u32 } else { 100 };
+                    let end_pct = if total > 0 {
+                        ((idx + 1) as u32 * 100) / total as u32
+                    } else {
+                        100
+                    };
                     let _ = app.emit(
                         "scrape-batch-progress",
                         BatchScrapeProgress {
@@ -601,7 +634,11 @@ pub fn scrape_library_videos(
                 }
                 _ => {
                     failed_count += 1;
-                    let end_pct = if total > 0 { ((idx + 1) as u32 * 100) / total as u32 } else { 100 };
+                    let end_pct = if total > 0 {
+                        ((idx + 1) as u32 * 100) / total as u32
+                    } else {
+                        100
+                    };
                     let _ = app.emit(
                         "scrape-batch-progress",
                         BatchScrapeProgress {

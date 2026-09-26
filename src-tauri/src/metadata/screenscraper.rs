@@ -116,10 +116,7 @@ pub fn platform_to_screenscraper_id(platform: &str) -> Option<u32> {
 }
 
 /// Calcula CRC32 (IEEE 802.3) y MD5 sobre archivos de hasta `max_bytes` (para no congelar discos gigantes).
-pub fn compute_file_hashes(
-    path: &Path,
-    max_bytes: u64,
-) -> (Option<String>, Option<String>, u64) {
+pub fn compute_file_hashes(path: &Path, max_bytes: u64) -> (Option<String>, Option<String>, u64) {
     let Ok(file) = fs::File::open(path) else {
         return (None, None, 0);
     };
@@ -242,10 +239,14 @@ pub fn verify_credentials(
         .text()
         .map_err(|e| format!("Error leyendo respuesta: {}", e))?;
 
-    if body_text.contains("Erreur :") || body_text.contains("Error :") {
-        if body_text.contains("Identifiants") || body_text.contains("dev") || body_text.contains("password") {
-            return Err("Credenciales de ScreenScraper inválidas. Verifica usuario y contraseña.".into());
-        }
+    if (body_text.contains("Erreur :") || body_text.contains("Error :"))
+        && (body_text.contains("Identifiants")
+            || body_text.contains("dev")
+            || body_text.contains("password"))
+    {
+        return Err(
+            "Credenciales de ScreenScraper inválidas. Verifica usuario y contraseña.".into(),
+        );
     }
 
     Ok(true)
@@ -425,7 +426,10 @@ pub fn fetch_game_media(
     let search_title = clean_game_name_for_search(game_name);
     let mut url2 = "https://api.screenscraper.fr/api2/jeuRecherche.php".to_string();
     append_auth_params(&mut url2, dev_id, dev_pass, user, pass);
-    url2.push_str(&format!("&recherche={}", urlencoding::encode(&search_title)));
+    url2.push_str(&format!(
+        "&recherche={}",
+        urlencoding::encode(&search_title)
+    ));
     if let Some(sid) = sys_id {
         url2.push_str(&format!("&systemeid={}", sid));
     }
@@ -566,4 +570,3 @@ where
 
     Ok(dest_path.to_path_buf())
 }
-

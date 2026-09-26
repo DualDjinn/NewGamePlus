@@ -532,4 +532,3 @@ pub fn clear_stale_autos() {
         }
     }
 }
-

@@ -58,11 +58,14 @@ fn main() {
             // F9: Menú in-game (overlay para guardar y cargar estados)
             use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
             let handle_f9 = app.handle().clone();
-            if let Err(e) = app.global_shortcut().on_shortcut("F9", move |_app, _shortcut, event| {
-                if event.state() == ShortcutState::Pressed {
-                    let _ = crate::emulator::toggle_ingame_overlay(&handle_f9);
-                }
-            }) {
+            if let Err(e) =
+                app.global_shortcut()
+                    .on_shortcut("F9", move |_app, _shortcut, event| {
+                        if event.state() == ShortcutState::Pressed {
+                            let _ = crate::emulator::toggle_ingame_overlay(&handle_f9);
+                        }
+                    })
+            {
                 eprintln!("Global shortcut F9 failed: {}", e);
             }
 
