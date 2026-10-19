@@ -139,6 +139,30 @@ export const ConsoleIcon: React.FC<ConsoleIconProps> = ({
     );
   }
 
+  // Nintendo Wii
+  if (p === "WII" || p === "NINTENDO WII" || p === "NINTENDO_WII") {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        aria-hidden="true"
+      >
+        <rect x="7" y="2" width="10" height="20" rx="3" />
+        <circle cx="12" cy="7" r="1.5" />
+        <circle cx="12" cy="11" r="0.8" />
+        <circle cx="12" cy="14" r="0.8" />
+        <line x1="10" y1="18" x2="14" y2="18" />
+      </svg>
+    );
+  }
+
   // Game Boy Advance
   if (p === "GBA" || p.includes("ADVANCE")) {
     return (

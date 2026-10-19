@@ -90,9 +90,124 @@ pub fn timestamp_to_year(ts: i64) -> Option<i32> {
 fn client_with_auth(_api_key: &str) -> Result<reqwest::blocking::Client, String> {
     let client = reqwest::blocking::Client::builder()
         .user_agent("gameFlix/1.0 (Windows)")
+        .timeout(std::time::Duration::from_secs(12))
         .build()
         .map_err(|e| e.to_string())?;
     Ok(client)
+}
+
+fn get_with_retry(
+    client: &reqwest::blocking::Client,
+    url: &str,
+    api_key: &str,
+) -> Result<reqwest::blocking::Response, String> {
+    let mut resp = client
+        .get(url)
+        .header("Authorization", format!("Bearer {}", api_key.trim()))
+        .send()
+        .map_err(|e| format!("Error en petición HTTP: {}", e))?;
+
+    if resp.status().as_u16() == 429 {
+        // Rate limited por SteamGridDB: esperar 1.8s y reintentar una vez
+        std::thread::sleep(std::time::Duration::from_millis(1800));
+        resp = client
+            .get(url)
+            .header("Authorization", format!("Bearer {}", api_key.trim()))
+            .send()
+            .map_err(|e| format!("Error en reintento HTTP (429): {}", e))?;
+    }
+
+    Ok(resp)
+}
+
+pub fn clean_queries_for_sgdb(raw_title: &str) -> Vec<String> {
+    let mut results: Vec<String> = Vec::new();
+
+    // 1. Quitar extensión de archivo si la tiene (.sfc, .zip, .iso, .cue, .chd, etc.)
+    let base_name = Path::new(raw_title)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(raw_title);
+
+    // 2. Normalizar artículos en inglés al revés: "Legend of Zelda, The" -> "The Legend of Zelda"
+    let with_article = if let Some(idx) = base_name.find(", The") {
+        let prefix = &base_name[..idx];
+        let suffix = &base_name[idx + 5..];
+        format!("The {}{}", prefix, suffix)
+    } else if let Some(idx) = base_name.find(", A") {
+        let prefix = &base_name[..idx];
+        let suffix = &base_name[idx + 3..];
+        format!("A {}{}", prefix, suffix)
+    } else {
+        base_name.to_string()
+    };
+
+    // 3. Remover números de releases de scene: "0123 - Mario" -> "Mario"
+    let no_leading_num = if let Some(idx) = with_article.find(" - ") {
+        let prefix = with_article[..idx].trim();
+        if prefix.chars().all(|c| c.is_ascii_digit()) && prefix.len() >= 3 {
+            with_article[idx + 3..].trim().to_string()
+        } else {
+            with_article.clone()
+        }
+    } else {
+        with_article.clone()
+    };
+
+    // 4. Quitar paréntesis y corchetes: "(USA)", "[!]", "(Rev 1)", "[Disc 1 of 2]"
+    let no_paren = no_leading_num.split('(').next().unwrap_or(&no_leading_num);
+    let no_bracket = no_paren.split('[').next().unwrap_or(no_paren);
+    let clean_stem = no_bracket.trim();
+
+    if clean_stem.is_empty() {
+        results.push(raw_title.to_string());
+        return results;
+    }
+
+    // 5. Query A: quitar caracteres especiales que rompen el autocomplete de SGDB (-, _, :, ~, !, /)
+    let unpunct = clean_stem.replace(['_', '-', ':', '~', '!', '/'], " ");
+    let normalized = unpunct.split_whitespace().collect::<Vec<_>>().join(" ");
+    if !normalized.is_empty() {
+        results.push(normalized.clone());
+    }
+
+    // 6. Query B: el nombre limpio con su puntuación original si era distinto
+    if clean_stem != normalized && !results.contains(&clean_stem.to_string()) {
+        results.push(clean_stem.to_string());
+    }
+
+    // 7. Query C: si tenía subtítulo con guión ("Mario Kart - Super Circuit"), probar el título principal
+    if let Some(idx) = clean_stem.find(" - ") {
+        let main_part = clean_stem[..idx].trim();
+        if main_part.len() >= 3 && !results.contains(&main_part.to_string()) {
+            results.push(main_part.to_string());
+        }
+    }
+
+    // 8. Query D: nombre original intacto
+    let raw_trimmed = raw_title.trim().to_string();
+    if !results.contains(&raw_trimmed) {
+        results.push(raw_trimmed);
+    }
+
+    results
+}
+
+pub fn search_best_game_candidate(
+    api_key: &str,
+    query: &str,
+) -> Result<Option<SGDBGameCandidate>, String> {
+    let queries = clean_queries_for_sgdb(query);
+
+    for q in &queries {
+        if let Ok(candidates) = search_game_candidates(api_key, q) {
+            if let Some(first) = candidates.into_iter().next() {
+                return Ok(Some(first));
+            }
+        }
+    }
+
+    Ok(None)
 }
 
 pub fn validate_api_key(api_key: &str) -> Result<bool, String> {
@@ -100,11 +215,11 @@ pub fn validate_api_key(api_key: &str) -> Result<bool, String> {
         return Ok(false);
     }
     let client = client_with_auth(api_key)?;
-    let resp = client
-        .get("https://www.steamgriddb.com/api/v2/games/id/1")
-        .header("Authorization", format!("Bearer {}", api_key.trim()))
-        .send()
-        .map_err(|e| e.to_string())?;
+    let resp = get_with_retry(
+        &client,
+        "https://www.steamgriddb.com/api/v2/games/id/1",
+        api_key,
+    )?;
 
     if resp.status().is_success() {
         #[derive(Deserialize)]
@@ -130,11 +245,7 @@ pub fn search_game_candidates(api_key: &str, term: &str) -> Result<Vec<SGDBGameC
         urlencoding::encode(clean_term)
     );
 
-    let resp = client
-        .get(&url)
-        .header("Authorization", format!("Bearer {}", api_key.trim()))
-        .send()
-        .map_err(|e| format!("Error en petición a SteamGridDB: {}", e))?;
+    let resp = get_with_retry(&client, &url, api_key)?;
 
     if !resp.status().is_success() {
         return Err(format!(
@@ -181,11 +292,7 @@ pub fn get_heroes_for_game(api_key: &str, game_id: u64) -> Result<Vec<SGDBHero>,
     let client = client_with_auth(api_key)?;
     let url = format!("https://www.steamgriddb.com/api/v2/heroes/game/{}", game_id);
 
-    let resp = client
-        .get(&url)
-        .header("Authorization", format!("Bearer {}", api_key.trim()))
-        .send()
-        .map_err(|e| format!("Error en petición de heroes a SteamGridDB: {}", e))?;
+    let resp = get_with_retry(&client, &url, api_key)?;
 
     if !resp.status().is_success() {
         return Err(format!(
@@ -246,31 +353,17 @@ pub fn get_heroes_for_game(api_key: &str, game_id: u64) -> Result<Vec<SGDBHero>,
 }
 
 pub fn search_heroes(api_key: &str, query: &str) -> Result<Vec<SGDBHero>, String> {
-    // 1. Limpiar nombre quitando paréntesis y tags
-    let cleaned = query
-        .split('(')
-        .next()
-        .unwrap_or(query)
-        .split('[')
-        .next()
-        .unwrap_or(query)
-        .trim();
+    let queries = clean_queries_for_sgdb(query);
 
-    let candidates = search_game_candidates(api_key, cleaned)?;
-    if candidates.is_empty() {
-        // Intento secundario con query original
-        let fallback_candidates = search_game_candidates(api_key, query)?;
-        if fallback_candidates.is_empty() {
-            return Ok(Vec::new());
-        }
-        return get_heroes_for_game(api_key, fallback_candidates[0].id);
-    }
-
-    // Buscar heroes para el primer candidato con resultados
-    for candidate in &candidates {
-        if let Ok(heroes) = get_heroes_for_game(api_key, candidate.id) {
-            if !heroes.is_empty() {
-                return Ok(heroes);
+    for q in &queries {
+        if let Ok(candidates) = search_game_candidates(api_key, q) {
+            for candidate in candidates.into_iter().take(3) {
+                if let Ok(heroes) = get_heroes_for_game(api_key, candidate.id) {
+                    if !heroes.is_empty() {
+                        return Ok(heroes);
+                    }
+                }
+                std::thread::sleep(std::time::Duration::from_millis(150));
             }
         }
     }
@@ -333,11 +426,7 @@ pub fn get_logos_for_game(api_key: &str, game_id: u64) -> Result<Vec<SGDBLogo>, 
     let client = client_with_auth(api_key)?;
     let url = format!("https://www.steamgriddb.com/api/v2/logos/game/{}", game_id);
 
-    let resp = client
-        .get(&url)
-        .header("Authorization", format!("Bearer {}", api_key.trim()))
-        .send()
-        .map_err(|e| format!("Error en petición de logos a SteamGridDB: {}", e))?;
+    let resp = get_with_retry(&client, &url, api_key)?;
 
     if !resp.status().is_success() {
         return Err(format!(
@@ -400,28 +489,17 @@ pub fn get_logos_for_game(api_key: &str, game_id: u64) -> Result<Vec<SGDBLogo>, 
 }
 
 pub fn search_logos(api_key: &str, query: &str) -> Result<Vec<SGDBLogo>, String> {
-    let cleaned = query
-        .split('(')
-        .next()
-        .unwrap_or(query)
-        .split('[')
-        .next()
-        .unwrap_or(query)
-        .trim();
+    let queries = clean_queries_for_sgdb(query);
 
-    let candidates = search_game_candidates(api_key, cleaned)?;
-    if candidates.is_empty() {
-        let fallback_candidates = search_game_candidates(api_key, query)?;
-        if fallback_candidates.is_empty() {
-            return Ok(Vec::new());
-        }
-        return get_logos_for_game(api_key, fallback_candidates[0].id);
-    }
-
-    for candidate in &candidates {
-        if let Ok(logos) = get_logos_for_game(api_key, candidate.id) {
-            if !logos.is_empty() {
-                return Ok(logos);
+    for q in &queries {
+        if let Ok(candidates) = search_game_candidates(api_key, q) {
+            for candidate in candidates.into_iter().take(3) {
+                if let Ok(logos) = get_logos_for_game(api_key, candidate.id) {
+                    if !logos.is_empty() {
+                        return Ok(logos);
+                    }
+                }
+                std::thread::sleep(std::time::Duration::from_millis(150));
             }
         }
     }
@@ -504,11 +582,7 @@ pub fn get_grids_for_game(api_key: &str, game_id: u64) -> Result<Vec<SGDBGrid>, 
         game_id
     );
 
-    let resp = client
-        .get(&url)
-        .header("Authorization", format!("Bearer {}", api_key.trim()))
-        .send()
-        .map_err(|e| format!("Error en petición de grids a SteamGridDB: {}", e))?;
+    let resp = get_with_retry(&client, &url, api_key)?;
 
     if !resp.status().is_success() {
         return Err(format!(

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PLATFORM_CORES } from "../../lib/cores";
 import ControllerMappingModal from "../ControllerMappingModal";
 
@@ -18,16 +19,17 @@ export default function EmulationTab({
   getDefaultCore,
 }: EmulationTabProps) {
   const [mappingModalOpen, setMappingModalOpen] = useState(false);
+  const { t } = useTranslation();
   return (
     <div className="settings-tab-panel">
       <div className="settings-panel-header">
-        <h2>Emulación &amp; Cores</h2>
-        <p>Configuración de núcleos de RetroArch y detección de controles.</p>
+        <h2>{t("settings.emulation.panelTitle")}</h2>
+        <p>{t("settings.emulation.panelDesc")}</p>
       </div>
 
       {/* Detección de Gamepad */}
       <section className="settings-card" id="settings-gamepads">
-        <h3>Mandos y Gamepads Conectados</h3>
+        <h3>{t("settings.emulation.padsTitle")}</h3>
         <div className="settings-gamepad-box">
           {connectedGamepads.length > 0 ? (
             <div className="settings-gamepad-list">
@@ -36,7 +38,7 @@ export default function EmulationTab({
                   <span className="settings-gamepad-icon">🎮</span>
                   <div>
                     <span className="settings-gamepad-name">{name}</span>
-                    <span className="settings-badge-ok">Conectado y Activo</span>
+                    <span className="settings-badge-ok">{t("settings.emulation.padActive")}</span>
                   </div>
                 </div>
               ))}
@@ -44,8 +46,8 @@ export default function EmulationTab({
           ) : (
             <div className="settings-gamepad-empty">
               <span className="settings-gamepad-icon-muted">🎮</span>
-              <p>Ningún gamepad detectado en este momento.</p>
-              <span className="settings-hint">Conecta un mando por USB o Bluetooth para navegar con gamepad.</span>
+              <p>{t("settings.emulation.padEmpty")}</p>
+              <span className="settings-hint">{t("settings.emulation.padHint")}</span>
             </div>
           )}
         </div>
@@ -68,7 +70,7 @@ export default function EmulationTab({
             }}
             onClick={() => setMappingModalOpen(true)}
           >
-            🎮 Personalizar Mapeo de Botones (RetroPad)
+            {t("settings.emulation.customizeMapping")}
           </button>
         </div>
       </section>
@@ -76,9 +78,9 @@ export default function EmulationTab({
       {/* Asignación de Cores */}
       {uniquePlatforms.length > 0 ? (
         <section className="settings-card" id="settings-platform-cores">
-          <h3>Cores por Plataforma</h3>
+          <h3>{t("settings.emulation.coresTitle")}</h3>
           <p className="settings-hint" style={{ marginBottom: "16px" }}>
-            Core por defecto que se usará al lanzar juegos de cada consola.
+            {t("settings.emulation.coresDesc")}
           </p>
           <div className="settings-platform-cores">
             {uniquePlatforms.map((platform) => {
@@ -104,9 +106,9 @@ export default function EmulationTab({
         </section>
       ) : (
         <section className="settings-card" id="settings-platform-cores">
-          <h3>Cores por Plataforma</h3>
+          <h3>{t("settings.emulation.coresTitle")}</h3>
           <p className="settings-hint">
-            Escanea tu biblioteca de juegos para configurar los cores de cada plataforma.
+            {t("settings.emulation.coresEmpty")}
           </p>
         </section>
       )}

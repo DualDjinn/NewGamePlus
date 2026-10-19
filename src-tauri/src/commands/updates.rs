@@ -24,7 +24,7 @@ pub fn check_emulator_updates(app: tauri::AppHandle) -> Result<Vec<EmulatorInfo>
 pub fn update_emulator(app: tauri::AppHandle, id: String) -> Result<String, String> {
     match id.as_str() {
         "retroarch" => updater::update_retroarch(&app),
-        "rpcs3" | "azahar" | "sunshine" => updater::update_standalone(&app, &id),
+        "rpcs3" | "azahar" | "eden" | "sunshine" => updater::update_standalone(&app, &id),
         _ => Err(format!("Emulador no soportado: {}", id)),
     }
 }

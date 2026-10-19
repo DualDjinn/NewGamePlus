@@ -1,7 +1,7 @@
 use crate::metadata::screenscraper::{self, verify_credentials};
 use crate::state::lock_state;
 use crate::state::secrets;
-use crate::state::storage::{get_data_dir, save_state};
+use crate::state::storage::{get_data_dir, log_error, save_state};
 use crate::steamgriddb;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -24,7 +24,8 @@ pub struct ScrapeResult {
 }
 
 /// Helper para obtener credenciales activas del perfil actual
-fn get_active_credentials() -> Result<(String, String, Option<String>, Option<String>), String> {
+pub(crate) fn get_active_credentials(
+) -> Result<(String, String, Option<String>, Option<String>), String> {
     let state = lock_state();
     let profile_name = &state.settings.current_profile;
     let profile = state
@@ -634,6 +635,17 @@ pub fn scrape_library_videos(app: tauri::AppHandle, only_missing: bool) -> Resul
                 }
                 _ => {
                     failed_count += 1;
+                    let reason = match &scrape_res {
+                        Err(e) => format!("error: {}", e),
+                        Ok(res) => format!("sin_medios: {}", res.message),
+                    };
+                    // sanitize defensivo: ningún Err con URL debe llegar al log con credenciales
+                    log_error(&format!(
+                        "[scrape-batch] [{}] '{}': {}",
+                        game.platform,
+                        game_title,
+                        screenscraper::sanitize_ss_message(&reason)
+                    ));
                     let end_pct = if total > 0 {
                         ((idx + 1) as u32 * 100) / total as u32
                     } else {

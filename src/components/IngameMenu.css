@@ -220,6 +220,68 @@
 }
 
 /* ==========================================================================
+   Menu Tabs (Ranuras / Mando)
+   ========================================================================== */
+.ingame-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 32px 0;
+}
+
+.ingame-tab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: #94a3b8;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ingame-tab-btn:hover:not(:disabled) {
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ingame-tab-btn.active {
+  color: #fff;
+  border-color: rgba(14, 165, 233, 0.55);
+  background: rgba(14, 165, 233, 0.14);
+  box-shadow: 0 0 18px rgba(14, 165, 233, 0.18);
+}
+
+.ingame-tab-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Mando Tab
+   ========================================================================== */
+.ingame-gamepad-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.ingame-open-mapping-btn {
+  max-width: 340px;
+  justify-content: center;
+  font-size: 0.95rem;
+  padding: 14px 20px;
+}
+
+.ingame-relaunch-hint {
+  max-width: 640px;
+}
+
+/* ==========================================================================
    Main Body: Unified Slots Grid
    ========================================================================== */
 .ingame-body {

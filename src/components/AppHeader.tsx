@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Game, LayoutStyle, Section } from "../types";
 import type { SettingsSearchOption } from "../lib/settingsSearch";
 import { getCoverUrl } from "../lib/tauri";
+import { getLocalizedGenreName } from "../lib/genreLocalization";
 import { PLATFORM_COLORS } from "../lib/platforms";
 import { ConsoleIcon } from "./ConsoleIcon";
 import { VinylPlayer } from "./VinylPlayer";
@@ -88,7 +89,7 @@ export default function AppHeader(props: AppHeaderProps) {
                 <button
                   type="button"
                   className="app-navbar-search-clear"
-                  aria-label="Limpiar búsqueda"
+                  aria-label={t("common.clearSearch")}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSettingsSearchQuery("");
@@ -177,7 +178,7 @@ export default function AppHeader(props: AppHeaderProps) {
                 <button
                   type="button"
                   className="app-navbar-search-clear"
-                  aria-label="Limpiar búsqueda"
+                  aria-label={t("common.clearSearch")}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSearchQuery("");
@@ -238,7 +239,7 @@ export default function AppHeader(props: AppHeaderProps) {
                                 <span className="app-navbar-search-item-year">{game.release_year}</span>
                               )}
                               {game.genre && (
-                                <span className="app-navbar-search-item-genre">{game.genre}</span>
+                                <span className="app-navbar-search-item-genre">{getLocalizedGenreName(game.genre, t)}</span>
                               )}
                             </span>
                           </div>
@@ -266,8 +267,8 @@ export default function AppHeader(props: AppHeaderProps) {
               type="button"
               className="app-fullscreen-btn"
               onClick={handleToggleFullscreen}
-              title={isFullscreen ? "Salir de pantalla completa (F11)" : "Pantalla completa (F11)"}
-              aria-label="Pantalla completa"
+              title={isFullscreen ? `${t("common.exitFullscreen")} (F11)` : `${t("common.fullscreen")} (F11)`}
+              aria-label={t("common.fullscreen")}
             >
               {isFullscreen ? <MinimizeIcon /> : <MaximizeIcon />}
             </button>

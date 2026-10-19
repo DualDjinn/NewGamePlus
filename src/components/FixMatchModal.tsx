@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import type { Game, FixMatchCandidate, SGDBGrid } from "../types";
-import { fixMatchSearch, fixMatchGetCovers, applyFixMatch, getSteamGridDBKey } from "../lib/tauri";
+import { fixMatchSearch, fixMatchGetCovers, applyFixMatch, getSteamGridDBKey, updateGameTitle } from "../lib/tauri";
 import "./FixMatchModal.css";
 
 interface Props {
@@ -19,6 +20,7 @@ function cleanTitle(name: string): string {
 }
 
 export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) {
+  const { t } = useTranslation();
   const trapRef = useFocusTrap<HTMLDivElement>();
   const [title, setTitle] = useState(
     game.display_name || cleanTitle(game.name)
@@ -40,6 +42,22 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
   const [variantsLoading, setVariantsLoading] = useState(false);
 
   const [applying, setApplying] = useState(false);
+  const [savingTitle, setSavingTitle] = useState(false);
+
+  async function handleSaveTitleOnly() {
+    if (!title.trim()) return;
+    setSavingTitle(true);
+    setError(null);
+    try {
+      const updated = await updateGameTitle(game.id, title.trim());
+      onMatchApplied(updated);
+      onClose();
+    } catch (e) {
+      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : t("pickers.errSaveTitle");
+      setError(msg);
+      setSavingTitle(false);
+    }
+  }
 
   useEffect(() => {
     getSteamGridDBKey().then((k) => {
@@ -67,10 +85,10 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
       );
       setCandidates(results);
       if (results.length === 0) {
-        setError("No se encontraron coincidencias. Prueba modificando el título o cambiando de agente.");
+        setError(t("pickers.noMatches"));
       }
     } catch (e) {
-      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al buscar";
+      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : t("pickers.errSearch");
       setError(msg);
       setCandidates([]);
     } finally {
@@ -88,7 +106,7 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
 
     const chosenUrl = customCoverUrl || candidate.cover_url || candidate.cover_thumb;
     if (applyCover && !chosenUrl) {
-      setError("Este candidato no tiene una URL de carátula válida.");
+      setError(t("pickers.noCoverUrl"));
       return;
     }
 
@@ -110,7 +128,7 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
       onMatchApplied(updated);
       onClose();
     } catch (e) {
-      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al aplicar cambios";
+      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : t("pickers.errApply");
       setError(msg);
       setApplying(false);
     }
@@ -124,10 +142,10 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
       const grids = await fixMatchGetCovers(candidate.id);
       setCoverVariants(grids);
       if (grids.length === 0) {
-        setError("No se encontraron carátulas adicionales para este juego.");
+        setError(t("pickers.noExtraCovers"));
       }
     } catch (e) {
-      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al obtener carátulas";
+      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : t("pickers.errCovers");
       setError(msg);
       setCoverVariants([]);
     } finally {
@@ -142,7 +160,7 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Corregir Coincidencia"
+        aria-label={t("pickers.fixAria")}
         tabIndex={-1}
         ref={trapRef}
       >
@@ -154,9 +172,9 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
               <path d="M9 9h6v6H9z" />
               <path d="m21 15-3-3 3-3" />
             </svg>
-            <h2 className="fixmatch-title">Corregir Coincidencia</h2>
+            <h2 className="fixmatch-title">{t("pickers.fixTitle")}</h2>
           </div>
-          <button className="fixmatch-close-btn" onClick={onClose} aria-label="Cerrar">
+          <button className="fixmatch-close-btn" onClick={onClose} aria-label={t("common.close")}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -171,11 +189,11 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
             className={`fixmatch-tab ${!activeCandidate ? "active" : ""}`}
             onClick={() => setActiveCandidate(null)}
           >
-            Opciones de Búsqueda
+            {t("pickers.searchOptions")}
           </button>
           {activeCandidate && (
             <button type="button" className="fixmatch-tab active">
-              Carátulas: {activeCandidate.name}
+              {t("pickers.coversFor", { name: activeCandidate.name })}
             </button>
           )}
         </div>
@@ -186,7 +204,7 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
               {/* Formulario de búsqueda estilo Plex */}
               <div className="fixmatch-form-grid">
                 <div className="fixmatch-field">
-                  <label htmlFor="fixmatch-input-title">Título</label>
+                  <label htmlFor="fixmatch-input-title">{t("pickers.titleLabel")}</label>
                   <input
                     id="fixmatch-input-title"
                     type="text"
@@ -197,13 +215,13 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                       e.stopPropagation();
                       if (e.key === "Enter") handleSearch();
                     }}
-                    placeholder="Ej. Need for Speed Carbon"
+                    placeholder={t("pickers.titlePh")}
                     autoFocus
                   />
                 </div>
 
                 <div className="fixmatch-field">
-                  <label htmlFor="fixmatch-select-agent">Agente</label>
+                  <label htmlFor="fixmatch-select-agent">{t("pickers.fixAgent")}</label>
                   <select
                     id="fixmatch-select-agent"
                     className="fixmatch-select"
@@ -211,13 +229,13 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                     onChange={(e) => setAgent(e.target.value as "steamgriddb" | "libretro" | "steam")}
                   >
                     <option value="steam">Steam Store (PC)</option>
-                    <option value="steamgriddb">SteamGridDB (Carátulas HD)</option>
-                    <option value="libretro">Libretro (Repositorio Libre)</option>
+                    <option value="steamgriddb">{t("pickers.fixAgentSgdb")}</option>
+                    <option value="libretro">{t("pickers.fixAgentLibretro")}</option>
                   </select>
                 </div>
 
                 <div className="fixmatch-field">
-                  <label htmlFor="fixmatch-input-year">Año (opcional)</label>
+                  <label htmlFor="fixmatch-input-year">{t("pickers.fixYear")}</label>
                   <input
                     id="fixmatch-input-year"
                     type="text"
@@ -229,23 +247,23 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                       e.stopPropagation();
                       if (e.key === "Enter") handleSearch();
                     }}
-                    placeholder="Ej. 2006"
+                    placeholder={t("pickers.fixYearPh")}
                   />
                 </div>
 
                 <div className="fixmatch-field">
-                  <label htmlFor="fixmatch-select-platform">Plataforma</label>
+                  <label htmlFor="fixmatch-select-platform">{t("pickers.fixPlatform")}</label>
                   <select
                     id="fixmatch-select-platform"
                     className="fixmatch-select"
                     value={selectedPlatform}
                     onChange={(e) => setSelectedPlatform(e.target.value)}
-                    title="Filtrar por plataforma"
+                    title={t("pickers.fixFilterPlatform")}
                   >
                     {game.platform && (
-                      <option value={game.platform}>Actual ({game.platform})</option>
+                      <option value={game.platform}>{t("pickers.fixCurrent")} ({game.platform})</option>
                     )}
-                    <option value="">Todas las plataformas</option>
+                    <option value="">{t("pickers.fixAllPlatforms")}</option>
                     <option value="GBA">Game Boy Advance (GBA)</option>
                     <option value="SNES">Super Nintendo (SNES)</option>
                     <option value="NES">NES</option>
@@ -257,6 +275,7 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                     <option value="PS3">PlayStation 3</option>
                     <option value="PSP">PlayStation Portable</option>
                     <option value="GAMECUBE">GameCube</option>
+                    <option value="WII">Nintendo Wii</option>
                     <option value="MEGA_DRIVE">Mega Drive / Genesis</option>
                     <option value="ARCADE">Arcade / FBNeo / MAME</option>
                   </select>
@@ -270,21 +289,35 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                     <path d="M9 18h6"/>
                     <path d="M10 22h4"/>
                   </svg>
-                  <span><strong>Nota:</strong> No has configurado tu API Key de SteamGridDB. Puedes agregar una clave gratuita en <em>Configuración</em> para acceder a miles de carátulas HD de la comunidad, o cambiar el agente a <strong>Steam Store</strong> o <strong>Libretro</strong>.</span>
+                  <span><strong>{t("pickers.fixNote")}</strong> {t("pickers.sgdbKeyMissing")} {t("pickers.fixNoteAlt")}</span>
                 </div>
               )}
 
               <div className="fixmatch-form-actions">
-                <button type="button" className="fixmatch-btn fixmatch-btn-cancel" onClick={onClose}>
-                  Cancelar
+                <button
+                  type="button"
+                  className="fixmatch-btn fixmatch-btn-cancel"
+                  onClick={onClose}
+                  disabled={applying || savingTitle}
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="button"
+                  className="fixmatch-btn fixmatch-btn-save-title"
+                  onClick={handleSaveTitleOnly}
+                  disabled={savingTitle || loading || applying || !title.trim()}
+                  title={t("pickers.fixSaveTitleHint")}
+                >
+                  {savingTitle ? t("pickers.fixSaving") : t("pickers.fixSaveTitleOnly")}
                 </button>
                 <button
                   type="button"
                   className="fixmatch-btn fixmatch-btn-search"
                   onClick={handleSearch}
-                  disabled={loading || !title.trim()}
+                  disabled={loading || savingTitle || applying || !title.trim()}
                 >
-                  {loading ? "Buscando…" : "Buscar"}
+                  {loading ? t("pickers.fixSearching") : t("pickers.fixSearch")}
                 </button>
               </div>
 
@@ -295,7 +328,7 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
               {loading && (
                 <div className="fixmatch-loading-wrap">
                   <div className="fixmatch-spinner" />
-                  <p>Buscando coincidencias en la base de datos…</p>
+                  <p>{t("pickers.fixSearchingDb")}</p>
                 </div>
               )}
 
@@ -303,7 +336,7 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
               {!loading && searched && candidates.length > 0 && (
                 <div className="fixmatch-results-wrap">
                   <h3 className="fixmatch-results-title">
-                    Coincidencias encontradas ({candidates.length})
+                    {t("pickers.fixMatchesFound", { count: candidates.length })}
                   </h3>
                   <div className="fixmatch-candidates-grid">
                     {candidates.map((cand) => (
@@ -353,17 +386,17 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                               </span>
                             )}
                             {cand.developer && (
-                              <span className="fixmatch-chip fixmatch-chip-dev" title={`Desarrollador: ${cand.developer}`}>
+                              <span className="fixmatch-chip fixmatch-chip-dev" title={t("pickers.fixDev", { name: cand.developer })}>
                                 🛠 {cand.developer}
                               </span>
                             )}
                             {cand.publisher && cand.publisher !== cand.developer && (
-                              <span className="fixmatch-chip fixmatch-chip-pub" title={`Distribuidor: ${cand.publisher}`}>
+                              <span className="fixmatch-chip fixmatch-chip-pub" title={t("pickers.fixPub", { name: cand.publisher })}>
                                 🏢 {cand.publisher}
                               </span>
                             )}
                             {cand.region && (
-                              <span className="fixmatch-chip fixmatch-chip-region" title={`Región: ${cand.region}`}>
+                              <span className="fixmatch-chip fixmatch-chip-region" title={t("pickers.fixRegion", { name: cand.region })}>
                                 🌐 {cand.region}
                               </span>
                             )}
@@ -375,9 +408,9 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                               className="fixmatch-btn-apply"
                               onClick={() => handleApplyCandidate(cand, "all")}
                               disabled={applying || (!cand.cover_url && !cand.cover_thumb)}
-                              title="Aplica la carátula y los datos del juego (nombre, año, género, etc.)"
+                              title={t("pickers.fixApplyAllHint")}
                             >
-                              {applying ? "Aplicando…" : "Aplicar todo"}
+                              {applying ? t("pickers.fixApplying") : t("pickers.fixApplyAll")}
                             </button>
 
                             <button
@@ -385,9 +418,9 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                               className="fixmatch-btn-secondary"
                               onClick={() => handleApplyCandidate(cand, "metadata")}
                               disabled={applying}
-                              title="Aplica solo el nombre y datos/tags sin alterar la carátula actual"
+                              title={t("pickers.fixOnlyDataHint")}
                             >
-                              Solo datos
+                              {t("pickers.fixOnlyData")}
                             </button>
 
                             <button
@@ -395,9 +428,9 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                               className="fixmatch-btn-secondary"
                               onClick={() => handleApplyCandidate(cand, "cover")}
                               disabled={applying || (!cand.cover_url && !cand.cover_thumb)}
-                              title="Descarga y aplica solo la carátula sin alterar los datos ni tags del juego"
+                              title={t("pickers.fixOnlyCoverHint")}
                             >
-                              Solo carátula
+                              {t("pickers.fixOnlyCover")}
                             </button>
 
                             {agent === "steamgriddb" && (
@@ -405,9 +438,9 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                                 type="button"
                                 className="fixmatch-btn-variants"
                                 onClick={() => handleViewCoverVariants(cand)}
-                                title="Ver otras variantes de arte vertical para este juego"
+                                title={t("pickers.fixMoreCoversHint")}
                               >
-                                Más carátulas
+                                {t("pickers.fixMoreCovers")}
                               </button>
                             )}
                           </div>
@@ -427,17 +460,17 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                   className="fixmatch-btn-back"
                   onClick={() => setActiveCandidate(null)}
                 >
-                  ← Volver a resultados
+                  {t("pickers.fixBackResults")}
                 </button>
                 <span className="fixmatch-variants-title">
-                  Elige el diseño de portada para <strong>{activeCandidate.name}</strong>
+                  {t("pickers.fixChooseCover")} <strong>{activeCandidate.name}</strong>
                 </span>
               </div>
 
               {variantsLoading && (
                 <div className="fixmatch-loading-wrap">
                   <div className="fixmatch-spinner" />
-                  <p>Cargando diseños disponibles…</p>
+                  <p>{t("pickers.fixLoadingDesigns")}</p>
                 </div>
               )}
 
@@ -452,7 +485,7 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                     >
                       <img
                         src={grid.thumb}
-                        alt={`Carátula ${grid.id}`}
+                        alt={t("pickers.fixCoverAlt", { id: grid.id })}
                         className="fixmatch-grid-img"
                         loading="lazy"
                       />
@@ -466,18 +499,18 @@ export default function FixMatchModal({ game, onClose, onMatchApplied }: Props) 
                             className="fixmatch-grid-select-btn fixmatch-grid-select-cover"
                             disabled={applying}
                             onClick={() => handleApplyCandidate(activeCandidate, "cover", grid.url)}
-                            title="Aplica solo esta carátula sin modificar los datos del juego"
+                            title={t("pickers.fixOnlyCoverHint")}
                           >
-                            Solo carátula
+                            {t("pickers.fixOnlyCover")}
                           </button>
                           <button
                             type="button"
                             className="fixmatch-grid-select-btn fixmatch-grid-select-all"
                             disabled={applying}
                             onClick={() => handleApplyCandidate(activeCandidate, "all", grid.url)}
-                            title="Aplica esta carátula y los datos del juego"
+                            title={t("pickers.fixCoverPlusDataHint")}
                           >
-                            Carátula + datos
+                            {t("pickers.fixCoverPlusData")}
                           </button>
                         </div>
                       </div>

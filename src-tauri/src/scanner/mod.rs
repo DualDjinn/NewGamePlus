@@ -1,9 +1,12 @@
+pub mod installed_pc;
 pub mod iso;
 pub mod multidisc;
 pub mod music;
 pub mod pc;
 pub mod roms;
 
+#[allow(unused_imports)]
+pub use installed_pc::*;
 #[allow(unused_imports)]
 pub use iso::*;
 #[allow(unused_imports)]

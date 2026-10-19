@@ -18,6 +18,24 @@ use std::process::Command;
 use std::sync::atomic::Ordering;
 use tauri::{Emitter, Manager};
 
+/// Vuelve a mostrar la ventana principal tras un emulador standalone.
+/// La ventana se oculta antes de lanzar: sin esta llamada en el camino de
+/// error, un fallo de lanzamiento deja la UI invisible (el toast de error
+/// se dispara dentro de una ventana oculta).
+fn restore_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let is_kiosk = lock_state().settings.kiosk_mode;
+        let _ = window.set_always_on_top(false);
+        let _ = window.set_fullscreen(is_kiosk);
+        if !is_kiosk {
+            let _ = window.maximize();
+        }
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<String, String> {
     if RUNNING.lock().unwrap().is_some() {
         log_error("Intento de lanzar juego cuando ya hay un emulador activo");
@@ -89,20 +107,16 @@ pub fn launch_game_runner(app: tauri::AppHandle, rom_path: String) -> Result<Str
     };
 
     if !is_retroarch {
-        let status = launch_standalone(&core_name, &rom_path)?;
+        let status = match launch_standalone(&core_name, &rom_path) {
+            Ok(s) => s,
+            Err(e) => {
+                restore_main_window(&app);
+                return Err(e);
+            }
+        };
         let elapsed_secs = start_instant.elapsed().as_secs();
 
-        if let Some(window) = app.get_webview_window("main") {
-            let is_kiosk = lock_state().settings.kiosk_mode;
-            let _ = window.set_always_on_top(false);
-            let _ = window.set_fullscreen(is_kiosk);
-            if !is_kiosk {
-                let _ = window.maximize();
-            }
-            let _ = window.unminimize();
-            let _ = window.show();
-            let _ = window.set_focus();
-        }
+        restore_main_window(&app);
 
         let _ = app.emit("retroarch-exited", &rom_path);
 

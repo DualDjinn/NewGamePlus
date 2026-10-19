@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { playBootSound } from "../lib/bootSound";
 import "./SplashScreen.css";
 
@@ -14,6 +15,7 @@ export const SplashScreen: React.FC<Props> = ({
   onFinish,
 }) => {
   const [isExiting, setIsExiting] = useState(false);
+  const { t } = useTranslation();
   const finishedRef = useRef(false);
   const exitTimeoutRef = useRef<number | null>(null);
   const autoFinishTimeoutRef = useRef<number | null>(null);
@@ -103,7 +105,7 @@ export const SplashScreen: React.FC<Props> = ({
       </div>
 
       <div className="splash-skip-hint">
-        <span className="splash-skip-badge">Cualquier botón</span>
+        <span className="splash-skip-badge">{t("splash.skip")}</span>
         <span>para continuar</span>
       </div>
     </aside>

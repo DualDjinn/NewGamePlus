@@ -1,3 +1,4 @@
+use crate::state::storage::log_error;
 use serde::Deserialize;
 use std::fs;
 use std::io::{BufReader, Read, Write};
@@ -21,6 +22,28 @@ pub struct SsGame {
     pub id: Option<String>,
     #[serde(default)]
     pub medias: Option<Vec<SsMedia>>,
+    #[serde(default)]
+    pub noms: Option<Vec<SsNom>>,
+    #[serde(default)]
+    pub systeme: Option<SsSysteme>,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Debug, Clone, Default)]
+pub struct SsNom {
+    #[serde(default, alias = "text")]
+    pub nom: Option<String>,
+    #[serde(default)]
+    pub region: Option<String>,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Debug, Clone, Default)]
+pub struct SsSysteme {
+    #[serde(default)]
+    pub id: Option<String>,
+    #[serde(default, alias = "text")]
+    pub nom: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -48,7 +71,9 @@ struct SsRechercheResponse {
 struct SsRechercheData {
     pub status: Option<String>,
     pub error: Option<String>,
-    pub jeux: Option<Vec<SsGame>>,
+    // Value crudo: la forma exacta del JSON varía (doc orientada a XML);
+    // se convierte por elemento para diagnosticar desajustes sin romper todo.
+    pub jeux: Option<Vec<serde_json::Value>>,
 }
 
 #[allow(dead_code)]
@@ -111,6 +136,7 @@ pub fn platform_to_screenscraper_id(platform: &str) -> Option<u32> {
         "MSX2" => Some(116),
         "PC" | "DOS" => Some(135),
         "NEOGEO" | "NEO_GEO" => Some(142),
+        "SWITCH" | "NINTENDO_SWITCH" => Some(225),
         _ => None,
     }
 }
@@ -169,6 +195,42 @@ fn build_client() -> Result<reqwest::blocking::Client, String> {
         .timeout(Duration::from_secs(20))
         .build()
         .map_err(|e| format!("Error creando cliente HTTP: {}", e))
+}
+
+/// Enmascara credenciales (devid/devpassword/ssid/sspassword) en mensajes
+/// de error y logs. Los `Err` de reqwest incluyen la URL completa con ellas.
+pub fn sanitize_ss_message(msg: &str) -> String {
+    let mut out = msg.to_string();
+    for key in ["devid", "devpassword", "ssid", "sspassword"] {
+        let mut from = 0;
+        loop {
+            let rest = &out[from..];
+            let needle_q = format!("?{}=", key);
+            let needle_a = format!("&{}=", key);
+            let found = rest
+                .find(needle_q.as_str())
+                .map(|p| (p, needle_q.len()))
+                .or_else(|| rest.find(needle_a.as_str()).map(|p| (p, needle_a.len())));
+            let Some((rel, nlen)) = found else {
+                break;
+            };
+            let val_start = from + rel + nlen;
+            let tail = &out[val_start..];
+            let val_end = tail
+                .find(['&', ')', '"', '\'', ' '])
+                .map(|p| val_start + p)
+                .unwrap_or(out.len());
+            out.replace_range(val_start..val_end, "***");
+            from = val_start + 3;
+        }
+    }
+    out
+}
+
+/// La estrategia directa (jeuInfos por archivo) necesita systemeid o hashes;
+/// sin ambos la API devuelve 400. Saltarla ahorra la petición y cuota KO.
+pub fn can_direct_lookup(sys_id: Option<u32>, crc: &Option<String>, md5: &Option<String>) -> bool {
+    sys_id.is_some() || crc.is_some() || md5.is_some()
 }
 
 fn append_auth_params(
@@ -264,6 +326,12 @@ fn clean_game_name_for_search(name: &str) -> String {
             ')' => in_paren = false,
             '[' => in_bracket = true,
             ']' => in_bracket = false,
+            // Convertir puntos, underscores y guiones a espacios
+            '.' | '_' => {
+                if !in_paren && !in_bracket {
+                    clean.push(' ');
+                }
+            }
             _ => {
                 if !in_paren && !in_bracket {
                     clean.push(ch);
@@ -272,12 +340,147 @@ fn clean_game_name_for_search(name: &str) -> String {
         }
     }
 
-    let trimmed = clean.trim();
-    if trimmed.is_empty() {
+    // Quitar palabras basura comunes en nombres de ROMs (especialmente 3DS/Switch)
+    let junk_words = [
+        "decrypted",
+        "encrypted",
+        "trimmed",
+        "cia",
+        "cci",
+        "nsp",
+        "xci",
+        "nsz",
+        "3ds",
+        "wbfs",
+        "wad",
+        "v1 0",
+        "v1 1",
+        "v1 2",
+        "v2 0",
+        "rom",
+        "dump",
+        "rip",
+    ];
+
+    let mut result = clean.trim().to_string();
+    let lower = result.to_lowercase();
+    for junk in &junk_words {
+        // Solo quitar si es una palabra completa al final del string
+        if lower.ends_with(junk) {
+            let new_len = result.len() - junk.len();
+            result.truncate(new_len);
+            result = result.trim_end().to_string();
+        }
+    }
+
+    // Colapsar espacios múltiples
+    let collapsed: String = result.split_whitespace().collect::<Vec<_>>().join(" ");
+
+    if collapsed.is_empty() {
         name.trim().to_string()
     } else {
-        trimmed.to_string()
+        collapsed
     }
+}
+
+/// Umbral mínimo para aceptar un candidato de búsqueda textual.
+/// Por debajo: mejor sin video que con video ajeno.
+pub const MIN_CANDIDATE_SCORE: u32 = 50;
+
+fn normalize_candidate_title(s: &str) -> String {
+    s.to_lowercase()
+        .chars()
+        .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn candidate_titles(game: &SsGame) -> Vec<String> {
+    game.noms
+        .as_deref()
+        .unwrap_or(&[])
+        .iter()
+        .filter_map(|n| n.nom.clone())
+        .collect()
+}
+
+/// Puntúa un candidato de jeuRecherche (título 0-60 + sistema 0-40).
+pub fn score_candidate(
+    game: &SsGame,
+    wanted_title: &str,
+    platform: &str,
+    system_id: Option<u32>,
+) -> u32 {
+    let wanted = normalize_candidate_title(&clean_game_name_for_search(wanted_title));
+    if wanted.is_empty() {
+        return 0;
+    }
+    let wanted_tokens: Vec<&str> = wanted.split(' ').collect();
+
+    let mut title_score = 0;
+    for name in candidate_titles(game) {
+        let cand = normalize_candidate_title(&name);
+        if cand.is_empty() {
+            continue;
+        }
+        if cand == wanted {
+            title_score = title_score.max(60);
+        } else if cand.contains(&wanted) || wanted.contains(&cand) {
+            title_score = title_score.max(30);
+        } else {
+            let overlap = cand
+                .split(' ')
+                .filter(|t| wanted_tokens.contains(t))
+                .count();
+            if overlap > 0 && overlap * 2 >= wanted_tokens.len() {
+                title_score = title_score.max(15);
+            }
+        }
+    }
+    if title_score == 0 {
+        return 0;
+    }
+
+    let mut system_score = 0;
+    if let Some(sys) = game.systeme.as_ref() {
+        // ponytail: id numérico cuando se conoce; si no (p. ej. Switch),
+        // el nombre del sistema contiene a la plataforma o viceversa.
+        let id_hit = matches!((system_id, sys.id.as_deref()), (Some(sid), Some(game_sid)) if game_sid == sid.to_string());
+        if id_hit {
+            system_score = 40;
+        } else if let Some(nom) = sys.nom.as_deref() {
+            let plat = normalize_candidate_title(platform);
+            let sys_name = normalize_candidate_title(nom);
+            if !plat.is_empty() && (sys_name.contains(&plat) || plat.contains(&sys_name)) {
+                system_score = 40;
+            }
+        }
+    }
+    title_score + system_score
+}
+
+/// Mejor candidato por score; empate → orden original de la API.
+/// None si ninguno supera el umbral.
+pub fn pick_best_candidate(
+    jeux: Vec<SsGame>,
+    wanted_title: &str,
+    platform: &str,
+    system_id: Option<u32>,
+) -> Option<SsGame> {
+    let mut best: Option<(u32, SsGame)> = None;
+    for game in jeux.into_iter() {
+        let score = score_candidate(&game, wanted_title, platform, system_id);
+        let replace = match &best {
+            None => score >= MIN_CANDIDATE_SCORE,
+            Some((best_score, _)) => score > *best_score,
+        };
+        if replace {
+            best = Some((score, game));
+        }
+    }
+    best.map(|(_, game)| game)
 }
 
 /// Extrae las mejores URLs de video snap y wheel logo de un `SsGame`
@@ -405,17 +608,38 @@ pub fn fetch_game_media(
         url1.push_str(&format!("&romtaille={}", filesize));
     }
 
-    if let Ok(resp) = client.get(&url1).send() {
-        if resp.status().is_success() {
-            if let Ok(parsed) = resp.json::<SsJeuInfosResponse>() {
-                if let Some(data) = parsed.response {
-                    if let Some(jeu) = data.jeu {
-                        let urls = extract_media_urls(&jeu);
-                        if urls.video_url.is_some() || urls.logo_url.is_some() {
-                            return Ok(urls);
+    // Diagnóstico (sin URLs: contendrían credenciales). Se vuelca en errors.log
+    // solo si ambas estrategias fallan, al final de la función.
+    let mut s1 = "omitida_sin_identificadores".to_string();
+    if can_direct_lookup(sys_id, &crc32, &md5) {
+        s1 = "sin_respuesta".to_string();
+        if let Ok(resp) = client.get(&url1).send() {
+            let status = resp.status();
+            if status.is_success() {
+                if let Ok(parsed) = resp.json::<SsJeuInfosResponse>() {
+                    if let Some(data) = parsed.response {
+                        if let Some(jeu) = data.jeu {
+                            let urls = extract_media_urls(&jeu);
+                            s1 = format!(
+                                "http={} video={} logo={}",
+                                status.as_u16(),
+                                urls.video_url.is_some(),
+                                urls.logo_url.is_some()
+                            );
+                            if urls.video_url.is_some() || urls.logo_url.is_some() {
+                                return Ok(urls);
+                            }
+                        } else {
+                            s1 = format!("http={} sin_jeu", status.as_u16());
                         }
+                    } else {
+                        s1 = format!("http={} sin_response", status.as_u16());
                     }
+                } else {
+                    s1 = format!("http={} json_invalido", status.as_u16());
                 }
+            } else {
+                s1 = format!("http={}", status.as_u16());
             }
         }
     }
@@ -434,17 +658,94 @@ pub fn fetch_game_media(
         url2.push_str(&format!("&systemeid={}", sid));
     }
 
-    let search_resp = client
-        .get(&url2)
-        .send()
-        .map_err(|e| format!("Error buscando juego en ScreenScraper: {}", e))?;
+    let search_resp = client.get(&url2).send().map_err(|e| {
+        sanitize_ss_message(&format!("Error buscando juego en ScreenScraper: {}", e))
+    })?;
 
+    let mut s2 = format!("http={}", search_resp.status().as_u16());
     if search_resp.status().is_success() {
         if let Ok(parsed) = search_resp.json::<SsRechercheResponse>() {
             if let Some(data) = parsed.response {
-                if let Some(jeux) = data.jeux {
-                    if let Some(first_game) = jeux.into_iter().next() {
-                        if let Some(game_id) = first_game.id {
+                if let Some(raw_jeux) = data.jeux {
+                    s2 = format!("{} candidatos={}", s2, raw_jeux.len());
+                    let jeux: Vec<SsGame> = raw_jeux
+                        .iter()
+                        .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                        .collect();
+                    // scoring en vez de primer resultado a ciegas: evita videos
+                    // de ediciones/regiones/sistemas equivocados.
+                    let best = pick_best_candidate(jeux, game_name, platform, sys_id);
+                    if best.is_none() {
+                        // Diagnóstico de forma real del JSON (solo claves/tipos, sin valores).
+                        if let Some(first) = raw_jeux.first().and_then(|v| v.as_object()) {
+                            let mut keys: Vec<&String> = first.keys().collect();
+                            keys.sort();
+                            let shape_of = |k: &str| {
+                                first
+                                    .get(k)
+                                    .map(|v| {
+                                        if v.is_array() {
+                                            "array"
+                                        } else if v.is_object() {
+                                            "object"
+                                        } else {
+                                            "otro"
+                                        }
+                                    })
+                                    .unwrap_or("ausente")
+                            };
+                            // Forma anidada: claves del primer elemento de noms y de systeme.
+                            let nested_keys = |k: &str| {
+                                first
+                                    .get(k)
+                                    .and_then(|v| {
+                                        if let Some(arr) = v.as_array() {
+                                            arr.first().and_then(|e| e.as_object()).map(|o| {
+                                                let mut ks: Vec<&String> = o.keys().collect();
+                                                ks.sort();
+                                                format!("{:?}", ks)
+                                            })
+                                        } else {
+                                            v.as_object().map(|o| {
+                                                let mut ks: Vec<&String> = o.keys().collect();
+                                                ks.sort();
+                                                format!("{:?}", ks)
+                                            })
+                                        }
+                                    })
+                                    .unwrap_or_else(|| "-".to_string())
+                            };
+                            log_error(&format!(
+                                "[scrape-debug] '{}': claves={:?} noms={} systeme={} noms0={} systeme_keys={}",
+                                game_name,
+                                keys,
+                                shape_of("noms"),
+                                shape_of("systeme"),
+                                nested_keys("noms"),
+                                nested_keys("systeme")
+                            ));
+                        }
+                    }
+                    if let Some(best) = best {
+                        let best_score = score_candidate(&best, game_name, platform, sys_id);
+                        let best_title = best
+                            .noms
+                            .as_deref()
+                            .unwrap_or(&[])
+                            .iter()
+                            .filter_map(|n| n.nom.clone())
+                            .next()
+                            .unwrap_or_default();
+                        let best_sys = best
+                            .systeme
+                            .as_ref()
+                            .and_then(|s| s.nom.clone())
+                            .unwrap_or_default();
+                        s2 = format!(
+                            "{} mejor={} '{}' [{}]",
+                            s2, best_score, best_title, best_sys
+                        );
+                        if let Some(game_id) = best.id {
                             // Obtener todos los medios del juego por ID
                             let mut url_details =
                                 "https://api.screenscraper.fr/api2/jeuInfos.php".to_string();
@@ -458,19 +759,48 @@ pub fn fetch_game_media(
                                     {
                                         if let Some(detail_data) = detail_parsed.response {
                                             if let Some(detail_jeu) = detail_data.jeu {
-                                                return Ok(extract_media_urls(&detail_jeu));
+                                                let urls = extract_media_urls(&detail_jeu);
+                                                s2 = format!(
+                                                    "{} detalle_video={} detalle_logo={}",
+                                                    s2,
+                                                    urls.video_url.is_some(),
+                                                    urls.logo_url.is_some()
+                                                );
+                                                if urls.video_url.is_some()
+                                                    || urls.logo_url.is_some()
+                                                {
+                                                    return Ok(urls);
+                                                }
                                             }
                                         }
                                     }
+                                } else {
+                                    s2 = format!(
+                                        "{} detalle_http={}",
+                                        s2,
+                                        detail_resp.status().as_u16()
+                                    );
                                 }
+                            } else {
+                                s2 = format!("{} detalle_sin_respuesta", s2);
                             }
+                        } else {
+                            s2 = format!("{} mejor_sin_id", s2);
                         }
+                    } else {
+                        s2 = format!("{} sin_candidato_fiable", s2);
                     }
+                } else {
+                    s2 = format!("{} sin_jeux", s2);
                 }
             }
         }
     }
 
+    log_error(&format!(
+        "[scrape] '{}' [{}] busca='{}': s1={} s2={}",
+        game_name, platform, search_title, s1, s2
+    ));
     Err(format!(
         "No se encontraron medios para '{}' en ScreenScraper",
         game_name
@@ -569,4 +899,124 @@ where
     }
 
     Ok(dest_path.to_path_buf())
+}
+
+#[cfg(test)]
+mod screenscraper_tests {
+    use super::*;
+
+    fn sample_search_json() -> &'static str {
+        r#"{
+            "response": {
+                "jeux": [
+                    {"id": "1", "noms": [{"nom": "Sonic the Hedgehog", "region": "us"}], "systeme": {"id": "1", "nom": "Megadrive"}},
+                    {"id": "2", "noms": [{"nom": "Sonic the Hedgehog", "region": "us"}], "systeme": {"id": "4", "nom": "Super Nintendo"}},
+                    {"id": "3", "noms": [{"nom": "Sonic Spinball", "region": "us"}], "systeme": {"id": "1", "nom": "Megadrive"}}
+                ]
+            }
+        }"#
+    }
+
+    fn parse_candidates() -> Vec<SsGame> {
+        serde_json::from_str::<SsRechercheResponse>(sample_search_json())
+            .unwrap()
+            .response
+            .unwrap()
+            .jeux
+            .unwrap()
+            .iter()
+            .filter_map(|v| serde_json::from_value(v.clone()).ok())
+            .collect()
+    }
+
+    #[test]
+    fn prefers_same_system_over_wrong_system() {
+        let jeux = parse_candidates();
+        let best = pick_best_candidate(jeux, "Sonic the Hedgehog", "MEGA_DRIVE", Some(1)).unwrap();
+        assert_eq!(best.id.as_deref(), Some("1"));
+    }
+
+    #[test]
+    fn switch_matches_by_system_name_without_numeric_id() {
+        let jeux = vec![SsGame {
+            id: Some("9".into()),
+            medias: None,
+            noms: Some(vec![SsNom {
+                nom: Some("The Legend of Zelda Breath of the Wild".into()),
+                region: None,
+            }]),
+            systeme: Some(SsSysteme {
+                id: None,
+                nom: Some("Nintendo Switch".into()),
+            }),
+        }];
+        let best = pick_best_candidate(jeux, "Zelda Breath of the Wild", "SWITCH", None).unwrap();
+        assert_eq!(best.id.as_deref(), Some("9"));
+    }
+
+    #[test]
+    fn rejects_garbage_below_threshold() {
+        let jeux = parse_candidates();
+        assert!(pick_best_candidate(jeux, "Mario Kart 64", "N64", Some(14)).is_none());
+        assert!(
+            score_candidate(&parse_candidates()[2], "Mario Kart 64", "N64", Some(14))
+                < MIN_CANDIDATE_SCORE
+        );
+    }
+
+    #[test]
+    fn tie_keeps_api_order() {
+        let jeux = vec![
+            SsGame {
+                id: Some("a".into()),
+                medias: None,
+                noms: Some(vec![SsNom {
+                    nom: Some("Same Game".into()),
+                    region: None,
+                }]),
+                systeme: Some(SsSysteme {
+                    id: Some("1".into()),
+                    nom: Some("Megadrive".into()),
+                }),
+            },
+            SsGame {
+                id: Some("b".into()),
+                medias: None,
+                noms: Some(vec![SsNom {
+                    nom: Some("Same Game".into()),
+                    region: None,
+                }]),
+                systeme: Some(SsSysteme {
+                    id: Some("1".into()),
+                    nom: Some("Megadrive".into()),
+                }),
+            },
+        ];
+        let best = pick_best_candidate(jeux, "Same Game", "MEGA_DRIVE", Some(1)).unwrap();
+        assert_eq!(best.id.as_deref(), Some("a"));
+    }
+
+    #[test]
+    fn sanitize_masks_credentials() {
+        let msg = "error sending request for url (https://api.screenscraper.fr/api2/jeuRecherche.php?devid=newGamePlus&devpassword=Secret123&softname=X&ssid=user1&sspassword=Pass1&recherche=sonic)";
+        let clean = sanitize_ss_message(msg);
+        assert!(!clean.contains("Secret123"));
+        assert!(!clean.contains("Pass1"));
+        assert!(!clean.contains("newGamePlus"));
+        assert!(!clean.contains("user1"));
+        assert!(clean.contains("recherche=sonic"));
+        assert!(clean.contains("devid=***"));
+        // Sin credenciales: intacto
+        assert_eq!(sanitize_ss_message("plain error"), "plain error");
+    }
+
+    #[test]
+    fn skips_direct_lookup_without_identifiers() {
+        // Switch: sin systemeid ni hashes → la API devuelve 400, no pedir
+        assert!(!can_direct_lookup(None, &None, &None));
+        // Con systemeid o hashes sí compensa intentarlo
+        assert!(can_direct_lookup(Some(4), &None, &None));
+        assert!(can_direct_lookup(None, &Some("ABC".into()), &None));
+        assert!(can_direct_lookup(None, &None, &Some("DEF".into())));
+    }
 }

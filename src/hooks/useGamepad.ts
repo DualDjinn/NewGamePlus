@@ -133,10 +133,15 @@ export function useGamepad(handlers: GamepadHandlers, enabled: boolean = true) {
       };
     }
 
-    let animFrameId: number;
+    let animFrameId: number | null = null;
+    let idleTimeoutId: number | null = null;
     const prevButtons = new Map<number, boolean>();
     let activeDir: string | null = null;
     let nextRepeatTime = 0;
+    // Re-arm: ignore all gamepad input until the first frame with no buttons
+    // pressed and sticks centered. Prevents a button held across the
+    // disabled->enabled transition (e.g. game exit) from firing as a fresh press.
+    let armed = false;
 
     const INITIAL_DELAY_MS = 260;
     const REPEAT_RATE_MS = 120;
@@ -148,6 +153,15 @@ export function useGamepad(handlers: GamepadHandlers, enabled: boolean = true) {
       const cType = detectControllerType(e.gamepad.id);
       globalControllerType = cType;
 
+      if (idleTimeoutId !== null) {
+        clearTimeout(idleTimeoutId);
+        idleTimeoutId = null;
+      }
+      if (animFrameId !== null) {
+        cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+      }
+
       if (isConnected) {
         globalInputDevice = "gamepad";
         window.dispatchEvent(
@@ -155,6 +169,7 @@ export function useGamepad(handlers: GamepadHandlers, enabled: boolean = true) {
             detail: { device: "gamepad", controllerType: cType },
           })
         );
+        animFrameId = requestAnimationFrame(checkGamepad);
       }
 
       window.dispatchEvent(
@@ -182,6 +197,20 @@ export function useGamepad(handlers: GamepadHandlers, enabled: boolean = true) {
       if (gp) {
         const now = performance.now();
         const currentButtons = gp.buttons.map((b) => b.pressed);
+        const sticksCentered = !gp.axes.some((a) => Math.abs(a) > STICK_DEADZONE);
+
+        // Re-arm gate: skip all handlers until everything is released once
+        if (!armed) {
+          if (!currentButtons.some((b) => b) && sticksCentered) {
+            armed = true;
+          }
+          currentButtons.forEach((pressed, idx) => {
+            prevButtons.set(idx, pressed);
+          });
+          activeDir = null;
+          animFrameId = requestAnimationFrame(checkGamepad);
+          return;
+        }
 
         // Action buttons: trigger on rising edge (just pressed)
         const isJustPressed = (btnIdx: number) =>
@@ -201,6 +230,22 @@ export function useGamepad(handlers: GamepadHandlers, enabled: boolean = true) {
               detail: { device: "gamepad", controllerType: detected },
             })
           );
+        }
+
+        // If a modal that captures its own controller input is open (e.g. Controller Mapping Modal),
+        // update prevButtons to prevent buffered clicks and skip global UI navigation.
+        const isCapturingModalOpen =
+          typeof document !== "undefined" &&
+          (Boolean(document.querySelector(".ctrl-map-modal")) ||
+            Boolean(document.querySelector("[data-capture-gamepad='true']")));
+
+        if (isCapturingModalOpen) {
+          currentButtons.forEach((pressed, idx) => {
+            prevButtons.set(idx, pressed);
+          });
+          activeDir = null;
+          animFrameId = requestAnimationFrame(checkGamepad);
+          return;
         }
 
         if (isJustPressed(0)) handlersRef.current.onConfirm();
@@ -243,15 +288,22 @@ export function useGamepad(handlers: GamepadHandlers, enabled: boolean = true) {
         currentButtons.forEach((pressed, idx) => {
           prevButtons.set(idx, pressed);
         });
-      }
 
-      animFrameId = requestAnimationFrame(checkGamepad);
+        // Con mando conectado: loop activo a 60/144Hz para respuesta inmediata
+        animFrameId = requestAnimationFrame(checkGamepad);
+      } else {
+        // Sin mando conectado: no gastar CPU con RAF constante a 144Hz; verificar cada 800ms
+        idleTimeoutId = window.setTimeout(() => {
+          animFrameId = requestAnimationFrame(checkGamepad);
+        }, 800);
+      }
     }
 
     animFrameId = requestAnimationFrame(checkGamepad);
 
     return () => {
-      cancelAnimationFrame(animFrameId);
+      if (animFrameId !== null) cancelAnimationFrame(animFrameId);
+      if (idleTimeoutId !== null) clearTimeout(idleTimeoutId);
       window.removeEventListener("gamepadconnected", handleGamepadEvents);
       window.removeEventListener("gamepaddisconnected", handleGamepadEvents);
       window.removeEventListener("keydown", handleKeyDown);

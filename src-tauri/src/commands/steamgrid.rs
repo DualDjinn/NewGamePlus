@@ -3,8 +3,10 @@ use crate::state::models::Game;
 use crate::state::secrets;
 use crate::state::storage::{get_data_dir, get_thumbnails_dir, save_state};
 use crate::steamgriddb::{self, FixMatchCandidate, SGDBGrid, SGDBHero, SGDBLogo};
+use serde::Serialize;
 use std::fs;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Emitter;
 
 /// Key del perfil activo, descifrada. Unico punto de lectura.
@@ -154,6 +156,42 @@ pub fn remove_game_hero(game_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn auto_download_steamgrid_hero(
+    game_id: String,
+    query: Option<String>,
+) -> Result<String, String> {
+    let api_key = active_sgdb_key()?;
+
+    let search_title = match query {
+        Some(q) if !q.trim().is_empty() => q.trim().to_string(),
+        _ => {
+            let state = lock_state();
+            let g = state
+                .games
+                .iter()
+                .find(|g| g.id == game_id)
+                .ok_or_else(|| "Juego no encontrado".to_string())?;
+            g.display_name.clone().unwrap_or_else(|| {
+                crate::platforms::arcade_display_name(&g.name)
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| g.name.clone())
+            })
+        }
+    };
+
+    let heroes = steamgriddb::search_heroes(&api_key, &search_title)?;
+    if heroes.is_empty() {
+        return Err(format!(
+            "No se encontraron heroes en SteamGridDB para \"{}\"",
+            search_title
+        ));
+    }
+
+    let best_hero = &heroes[0];
+    set_game_hero(game_id, best_hero.url.clone())
+}
+
+#[tauri::command]
 pub fn search_steamgriddb_logos(game_name: String) -> Result<Vec<SGDBLogo>, String> {
     let api_key = active_sgdb_key()?;
 
@@ -224,6 +262,370 @@ pub fn remove_game_logo(game_id: String) -> Result<(), String> {
         game.logo_path = None;
     }
     save_state(&state);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn auto_download_steamgrid_logo(
+    game_id: String,
+    query: Option<String>,
+) -> Result<String, String> {
+    let search_title = match query {
+        Some(q) if !q.trim().is_empty() => q.trim().to_string(),
+        _ => {
+            let state = lock_state();
+            let g = state
+                .games
+                .iter()
+                .find(|g| g.id == game_id)
+                .ok_or_else(|| "Juego no encontrado".to_string())?;
+            g.display_name.clone().unwrap_or_else(|| {
+                crate::platforms::arcade_display_name(&g.name)
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| g.name.clone())
+            })
+        }
+    };
+
+    // 1. Try SteamGridDB if API key is present
+    if let Ok(api_key) = active_sgdb_key() {
+        if let Ok(logos) = steamgriddb::search_logos(&api_key, &search_title) {
+            if !logos.is_empty() {
+                let chosen_logo = logos
+                    .iter()
+                    .find(|l| l.language.as_deref() == Some("en") || l.language.is_none())
+                    .unwrap_or(&logos[0]);
+                return set_game_logo(game_id, chosen_logo.url.clone());
+            }
+        }
+    }
+
+    // 2. Fallback to ScreenScraper wheel logo if credentials exist
+    let (rom_path, platform) = {
+        let state = lock_state();
+        let g = state
+            .games
+            .iter()
+            .find(|g| g.id == game_id)
+            .ok_or_else(|| "Juego no encontrado".to_string())?;
+        (g.rom_path.clone(), g.platform.clone())
+    };
+
+    if let Ok((dev_id, dev_pass, user, pass)) =
+        crate::commands::screenscraper::get_active_credentials()
+    {
+        let rom_p = Path::new(&rom_path);
+        if let Ok(media_urls) = crate::metadata::screenscraper::fetch_game_media(
+            &dev_id,
+            &dev_pass,
+            user.as_deref(),
+            pass.as_deref(),
+            rom_p,
+            &platform,
+            &search_title,
+        ) {
+            if let Some(logo_url) = &media_urls.logo_url {
+                let logos_dir = steamgriddb::get_logos_dir(&get_data_dir());
+                let timestamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis())
+                    .unwrap_or(0);
+                let dest_path = logos_dir.join(format!("{}_{}.png", game_id, timestamp));
+                if let Ok(p) = crate::metadata::screenscraper::download_asset(
+                    logo_url,
+                    &dest_path,
+                    &dev_id,
+                    &dev_pass,
+                    user.as_deref(),
+                    pass.as_deref(),
+                    None::<fn(u32)>,
+                ) {
+                    let logo_path_str = p.to_string_lossy().to_string();
+                    {
+                        let mut state = lock_state();
+                        if let Some(game) = state.games.iter_mut().find(|g| g.id == game_id) {
+                            game.logo_path = Some(logo_path_str.clone());
+                        }
+                        save_state(&state);
+                    }
+                    return Ok(logo_path_str);
+                }
+            }
+        }
+    }
+
+    Err(format!(
+        "No se encontró ningún logo para \"{}\" (agrega tu clave de SteamGridDB o ScreenScraper en Configuración)",
+        search_title
+    ))
+}
+
+static CANCEL_SGDB_BATCH: AtomicBool = AtomicBool::new(false);
+static SGDB_BATCH_RUNNING: AtomicBool = AtomicBool::new(false);
+
+#[derive(Serialize, Clone, Debug)]
+pub struct SteamGridBatchProgress {
+    pub current_index: usize,
+    pub total: usize,
+    pub game_id: String,
+    pub game_name: String,
+    pub status: String,
+    pub percent: u32,
+    pub downloaded_heroes: u32,
+    pub downloaded_logos: u32,
+    pub skipped_count: u32,
+    pub failed_count: u32,
+}
+
+#[tauri::command]
+pub fn cancel_batch_scrape_steamgrid() -> Result<(), String> {
+    CANCEL_SGDB_BATCH.store(true, Ordering::SeqCst);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn batch_scrape_steamgrid_assets(
+    app: tauri::AppHandle,
+    scrape_heroes: bool,
+    scrape_logos: bool,
+    only_missing: bool,
+) -> Result<(), String> {
+    if SGDB_BATCH_RUNNING
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return Err("Ya hay una descarga masiva de SteamGridDB en ejecución.".to_string());
+    }
+
+    let api_key = match active_sgdb_key() {
+        Ok(k) => k,
+        Err(e) => {
+            SGDB_BATCH_RUNNING.store(false, Ordering::SeqCst);
+            return Err(e);
+        }
+    };
+
+    CANCEL_SGDB_BATCH.store(false, Ordering::SeqCst);
+
+    let games = {
+        let state = lock_state();
+        state.games.clone()
+    };
+
+    std::thread::spawn(move || {
+        let total = games.len();
+        let mut downloaded_heroes = 0u32;
+        let mut downloaded_logos = 0u32;
+        let mut skipped_count = 0u32;
+        let mut failed_count = 0u32;
+
+        for (idx, game) in games.iter().enumerate() {
+            if CANCEL_SGDB_BATCH.load(Ordering::SeqCst) {
+                let _ = app.emit(
+                    "scrape-steamgrid-progress",
+                    SteamGridBatchProgress {
+                        current_index: idx,
+                        total,
+                        game_id: game.id.clone(),
+                        game_name: game
+                            .display_name
+                            .clone()
+                            .unwrap_or_else(|| game.name.clone()),
+                        status: "cancelled".to_string(),
+                        percent: if total > 0 {
+                            (idx as u32 * 100) / total as u32
+                        } else {
+                            0
+                        },
+                        downloaded_heroes,
+                        downloaded_logos,
+                        skipped_count,
+                        failed_count,
+                    },
+                );
+                SGDB_BATCH_RUNNING.store(false, Ordering::SeqCst);
+                return;
+            }
+
+            let game_title = game.display_name.clone().unwrap_or_else(|| {
+                crate::platforms::arcade_display_name(&game.name)
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| game.name.clone())
+            });
+
+            let hero_exists = game
+                .hero_path
+                .as_ref()
+                .map_or(false, |p| Path::new(p).exists());
+            let logo_exists = game
+                .logo_path
+                .as_ref()
+                .map_or(false, |p| Path::new(p).exists());
+
+            let needs_hero = scrape_heroes && (!only_missing || !hero_exists);
+            let needs_logo = scrape_logos && (!only_missing || !logo_exists);
+
+            if !needs_hero && !needs_logo {
+                skipped_count += 1;
+                let pct = if total > 0 {
+                    ((idx + 1) as u32 * 100) / total as u32
+                } else {
+                    100
+                };
+                let _ = app.emit(
+                    "scrape-steamgrid-progress",
+                    SteamGridBatchProgress {
+                        current_index: idx + 1,
+                        total,
+                        game_id: game.id.clone(),
+                        game_name: game_title,
+                        status: "skipped".to_string(),
+                        percent: pct,
+                        downloaded_heroes,
+                        downloaded_logos,
+                        skipped_count,
+                        failed_count,
+                    },
+                );
+                continue;
+            }
+
+            let pct = if total > 0 {
+                (idx as u32 * 100) / total as u32
+            } else {
+                0
+            };
+            let _ = app.emit(
+                "scrape-steamgrid-progress",
+                SteamGridBatchProgress {
+                    current_index: idx,
+                    total,
+                    game_id: game.id.clone(),
+                    game_name: game_title.clone(),
+                    status: "downloading".to_string(),
+                    percent: pct,
+                    downloaded_heroes,
+                    downloaded_logos,
+                    skipped_count,
+                    failed_count,
+                },
+            );
+
+            let mut any_success = false;
+
+            // Optimización: buscar candidato una sola vez para compartir entre Hero y Logo
+            let candidate_opt = steamgriddb::search_best_game_candidate(&api_key, &game_title)
+                .ok()
+                .flatten();
+
+            if let Some(candidate) = candidate_opt {
+                if needs_hero {
+                    if let Ok(heroes) = steamgriddb::get_heroes_for_game(&api_key, candidate.id) {
+                        if let Some(first_hero) = heroes.first() {
+                            if set_game_hero(game.id.clone(), first_hero.url.clone()).is_ok() {
+                                downloaded_heroes += 1;
+                                any_success = true;
+                            }
+                        }
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                }
+
+                if needs_logo {
+                    if let Ok(logos) = steamgriddb::get_logos_for_game(&api_key, candidate.id) {
+                        if !logos.is_empty() {
+                            let chosen_logo = logos
+                                .iter()
+                                .find(|l| {
+                                    l.language.as_deref() == Some("en") || l.language.is_none()
+                                })
+                                .unwrap_or(&logos[0]);
+                            if set_game_logo(game.id.clone(), chosen_logo.url.clone()).is_ok() {
+                                downloaded_logos += 1;
+                                any_success = true;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Fallback con heurísticas multi-query en search_heroes / search_logos
+                if needs_hero {
+                    if let Ok(heroes) = steamgriddb::search_heroes(&api_key, &game_title) {
+                        if let Some(first_hero) = heroes.first() {
+                            if set_game_hero(game.id.clone(), first_hero.url.clone()).is_ok() {
+                                downloaded_heroes += 1;
+                                any_success = true;
+                            }
+                        }
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                }
+
+                if needs_logo {
+                    if let Ok(logos) = steamgriddb::search_logos(&api_key, &game_title) {
+                        if !logos.is_empty() {
+                            let chosen_logo = logos
+                                .iter()
+                                .find(|l| {
+                                    l.language.as_deref() == Some("en") || l.language.is_none()
+                                })
+                                .unwrap_or(&logos[0]);
+                            if set_game_logo(game.id.clone(), chosen_logo.url.clone()).is_ok() {
+                                downloaded_logos += 1;
+                                any_success = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if any_success {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            } else {
+                failed_count += 1;
+                std::thread::sleep(std::time::Duration::from_millis(400));
+            }
+
+            let pct_done = if total > 0 {
+                ((idx + 1) as u32 * 100) / total as u32
+            } else {
+                100
+            };
+            let _ = app.emit(
+                "scrape-steamgrid-progress",
+                SteamGridBatchProgress {
+                    current_index: idx + 1,
+                    total,
+                    game_id: game.id.clone(),
+                    game_name: game_title,
+                    status: "done_game".to_string(),
+                    percent: pct_done,
+                    downloaded_heroes,
+                    downloaded_logos,
+                    skipped_count,
+                    failed_count,
+                },
+            );
+        }
+
+        let _ = app.emit(
+            "scrape-steamgrid-progress",
+            SteamGridBatchProgress {
+                current_index: total,
+                total,
+                game_id: String::new(),
+                game_name: String::new(),
+                status: "complete".to_string(),
+                percent: 100,
+                downloaded_heroes,
+                downloaded_logos,
+                skipped_count,
+                failed_count,
+            },
+        );
+        SGDB_BATCH_RUNNING.store(false, Ordering::SeqCst);
+    });
+
     Ok(())
 }
 

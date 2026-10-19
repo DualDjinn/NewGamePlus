@@ -88,9 +88,7 @@ export default function AppearanceTab({
       <div className="settings-panel-header">
         <h2>{t("settings.tabs.appearance")}</h2>
         <p>
-          {i18n.language.startsWith("en")
-            ? "Customize interface language, visual layout, and theme colors."
-            : "Personaliza el idioma, estilo visual y temas cromáticos de la interfaz."}
+          {t("settings.appearance.headerDesc")}
         </p>
       </div>
 
@@ -122,9 +120,7 @@ export default function AppearanceTab({
       <section className="settings-card" id="settings-layout">
         <h3>{t("settings.appearance.layoutStyle")}</h3>
         <p className="settings-hint" style={{ marginBottom: "16px" }}>
-          {i18n.language.startsWith("en")
-            ? "Choose the home screen structure and layout."
-            : "Elige la estructura y disposición visual de la pantalla principal."}
+          {t("settings.appearance.layoutDesc")}
         </p>
         <div className="settings-themes-grid">
           <button
@@ -203,9 +199,9 @@ export default function AppearanceTab({
 
       {/* Selector de Temas */}
       <section className="settings-card" id="settings-themes">
-        <h3>Temas Visuales</h3>
+        <h3>{t("settings.appearance.themesTitle")}</h3>
         <p className="settings-hint" style={{ marginBottom: "16px" }}>
-          Selecciona la paleta de iluminación y acento para toda la interfaz.
+          {t("settings.appearance.themesDesc")}
         </p>
         <div className="settings-themes-grid">
           {THEMES.map((themeItem) => (
@@ -281,8 +277,8 @@ export default function AppearanceTab({
       <section className="settings-card" id="settings-kiosk">
         <div className="settings-row-option">
           <div>
-            <span className="settings-option-title">Modo Kiosko / Consola</span>
-            <p className="settings-option-desc">Inicia GameFlix en pantalla completa sin bordes de ventana.</p>
+            <span className="settings-option-title">{t("settings.appearance.kioskTitle")}</span>
+            <p className="settings-option-desc">{t("settings.appearance.kioskDesc")}</p>
           </div>
           <label className="settings-toggle">
             <input

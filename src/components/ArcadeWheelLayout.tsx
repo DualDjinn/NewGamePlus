@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import type { Game, GameMetadata, GameAchievementProgress } from "../types";
 import {
@@ -17,10 +17,16 @@ import {
 import { playWheelTick } from "../lib/bootSound";
 import { PLATFORM_COLORS, getPlatformDisplayName, getPlatformLogo } from "../lib/platforms";
 import { ConsoleIcon } from "./ConsoleIcon";
-import AchievementList from "./AchievementList";
+import {
+  WheelAchievementsCard,
+  WheelVideoPlayer,
+  WheelMetadataCard,
+  WheelQuickEditMenu,
+} from "./wheel";
 import FixMatchModal from "./FixMatchModal";
 import HeroPickerModal from "./HeroPickerModal";
 import LogoPickerModal from "./LogoPickerModal";
+import NetplayModal from "./NetplayModal";
 import "./ArcadeWheelLayout.css";
 
 interface Props {
@@ -46,14 +52,31 @@ export default function ArcadeWheelLayout({
 }: Props) {
   const { t } = useTranslation();
 
-  // Search State
+  // Search State (immediate input state + debounced deferred filtering)
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setDebouncedSearchQuery("");
+      return;
+    }
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const deferredSearchQuery = useDeferredValue(debouncedSearchQuery);
 
   // Accordion State:
-  // Normal mode (no search): strictly ONE console open at a time (or null if closed)
-  const [openConsole, setOpenConsole] = useState<string | null>(() => {
-    return games[0]?.platform || null;
-  });
+  // Normal mode (no search): strictly ONE console open at a time (or null = all collapsed).
+  // Entry starts fully collapsed: wheel/arrows move the console cursor first.
+  const [openConsole, setOpenConsole] = useState<string | null>(null);
+
+  // Console cursor: when NO console is open, wheel/arrows move between consoles
+  // (previewing each one's first game) instead of diving into games.
+  const [focusedConsole, setFocusedConsole] = useState<string | null>(null);
 
   // Search mode: tracks consoles manually collapsed by the user during search
   const [searchCollapsedConsoles, setSearchCollapsedConsoles] = useState<Set<string>>(new Set());
@@ -68,11 +91,13 @@ export default function ArcadeWheelLayout({
   const [scrapingVideo, setScrapingVideo] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
-  // Edit Menu State (1. Editar datos, 2. Galeria de Hero, 3. Buscar Logo, 4. Descargar Gameplay)
+  // Edit Menu State (FixMatch, HeroPicker, LogoPicker, ScreenScraper, Quick Title Rename)
   const [isEditMenuOpen, setIsEditMenuOpen] = useState(false);
   const [showFixMatchModal, setShowFixMatchModal] = useState(false);
   const [showHeroPickerModal, setShowHeroPickerModal] = useState(false);
   const [showLogoPickerModal, setShowLogoPickerModal] = useState(false);
+  const [showNetplayModal, setShowNetplayModal] = useState(false);
+  const [netplayCoreName, setNetplayCoreName] = useState("");
 
   const [hasRACredentials, setHasRACredentials] = useState(false);
   const [achievements, setAchievements] = useState<GameAchievementProgress | null>(null);
@@ -91,6 +116,7 @@ export default function ArcadeWheelLayout({
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const headerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const carouselScrollRef = useRef<HTMLDivElement | null>(null);
   const lastNavTimeRef = useRef<number>(0);
   const prevSearchRef = useRef<string>(searchQuery);
@@ -151,8 +177,8 @@ export default function ArcadeWheelLayout({
 
   // Real-time Search Filtering (No Dropdown list, filters carousel directly)
   const filteredGames = useMemo(() => {
-    if (!searchQuery.trim()) return games;
-    const q = searchQuery.toLowerCase().trim();
+    if (!deferredSearchQuery.trim()) return games;
+    const q = deferredSearchQuery.toLowerCase().trim();
     return games.filter((g) => {
       const title = (g.display_name || g.name || "").toLowerCase();
       const plat = (g.platform || "").toLowerCase();
@@ -167,7 +193,7 @@ export default function ArcadeWheelLayout({
         genre.includes(q)
       );
     });
-  }, [games, searchQuery]);
+  }, [games, deferredSearchQuery]);
 
   // Group filtered games by console/platform (osu! Beatmap Sets / Stars grouping style)
   const groupedConsoles = useMemo(() => {
@@ -185,18 +211,18 @@ export default function ArcadeWheelLayout({
   // - If search is empty: strictly only openConsole is open (single accordion)
   const isConsoleOpen = useCallback(
     (platform: string) => {
-      if (searchQuery.trim().length > 0) {
+      if (deferredSearchQuery.trim().length > 0) {
         return !searchCollapsedConsoles.has(platform);
       }
       return openConsole === platform;
     },
-    [searchQuery, searchCollapsedConsoles, openConsole]
+    [deferredSearchQuery, searchCollapsedConsoles, openConsole]
   );
 
   // Toggle console collapse / expand
   const toggleConsole = useCallback(
     (platform: string) => {
-      if (searchQuery.trim().length > 0) {
+      if (deferredSearchQuery.trim().length > 0) {
         setSearchCollapsedConsoles((prev) => {
           const next = new Set(prev);
           if (next.has(platform)) {
@@ -207,7 +233,9 @@ export default function ArcadeWheelLayout({
           return next;
         });
       } else {
-        // Single accordion toggle: clicking the open console collapses it; clicking another opens it
+        // Single accordion toggle: clicking the open console collapses it; clicking another opens it.
+        // The cursor follows so collapsing drops into console mode from this console.
+        setFocusedConsole(platform);
         setOpenConsole((prev) => {
           const nextPlat = prev === platform ? null : platform;
           if (nextPlat) {
@@ -221,7 +249,7 @@ export default function ArcadeWheelLayout({
       }
       playWheelTick(0.25);
     },
-    [searchQuery, groupedConsoles]
+    [deferredSearchQuery, groupedConsoles]
   );
 
   // Active game resolution
@@ -241,8 +269,8 @@ export default function ArcadeWheelLayout({
   // When search transitions from active to empty, reset openConsole to active game's platform
   useEffect(() => {
     const wasSearching = prevSearchRef.current.trim().length > 0;
-    const isSearching = searchQuery.trim().length > 0;
-    prevSearchRef.current = searchQuery;
+    const isSearching = deferredSearchQuery.trim().length > 0;
+    prevSearchRef.current = deferredSearchQuery;
 
     if (wasSearching && !isSearching) {
       setSearchCollapsedConsoles(new Set());
@@ -250,7 +278,7 @@ export default function ArcadeWheelLayout({
         setOpenConsole(activeGame.platform);
       }
     }
-  }, [searchQuery, activeGame?.platform]);
+  }, [deferredSearchQuery, activeGame?.platform]);
 
   // Flattened list of currently visible games (inside open consoles)
   const visibleGames = useMemo(() => {
@@ -445,6 +473,19 @@ export default function ArcadeWheelLayout({
     }
   }, [activeGame, metadata?.display_name]);
 
+  // Keep the focused console header visible while moving between consoles
+  // (normal mode only; search mode navigates games across consoles instead)
+  useEffect(() => {
+    if (openConsole || !focusedConsole || deferredSearchQuery.trim().length > 0) return;
+    const headerEl = headerRefs.current.get(focusedConsole);
+    if (headerEl) {
+      headerEl.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [focusedConsole, openConsole, deferredSearchQuery]);
+
   // Auto-scroll selected card into view
   useEffect(() => {
     if (!activeGame?.id) return;
@@ -458,13 +499,39 @@ export default function ArcadeWheelLayout({
     }
   }, [activeGame?.id]);
 
+  // Console-level navigation: used when NO console is open (all collapsed).
+  // Moves the cursor between consoles, previewing each one's first game in
+  // the showcase. Wraps around like game navigation does.
+  const navigateConsole = useCallback(
+    (delta: number) => {
+      if (groupedConsoles.length === 0) return;
+      const currentIdx = focusedConsole
+        ? groupedConsoles.findIndex(([p]) => p === focusedConsole)
+        : -1;
+      const nextIdx =
+        currentIdx < 0
+          ? delta > 0
+            ? 0
+            : groupedConsoles.length - 1
+          : (currentIdx + delta + groupedConsoles.length) % groupedConsoles.length;
+      const next = groupedConsoles[nextIdx];
+      if (!next) return;
+      setFocusedConsole(next[0]);
+      if (next[1].length > 0) {
+        setSelectedGameId(next[1][0].id);
+      }
+      playWheelTick(0.28);
+    },
+    [groupedConsoles, focusedConsole]
+  );
+
   // Navigation: Navigate up/down through visible games, crossing into next/previous console seamlessly
   const navigateGame = useCallback(
     (delta: number) => {
       if (groupedConsoles.length === 0) return;
 
       // In search mode, visibleGames spans all matching consoles simultaneously
-      if (searchQuery.trim().length > 0) {
+      if (deferredSearchQuery.trim().length > 0) {
         if (visibleGames.length === 0) return;
         const currentIndex = visibleGames.findIndex((g) => g.id === activeGame?.id);
         let nextIndex = currentIndex + delta;
@@ -478,16 +545,9 @@ export default function ArcadeWheelLayout({
         return;
       }
 
-      // Normal mode: Single console accordion
+      // Normal mode with no console open: move the console cursor (not into games)
       if (!openConsole) {
-        const first = groupedConsoles[0];
-        if (first) {
-          setOpenConsole(first[0]);
-          if (first[1].length > 0) {
-            setSelectedGameId(first[1][0].id);
-            playWheelTick(0.28);
-          }
-        }
+        navigateConsole(delta);
         return;
       }
 
@@ -548,7 +608,7 @@ export default function ArcadeWheelLayout({
         }
       }
     },
-    [groupedConsoles, openConsole, activeGame?.id, visibleGames, searchQuery]
+    [groupedConsoles, openConsole, activeGame?.id, visibleGames, deferredSearchQuery, navigateConsole]
   );
 
   // Random Game Selection (osu! Random Button)
@@ -560,7 +620,7 @@ export default function ArcadeWheelLayout({
       setSelectedGameId(chosen.id);
       if (chosen.platform) {
         setOpenConsole(chosen.platform);
-        if (searchQuery.trim().length > 0) {
+        if (deferredSearchQuery.trim().length > 0) {
           setSearchCollapsedConsoles((prev) => {
             const next = new Set(prev);
             next.delete(chosen.platform);
@@ -570,7 +630,7 @@ export default function ArcadeWheelLayout({
       }
       playWheelTick(0.38);
     }
-  }, [filteredGames, searchQuery]);
+  }, [filteredGames, deferredSearchQuery]);
 
   // Launch Game
   const handlePlayGame = useCallback(
@@ -601,6 +661,34 @@ export default function ArcadeWheelLayout({
     [activeGame, onFavoriteChanged]
   );
 
+  // Launch Netplay
+  const handleNetplay = useCallback(() => {
+    if (!activeGame) return;
+    const plat = (activeGame.platform || "").toUpperCase();
+    const unsupportedPlatforms = ["3DS", "SWITCH", "PS2", "PS3", "GAMECUBE", "WII", "PC"];
+    if (unsupportedPlatforms.includes(plat)) {
+      window.dispatchEvent(
+        new CustomEvent("app-error", {
+          detail: `Netplay no está disponible para ${plat}. Funciona con emuladores de RetroArch (SNES, NES, GBA, Genesis, Arcade, PS1, etc.).`,
+        })
+      );
+      return;
+    }
+
+    const core = activeGame.core_name;
+    if (!core) {
+      window.dispatchEvent(
+        new CustomEvent("app-error", {
+          detail: "No se ha configurado un core de RetroArch para este juego.",
+        })
+      );
+      return;
+    }
+
+    setNetplayCoreName(core);
+    setShowNetplayModal(true);
+  }, [activeGame]);
+
   // Global Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -608,37 +696,26 @@ export default function ArcadeWheelLayout({
         document.activeElement instanceof HTMLInputElement ||
         document.activeElement instanceof HTMLTextAreaElement;
 
-      // If edit options menu is open, handle its dedicated shortcuts
-      if (isEditMenuOpen) {
-        if (e.key === "Escape") {
+      // If user is typing inside search input, allow normal typing
+      if (isInputFocused) {
+        if (e.key === "ArrowDown" || e.key === "Enter") {
           e.preventDefault();
-          setIsEditMenuOpen(false);
-          return;
+          searchInputRef.current?.blur();
+          if (e.key === "Enter" && activeGame) {
+            handlePlayGame();
+          }
         }
-        if (e.key === "1") {
-          e.preventDefault();
-          setIsEditMenuOpen(false);
-          setShowFixMatchModal(true);
-          return;
-        }
-        if (e.key === "2") {
-          e.preventDefault();
-          setIsEditMenuOpen(false);
-          setShowHeroPickerModal(true);
-          return;
-        }
-        if (e.key === "3") {
-          e.preventDefault();
-          setIsEditMenuOpen(false);
-          setShowLogoPickerModal(true);
-          return;
-        }
-        if (e.key === "4") {
-          e.preventDefault();
-          setIsEditMenuOpen(false);
-          handleDownloadVideo();
-          return;
-        }
+        return;
+      }
+
+      // If edit options menu or modals are open, they handle their own dedicated shortcuts
+      if (
+        isEditMenuOpen ||
+        showFixMatchModal ||
+        showHeroPickerModal ||
+        showLogoPickerModal ||
+        showNetplayModal
+      ) {
         return;
       }
 
@@ -647,18 +724,6 @@ export default function ArcadeWheelLayout({
         e.preventDefault();
         if (searchQuery) {
           setSearchQuery("");
-        }
-        return;
-      }
-
-      // If user is typing inside the search input, allow normal typing
-      if (isInputFocused) {
-        if (e.key === "ArrowDown" || e.key === "Enter") {
-          e.preventDefault();
-          searchInputRef.current?.blur();
-          if (e.key === "Enter" && activeGame) {
-            handlePlayGame();
-          }
         }
         return;
       }
@@ -703,10 +768,24 @@ export default function ArcadeWheelLayout({
         }
       } else if (e.key === "Enter") {
         e.preventDefault();
-        handlePlayGame();
+        if (activeGame?.platform && !isConsoleOpen(activeGame.platform)) {
+          // Focused console is closed: open it first (selects its first game).
+          // A second Enter once inside plays the game.
+          setFocusedConsole(activeGame.platform);
+          setOpenConsole(activeGame.platform);
+          const platGames = groupedConsoles.find(([p]) => p === activeGame.platform)?.[1];
+          if (platGames && platGames.length > 0) {
+            setSelectedGameId(platGames[0].id);
+          }
+          playWheelTick(0.3);
+        } else {
+          handlePlayGame();
+        }
       } else if (e.key === " " || e.key.toLowerCase() === "i" || e.key.toLowerCase() === "e") {
         e.preventDefault();
-        if (activeGame) setIsEditMenuOpen((prev) => !prev);
+        if (activeGame) {
+          setIsEditMenuOpen((prev) => !prev);
+        }
       } else if (e.key.toLowerCase() === "f") {
         e.preventDefault();
         handleToggleFav();
@@ -732,7 +811,7 @@ export default function ArcadeWheelLayout({
     handleRandomGame,
     onSelectGame,
     isEditMenuOpen,
-    handleDownloadVideo,
+    groupedConsoles,
   ]);
 
   // Mouse Wheel Navigation across Games (Smooth Ratchet Feel)
@@ -746,7 +825,8 @@ export default function ArcadeWheelLayout({
         isEditMenuOpen ||
         showFixMatchModal ||
         showHeroPickerModal ||
-        showLogoPickerModal
+        showLogoPickerModal ||
+        showNetplayModal
       ) {
         return;
       }
@@ -800,6 +880,7 @@ export default function ArcadeWheelLayout({
     showFixMatchModal,
     showHeroPickerModal,
     showLogoPickerModal,
+    showNetplayModal,
   ]);
 
   // Formatted playtime
@@ -882,256 +963,36 @@ export default function ArcadeWheelLayout({
 
                 {/* Split Row: Left (65% Hero + Meta + Play) & Right (35% RetroAchievements) */}
                 <div className="osu-top-split-row">
-                  {/* Left Column: Hero Banner + Meta Tags + Actions (65%) */}
-                  <div className="osu-top-col-hero">
-                    {/* Hero Banner (Clean artwork) */}
-                    <div className="osu-hero-banner-wrap">
-                      {globalBg && (
-                        <div
-                          className="osu-hero-banner-img"
-                          style={{ backgroundImage: `url(${globalBg})` }}
-                        />
-                      )}
-                      <div className="osu-hero-banner-gradient" />
+                  <WheelMetadataCard
+                    activeGame={activeGame}
+                    metadata={metadata}
+                    globalBg={globalBg}
+                    formattedPlaytime={formattedPlaytime}
+                    onPlayGame={() => handlePlayGame()}
+                    onToggleFavorite={() => handleToggleFav()}
+                    onNetplay={handleNetplay}
+                  />
 
-                      {/* Fallback title if game has no hero image */}
-                      {!activeGame.hero_path && (
-                        <div className="osu-banner-text-box">
-                          <h2 className="osu-banner-title">
-                            {activeGame.display_name || metadata?.display_name || activeGame.name}
-                          </h2>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Metadata Chips (Year, Genre, Dev, Publisher, Region, Playtime) */}
-                    <div className="osu-meta-tags-row">
-                      {(metadata?.release_year || activeGame.release_year) && (
-                        <span className="osu-meta-pill year">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
-                            <line x1="16" x2="16" y1="2" y2="6"/>
-                            <line x1="8" x2="8" y1="2" y2="6"/>
-                            <line x1="3" x2="21" y1="10" y2="10"/>
-                          </svg>
-                          <span>{metadata?.release_year || activeGame.release_year}</span>
-                        </span>
-                      )}
-
-                      {(metadata?.genre || activeGame.genre) && (
-                        <span className="osu-meta-pill genre">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                          </svg>
-                          <span>{metadata?.genre || activeGame.genre}</span>
-                        </span>
-                      )}
-
-                      {(metadata?.developer || activeGame.developer) && (
-                        <span className="osu-meta-pill dev">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="16 18 22 12 16 6"/>
-                            <polyline points="8 6 2 12 8 18"/>
-                          </svg>
-                          <span>{metadata?.developer || activeGame.developer}</span>
-                        </span>
-                      )}
-
-                      {metadata?.publisher && metadata.publisher !== (metadata?.developer || activeGame.developer) && (
-                        <span className="osu-meta-pill pub">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect width="16" height="20" x="4" y="2" rx="2" ry="2"/>
-                            <path d="M9 22v-4h6v4"/>
-                            <path d="M8 6h.01"/>
-                            <path d="M16 6h.01"/>
-                          </svg>
-                          <span>{metadata.publisher}</span>
-                        </span>
-                      )}
-
-                      {metadata?.region && (
-                        <span className="osu-meta-pill region">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="2" x2="22" y1="12" y2="12"/>
-                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                          </svg>
-                          <span>{metadata.region}</span>
-                        </span>
-                      )}
-
-                      {metadata?.franchise && (
-                        <span className="osu-meta-pill franchise">
-                          <span>🏷️ {metadata.franchise}</span>
-                        </span>
-                      )}
-
-                      <span className="osu-meta-pill time">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        <span>{formattedPlaytime}</span>
-                      </span>
-                    </div>
-
-                    {/* Play Button & Favorite Toggle */}
-                    <div className="osu-showcase-actions">
-                      <button
-                        type="button"
-                        className="osu-btn-play-large"
-                        onClick={() => handlePlayGame()}
-                        title={t("arcade.playShortcut", "[ Enter / Botón A ]")}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                          <polygon points="5 3 19 12 5 21 5 3" />
-                        </svg>
-                        <span>{t("hero.playNow", "JUGAR AHORA").toUpperCase()}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className={`osu-btn-favorite ${activeGame.favorite ? "active" : ""}`}
-                        onClick={() => handleToggleFav()}
-                        title={t("arcade.favoriteTooltip", "Alternar favorito (Tecla F / Botón Y)")}
-                      >
-                        {activeGame.favorite ? "★" : "☆"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Right Column: RetroAchievements Section (35%) */}
                   <div className="osu-top-col-achievements">
-                    <div className="osu-row-achievements">
-                      {hasRACredentials ? (
-                        achievementsLoading ? (
-                          <div className="osu-achievements-loading">
-                            <span className="osu-btn-spinner" />
-                            <span>{t("gameDetail.loadingAchievements", "Cargando logros de RetroAchievements...")}</span>
-                          </div>
-                        ) : achievements && achievements.total > 0 ? (
-                          <AchievementList
-                            progress={achievements}
-                            onRefresh={handleRefreshAchievements}
-                            refreshing={achievementsLoading}
-                          />
-                        ) : (
-                          <div className="osu-no-achievements-notice">
-                            <div className="osu-no-achievements-icon-wrap">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
-                                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-                                <path d="M4 22h16"/>
-                                <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
-                                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
-                                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
-                              </svg>
-                            </div>
-                            <div className="osu-no-achievements-info">
-                              <span className="osu-no-achievements-title">RetroAchievements</span>
-                              <span className="osu-no-achievements-desc">
-                                Este juego no cuenta actualmente con un set de logros publicado en RetroAchievements.
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              className="osu-no-achievements-retry-btn"
-                              onClick={handleRefreshAchievements}
-                              disabled={achievementsLoading}
-                              title="Reintentar consultar logros en RetroAchievements"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                                <path d="M21 3v5h-5" />
-                                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                                <path d="M3 21v-5h5" />
-                              </svg>
-                              <span>{t("common.retry", "Reintentar / Sincronizar")}</span>
-                            </button>
-                          </div>
-                        )
-                      ) : (
-                        <div className="osu-no-achievements-notice not-configured">
-                          <div className="osu-no-achievements-icon-wrap">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
-                              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-                              <path d="M4 22h16"/>
-                              <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
-                              <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
-                              <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
-                            </svg>
-                          </div>
-                          <div className="osu-no-achievements-info">
-                            <span className="osu-no-achievements-title">RetroAchievements</span>
-                            <span className="osu-no-achievements-desc">
-                              Inicia sesión en Configuración &gt; Integraciones para sincronizar tus logros y medallas.
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <WheelAchievementsCard
+                      hasRACredentials={hasRACredentials}
+                      achievementsLoading={achievementsLoading}
+                      achievements={achievements}
+                      onRefresh={handleRefreshAchievements}
+                    />
                   </div>
                 </div>
               </div>
 
               {/* BOTTOM SECTION: Large Wide Video Preview Monitor (CRT Frame) */}
-              <div className="osu-video-bottom-card">
-                <div className="osu-video-wrapper">
-                  {videoSrc ? (
-                    <video
-                      ref={videoRef}
-                      key={videoSrc}
-                      src={getCoverUrl(videoSrc)}
-                      className="osu-snap-video"
-                      autoPlay
-                      loop
-                      playsInline
-                      muted={isVideoMuted}
-                      onLoadedMetadata={(e) => {
-                        e.currentTarget.volume = videoVolume;
-                      }}
-                    />
-                  ) : activeGame.cover_path ? (
-                    <div className="osu-video-cover-fallback">
-                      <div
-                        className="osu-cover-fallback-bg"
-                        style={{ backgroundImage: `url(${getCoverUrl(activeGame.cover_path)})` }}
-                        aria-hidden="true"
-                      />
-                      <img
-                        src={getCoverUrl(activeGame.cover_path)}
-                        alt={activeGame.display_name || metadata?.display_name || activeGame.name}
-                        className="osu-cover-fallback-img"
-                      />
-                    </div>
-                  ) : (
-                    <div className="osu-video-standby">
-                      <div className="osu-standby-grid" />
-                      <span className="osu-standby-text">
-                        {t("arcade.previewBadgeFallback", "PREVIEW")}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Floating Game Logo Overlay (Top-Left of Preview) */}
-                  {activeGame.logo_path && (
-                    <div className="osu-video-logo-overlay">
-                      <img
-                        src={getCoverUrl(activeGame.logo_path)}
-                        alt={activeGame.display_name || metadata?.display_name || activeGame.name}
-                        className="osu-video-logo-img"
-                      />
-                    </div>
-                  )}
-
-                  <div className="osu-crt-scanlines" aria-hidden="true" />
-
-                  <div className={`osu-media-badge-tag ${videoSrc ? "is-video" : "is-cover"}`}>
-                    <span className="osu-rec-dot" /> {videoSrc ? t("arcade.previewBadgeVideo", "VIDEO SNAP") : t("arcade.previewBadgeCover", "PORTADA")}
-                  </div>
-                </div>
-              </div>
+              <WheelVideoPlayer
+                videoSrc={videoSrc}
+                activeGame={activeGame}
+                metadata={metadata}
+                videoRef={videoRef}
+                isVideoMuted={isVideoMuted}
+                videoVolume={videoVolume}
+              />
             </div>
           ) : (
             <div className="osu-empty-showcase">
@@ -1152,7 +1013,7 @@ export default function ArcadeWheelLayout({
               <span className="osu-search-count">
                 {searchQuery.trim()
                   ? t("arcade.matchesCount", { count: filteredGames.length })
-                  : `${filteredGames.length} juegos en biblioteca`}
+                  : t("arcade.libraryCount", { count: filteredGames.length })}
               </span>
             </div>
 
@@ -1170,7 +1031,7 @@ export default function ArcadeWheelLayout({
                   type="button"
                   className="osu-search-clear-btn"
                   onClick={() => setSearchQuery("")}
-                  title="Limpiar búsqueda"
+                  title={t("common.clearSearch")}
                 >
                   ✕
                 </button>
@@ -1198,7 +1059,7 @@ export default function ArcadeWheelLayout({
             {groupedConsoles.length === 0 ? (
               <div className="osu-carousel-empty">
                 <span>🔍</span>
-                <p>No se encontraron juegos para "{searchQuery}"</p>
+                <p>{t("arcade.noResultsFor", { query: searchQuery })}</p>
               </div>
             ) : (
               groupedConsoles.map(([platform, platformGames]) => {
@@ -1208,16 +1069,29 @@ export default function ArcadeWheelLayout({
                 const logoUrl = getPlatformLogo(platform);
 
                 return (
-                  <div key={platform} className="osu-console-group">
+                  <div
+                    key={platform}
+                    className="osu-console-group"
+                    style={
+                      {
+                        "--console-color": brandColor,
+                        "--console-color-glow": `${brandColor}55`,
+                      } as CSSProperties
+                    }
+                  >
                     {/* Console Header Card (Option A: Logo Hero) */}
                     <div
-                      className={`osu-group-header ${isExpanded ? "expanded" : "collapsed"}`}
+                      ref={(el) => {
+                        if (el) headerRefs.current.set(platform, el);
+                        else headerRefs.current.delete(platform);
+                      }}
+                      className={`osu-group-header ${isExpanded ? "expanded" : "collapsed"}${!isExpanded && focusedConsole === platform && !deferredSearchQuery.trim() ? " console-focused" : ""}`}
                       style={{
                         "--console-color": brandColor,
                         "--console-color-glow": `${brandColor}55`,
                       } as React.CSSProperties}
                       onClick={() => toggleConsole(platform)}
-                      title={`${platName} (${isExpanded ? "contraer" : "expandir"})`}
+                      title={`${platName} (${isExpanded ? t("arcade.collapseConsole") : t("arcade.expandConsole")})`}
                     >
                       <div className="osu-group-header-left">
                         {logoUrl ? (
@@ -1243,7 +1117,7 @@ export default function ArcadeWheelLayout({
                         <span className="osu-group-count-pill">
                           <span className="osu-group-count-num">{platformGames.length}</span>
                           <span className="osu-group-count-sub">
-                            {platformGames.length === 1 ? "juego" : "juegos"}
+                            {platformGames.length === 1 ? t("common.game", "juego") : t("common.games", "juegos")}
                           </span>
                         </span>
                       </div>
@@ -1265,12 +1139,18 @@ export default function ArcadeWheelLayout({
                                 else cardRefs.current.delete(game.id);
                               }}
                               className={`osu-game-card ${isSelected ? "selected" : ""}`}
+                              style={
+                                {
+                                  "--console-color": brandColor,
+                                  "--console-color-glow": `${brandColor}55`,
+                                } as CSSProperties
+                              }
                               onClick={() => {
                                 if (isSelected) {
                                   handlePlayGame(game);
                                 } else {
                                   setSelectedGameId(game.id);
-                                  if (game.platform && game.platform !== openConsole && !searchQuery.trim()) {
+                                  if (game.platform && game.platform !== openConsole && !deferredSearchQuery.trim()) {
                                     setOpenConsole(game.platform);
                                   }
                                   playWheelTick(0.25);
@@ -1395,186 +1275,23 @@ export default function ArcadeWheelLayout({
         </div>
       </footer>
 
-      {/* ========================================================
-          EDIT OPTIONS MODAL (4 Selections requested by user)
-         ======================================================== */}
-      {isEditMenuOpen && activeGame && (
-        <div
-          className="osu-edit-modal-backdrop"
-          onClick={() => setIsEditMenuOpen(false)}
-        >
-          <div
-            className="osu-edit-modal-card"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <div className="osu-edit-modal-header">
-              <div className="osu-edit-modal-title-wrap">
-                <div
-                  className="osu-edit-modal-badge"
-                  style={{
-                    backgroundColor: `${activeBrandColor}22`,
-                    borderColor: `${activeBrandColor}66`,
-                    color: activeBrandColor,
-                  }}
-                >
-                  <ConsoleIcon platform={activeGame.platform} size={15} />
-                  <span>{getPlatformDisplayName(activeGame.platform)}</span>
-                </div>
-                <h3 className="osu-edit-modal-title">
-                  {activeGame.display_name || metadata?.display_name || activeGame.name}
-                </h3>
-              </div>
-              <button
-                type="button"
-                className="osu-edit-modal-close"
-                onClick={() => setIsEditMenuOpen(false)}
-                title="Cerrar (Esc)"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="osu-edit-modal-list">
-              {/* Option 1: Editar datos */}
-              <button
-                type="button"
-                className="osu-edit-item-card"
-                onClick={() => {
-                  setIsEditMenuOpen(false);
-                  setShowFixMatchModal(true);
-                }}
-              >
-                <div className="osu-edit-item-num">1</div>
-                <div className="osu-edit-item-icon icon-data">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="18" height="18" x="3" y="3" rx="2" />
-                    <path d="M9 9h6v6H9z" />
-                    <path d="m21 15-3-3 3-3" />
-                  </svg>
-                </div>
-                <div className="osu-edit-item-content">
-                  <div className="osu-edit-item-title-row">
-                    <span className="osu-edit-item-title">Editar datos</span>
-                  </div>
-                  <span className="osu-edit-item-desc">
-                    Identificar juego, cambiar título, año y carátulas en bases de datos
-                  </span>
-                </div>
-                <div className="osu-edit-item-arrow">›</div>
-              </button>
-
-              {/* Option 2: Galeria de Hero */}
-              <button
-                type="button"
-                className="osu-edit-item-card"
-                onClick={() => {
-                  setIsEditMenuOpen(false);
-                  setShowHeroPickerModal(true);
-                }}
-              >
-                <div className="osu-edit-item-num">2</div>
-                <div className="osu-edit-item-icon icon-hero">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
-                    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
-                    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
-                    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
-                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
-                  </svg>
-                </div>
-                <div className="osu-edit-item-content">
-                  <div className="osu-edit-item-title-row">
-                    <span className="osu-edit-item-title">Galería de Hero</span>
-                    {activeGame.hero_path && (
-                      <span className="osu-edit-tag-ok">✓ Banner activo</span>
-                    )}
-                  </div>
-                  <span className="osu-edit-item-desc">
-                    Buscar y seleccionar fondos hero panorámicos HD en SteamGridDB
-                  </span>
-                </div>
-                <div className="osu-edit-item-arrow">›</div>
-              </button>
-
-              {/* Option 3: Buscar Logo */}
-              <button
-                type="button"
-                className="osu-edit-item-card"
-                onClick={() => {
-                  setIsEditMenuOpen(false);
-                  setShowLogoPickerModal(true);
-                }}
-              >
-                <div className="osu-edit-item-num">3</div>
-                <div className="osu-edit-item-icon icon-logo">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 7V4h16v3" />
-                    <path d="M9 20h6" />
-                    <path d="M12 4v16" />
-                  </svg>
-                </div>
-                <div className="osu-edit-item-content">
-                  <div className="osu-edit-item-title-row">
-                    <span className="osu-edit-item-title">Buscar Logo</span>
-                    {activeGame.logo_path && (
-                      <span className="osu-edit-tag-ok">✓ Logo activo</span>
-                    )}
-                  </div>
-                  <span className="osu-edit-item-desc">
-                    Buscar y seleccionar logos transparentes en SteamGridDB
-                  </span>
-                </div>
-                <div className="osu-edit-item-arrow">›</div>
-              </button>
-
-              {/* Option 4: Descargar Gameplay */}
-              <button
-                type="button"
-                className={`osu-edit-item-card ${scrapingVideo ? "loading" : ""}`}
-                onClick={() => {
-                  setIsEditMenuOpen(false);
-                  handleDownloadVideo();
-                }}
-                disabled={scrapingVideo}
-              >
-                <div className="osu-edit-item-num">4</div>
-                <div className="osu-edit-item-icon icon-video">
-                  {scrapingVideo ? (
-                    <span className="osu-btn-spinner" />
-                  ) : (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="23 7 16 12 23 17 23 7" />
-                      <rect width="14" height="14" x="1" y="5" rx="2" ry="2" />
-                    </svg>
-                  )}
-                </div>
-                <div className="osu-edit-item-content">
-                  <div className="osu-edit-item-title-row">
-                    <span className="osu-edit-item-title">Descargar Gameplay</span>
-                    {videoSrc && !scrapingVideo && (
-                      <span className="osu-edit-tag-video">✓ Video listo</span>
-                    )}
-                    {scrapingVideo && (
-                      <span className="osu-edit-tag-downloading">{downloadProgress}%</span>
-                    )}
-                  </div>
-                  <span className="osu-edit-item-desc">
-                    {videoSrc
-                      ? "Volver a descargar video de gameplay desde ScreenScraper.fr"
-                      : "Descargar clip de video de gameplay desde ScreenScraper.fr"}
-                  </span>
-                </div>
-                <div className="osu-edit-item-arrow">›</div>
-              </button>
-            </div>
-
-            <div className="osu-edit-modal-footer">
-              <span className="osu-edit-hint">Atajos: [ 1 - 4 ] Seleccionar opción • [ Esc ] Cerrar</span>
-            </div>
-          </div>
-        </div>
+      {/* EDIT OPTIONS MODAL */}
+      {activeGame && (
+        <WheelQuickEditMenu
+          isOpen={isEditMenuOpen}
+          onClose={() => setIsEditMenuOpen(false)}
+          activeGame={activeGame}
+          metadata={metadata}
+          activeBrandColor={activeBrandColor}
+          onOpenFixMatch={() => setShowFixMatchModal(true)}
+          onOpenHeroPicker={() => setShowHeroPickerModal(true)}
+          onOpenLogoPicker={() => setShowLogoPickerModal(true)}
+          onDownloadVideo={handleDownloadVideo}
+          scrapingVideo={scrapingVideo}
+          downloadProgress={downloadProgress}
+          videoSrc={videoSrc}
+          onGameUpdated={onGameUpdated}
+        />
       )}
 
       {/* Standalone FixMatch / Edit Data Modal */}
@@ -1612,6 +1329,16 @@ export default function ArcadeWheelLayout({
             setShowLogoPickerModal(false);
             onLogoChanged?.(activeGame.id, newLogoPath);
           }}
+        />
+      )}
+
+      {/* Standalone Netplay Modal */}
+      {showNetplayModal && activeGame && (
+        <NetplayModal
+          isOpen={showNetplayModal}
+          onClose={() => setShowNetplayModal(false)}
+          game={activeGame}
+          coreName={netplayCoreName}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, type ChangeEvent } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
@@ -7,40 +7,14 @@ import {
   createProfile,
   deleteProfile,
   switchProfile,
-  exportLibrary,
-  importLibrary,
-  getErrorLogs,
-  saveRACredentials,
-  getRACredentials,
-  clearRACredentials,
-  setCheevosHardcore,
-  saveSteamGridDBKey,
-  getSteamGridDBKey,
-  clearSteamGridDBKey,
-  saveScreenscraperConfig,
-  getScreenscraperConfig,
-  clearScreenscraperConfig,
+  renameProfile,
   saveBiosFolders,
-  getBiosFolders,
+  saveVideoFolders,
+  saveMusicFolders,
   getGraphicsSettings,
   saveGraphicsSettings,
-  getAudioOutputDevices,
-  type GraphicsSettings,
-  getMusicTracks,
-  openMusicFolder,
-  saveMusicVolume,
-  getMusicVolume,
-  saveMusicFolders,
-  getMusicFolders,
   onEmulatorUpdates,
-  saveVideoFolders,
-  getVideoFolders,
-  scanLocalVideos,
-  scrapeLibraryVideos,
-  cancelScrapeLibraryVideos,
-  onScrapeBatchProgress,
-  type LocalVideoStats,
-  type BatchScrapeProgressEvent,
+  type GraphicsSettings,
 } from "../lib/tauri";
 import type { SortKey, Game, SettingsTab, GraphicsConsole, LayoutStyle } from "../types";
 import EmulatorsTab from "./EmulatorsTab";
@@ -53,6 +27,10 @@ import EmulationTab from "./settings/EmulationTab";
 import IntegrationsTab from "./settings/IntegrationsTab";
 import ProfilesTab from "./settings/ProfilesTab";
 import SystemTab from "./settings/SystemTab";
+import { useIntegrationsSettings } from "./settings/useIntegrationsSettings";
+import { useSoundSettings } from "./settings/useSoundSettings";
+import { useLibraryTabSettings } from "./settings/useLibraryTabSettings";
+import { useSystemSettings } from "./settings/useSystemSettings";
 import "./Settings.css";
 
 interface Props {
@@ -138,8 +116,6 @@ export default function Settings({
   };
 
   const [newProfileName, setNewProfileName] = useState("");
-  const [errorLogs, setErrorLogs] = useState<string | null>(null);
-  const [copiedLog, setCopiedLog] = useState(false);
   const [savedToast, setSavedToast] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -157,16 +133,6 @@ export default function Settings({
     variant: "danger",
   });
 
-  // Video folders and stats state
-  const [videoFolders, setVideoFolders] = useState<string[]>([]);
-  const [videoStats, setVideoStats] = useState<LocalVideoStats | null>(null);
-  const [scanningLocalVideos, setScanningLocalVideos] = useState(false);
-
-  // ScreenScraper batch scraping state
-  const [isBatchScraping, setIsBatchScraping] = useState(false);
-  const [batchProgress, setBatchProgress] = useState<BatchScrapeProgressEvent | null>(null);
-
-  // Graphics state
   const [graphics, setGraphics] = useState<GraphicsSettings>({
     video_smooth: false,
     video_scale_integer: false,
@@ -174,36 +140,49 @@ export default function Settings({
     core_options: {},
   });
 
-  // RetroAchievements state
-  const [raUsername, setRaUsername] = useState("");
-  const [raPassword, setRaPassword] = useState("");
-  const [raApiKey, setRaApiKey] = useState("");
-  const [raLinkedUser, setRaLinkedUser] = useState<string | null>(null);
-  const [raHardcore, setRaHardcore] = useState(false);
-  const [raFeedback, setRaFeedback] = useState<{ msg: string; isError: boolean } | null>(null);
-
-  // SteamGridDB state
-  const [sgdbApiKey, setSgdbApiKey] = useState("");
-  const [sgdbLinked, setSgdbLinked] = useState(false);
-  const [sgdbFeedback, setSgdbFeedback] = useState<{ msg: string; isError: boolean } | null>(null);
-  const [sgdbLoading, setSgdbLoading] = useState(false);
-
-  // ScreenScraper state
-  const [ssDevId, setSsDevId] = useState("");
-  const [ssDevPass, setSsDevPass] = useState("");
-  const [ssUser, setSsUser] = useState("");
-  const [ssPass, setSsPass] = useState("");
-  const [ssLinked, setSsLinked] = useState(false);
-  const [ssDevIdSaved, setSsDevIdSaved] = useState<string | null>(null);
-  const [ssUserSaved, setSsUserSaved] = useState<string | null>(null);
-  const [ssFeedback, setSsFeedback] = useState<{ msg: string; isError: boolean } | null>(null);
-  const [ssLoading, setSsLoading] = useState(false);
-
-  // BIOS folders state
-  const [biosFolders, setBiosFolders] = useState<string[]>([]);
-
-  // Badge de actualizaciones de emuladores
+  const [connectedGamepads, setConnectedGamepads] = useState<string[]>([]);
   const [emulatorUpdatesCount, setEmulatorUpdatesCount] = useState(0);
+
+  const handleRemoveFolderRequest = useCallback(
+    (target: string, type: "bios-folder" | "music-folder" | "video-folder") => {
+      if (type === "bios-folder") {
+        setConfirmDialog({
+          isOpen: true,
+          type: "bios-folder",
+          target,
+          title: t("settings.confirm.biosTitle"),
+          message: t("settings.confirm.biosDesc"),
+          variant: "danger",
+        });
+      } else if (type === "music-folder") {
+        setConfirmDialog({
+          isOpen: true,
+          type: "music-folder",
+          target,
+          title: t("settings.confirm.musicTitle"),
+          message: t("settings.confirm.musicDesc"),
+          variant: "danger",
+        });
+      } else if (type === "video-folder") {
+        setConfirmDialog({
+          isOpen: true,
+          type: "video-folder",
+          target,
+          title: t("settings.confirm.videoTitle", "Quitar Carpeta de Videos"),
+          message: t("settings.confirm.videoDesc", "¿Deseas quitar esta carpeta de videos?"),
+          variant: "danger",
+        });
+      }
+    },
+    [t]
+  );
+
+  // Modular custom hooks per settings domain
+  const integrations = useIntegrationsSettings();
+  const sound = useSoundSettings({ onRemoveFolderRequest: handleRemoveFolderRequest });
+  const librarySettings = useLibraryTabSettings({ onRemoveFolderRequest: handleRemoveFolderRequest });
+  const systemSettings = useSystemSettings();
+
   useEffect(() => {
     const unlisten = onEmulatorUpdates((infos) => {
       setEmulatorUpdatesCount(infos.filter((i) => i.update_available).length);
@@ -213,224 +192,14 @@ export default function Settings({
     };
   }, []);
 
-  // Music folders state
-  const [musicFolders, setMusicFolders] = useState<string[]>([]);
-
-  // Music & SFX volume state
-  const [musicVolume, setMusicVolume] = useState<number>(() => {
-    const saved = localStorage.getItem("gameflix_music_volume");
-    if (saved !== null) {
-      const parsed = parseFloat(saved);
-      if (!isNaN(parsed)) return Math.max(0, Math.min(1, parsed));
-    }
-    return 0.15;
-  });
-  const [sfxVolume, setSfxVolume] = useState<number>(() => {
-    const saved = localStorage.getItem("gameflix_sfx_volume");
-    if (saved !== null) {
-      const parsed = parseFloat(saved);
-      if (!isNaN(parsed)) return Math.max(0, Math.min(1, parsed));
-    }
-    return 0.8;
-  });
-
-  // Video preview audio state (Arcade / Showcase)
-  const [previewVideoMuted, setPreviewVideoMuted] = useState<boolean>(() => {
-    const saved = localStorage.getItem("gameflix_preview_video_muted");
-    return saved === "true";
-  });
-  const [previewVideoVolume, setPreviewVideoVolume] = useState<number>(() => {
-    const saved = localStorage.getItem("gameflix_preview_video_volume");
-    if (saved !== null) {
-      const parsed = parseFloat(saved);
-      if (!isNaN(parsed)) return Math.max(0, Math.min(1, parsed));
-    }
-    return 0.7;
-  });
-
-  function handlePreviewVideoMutedChange(muted: boolean) {
-    setPreviewVideoMuted(muted);
-    localStorage.setItem("gameflix_preview_video_muted", muted.toString());
-    window.dispatchEvent(
-      new CustomEvent("preview-audio-settings-changed", {
-        detail: { muted, volume: previewVideoVolume },
-      })
-    );
-  }
-
-  function handlePreviewVideoVolumeChange(val: number) {
-    const clamped = Math.max(0, Math.min(1, val));
-    setPreviewVideoVolume(clamped);
-    localStorage.setItem("gameflix_preview_video_volume", clamped.toString());
-    window.dispatchEvent(
-      new CustomEvent("preview-audio-settings-changed", {
-        detail: { muted: previewVideoMuted, volume: clamped },
-      })
-    );
-  }
-
-  // Region preference
-  const [regionPref, setRegionPref] = useState<string>(
-    () => localStorage.getItem("gameflix_region_pref") || "usa"
-  );
-
-  // Gamepad status
-  const [connectedGamepads, setConnectedGamepads] = useState<string[]>([]);
-
-  // Audio output devices
-  const [audioDevices, setAudioDevices] = useState<string[]>([]);
-  const [refreshingAudio, setRefreshingAudio] = useState(false);
-
-  async function refreshAudioDevices() {
-    setRefreshingAudio(true);
-    try {
-      const devs = await getAudioOutputDevices();
-      setAudioDevices(devs);
-    } catch (e) {
-      console.error("Failed to load audio devices:", e);
-    } finally {
-      setRefreshingAudio(false);
-    }
-  }
-
-  // Music scanner state
-  const [musicTrackCount, setMusicTrackCount] = useState<number | null>(null);
-  const [scanningMusic, setScanningMusic] = useState(false);
-  const [musicFeedback, setMusicFeedback] = useState<string | null>(null);
-
-  async function handleScanMusic() {
-    setScanningMusic(true);
-    setMusicFeedback(null);
-    try {
-      const tracks = await getMusicTracks();
-      setMusicTrackCount(tracks.length);
-      setMusicFeedback(`✓ ${tracks.length} temas detectados`);
-      window.dispatchEvent(new CustomEvent("music-scanned"));
-      setTimeout(() => setMusicFeedback(null), 4000);
-    } catch (e) {
-      console.error("Failed to scan music:", e);
-      setMusicFeedback("Error al escanear música");
-    } finally {
-      setScanningMusic(false);
-    }
-  }
-
-  async function handleOpenMusicFolder() {
-    try {
-      await openMusicFolder();
-    } catch (e) {
-      console.error("Failed to open music folder:", e);
-    }
-  }
-
-  useEffect(() => {
-    if (activeTab === "sound") {
-      getMusicTracks().then((t) => setMusicTrackCount(t.length)).catch(() => {});
-    }
-  }, [activeTab]);
-
   useEffect(() => {
     getGraphicsSettings()
       .then((g) => {
         if (g) setGraphics(g);
       })
       .catch(console.error);
-
-    getAudioOutputDevices()
-      .then((devs) => {
-        if (devs) setAudioDevices(devs);
-      })
-      .catch(console.error);
-
-    getRACredentials().then((username) => {
-      if (username) {
-        setRaLinkedUser(username);
-      }
-    });
-    getSteamGridDBKey().then((linked) => {
-      if (linked) {
-        setSgdbLinked(true);
-      }
-    });
-    getScreenscraperConfig().then((cfg) => {
-      if (cfg.has_dev_credentials) {
-        setSsLinked(true);
-        setSsDevIdSaved(cfg.dev_id);
-        setSsUserSaved(cfg.username);
-      }
-    });
-    getBiosFolders()
-      .then((folders) => {
-        if (folders && folders.length > 0) {
-          setBiosFolders(folders);
-        }
-      })
-      .catch(console.error);
-
-    getMusicFolders()
-      .then((folders) => {
-        if (folders && folders.length > 0) {
-          setMusicFolders(folders);
-        }
-      })
-      .catch(console.error);
-
-    getVideoFolders()
-      .then((folders) => {
-        if (folders && folders.length > 0) {
-          setVideoFolders(folders);
-        }
-      })
-      .catch(console.error);
-
-    scanLocalVideos()
-      .then((stats) => {
-        if (stats) setVideoStats(stats);
-      })
-      .catch(console.error);
-
-    getMusicVolume()
-      .then((vol) => {
-        if (typeof vol === "number" && !isNaN(vol)) {
-          const clamped = Math.max(0, Math.min(1, vol));
-          setMusicVolume(clamped);
-          localStorage.setItem("gameflix_music_volume", clamped.toString());
-        }
-      })
-      .catch(console.error);
-  }, [currentProfile]);
-
-  // Listener para progreso de descarga masiva de ScreenScraper
-  useEffect(() => {
-    const unlisten = onScrapeBatchProgress((payload) => {
-      setBatchProgress(payload);
-      if (payload.status === "completed" || payload.status === "cancelled") {
-        setIsBatchScraping(false);
-        scanLocalVideos().then((st) => setVideoStats(st)).catch(() => {});
-      } else {
-        setIsBatchScraping(true);
-      }
-    });
-    return () => {
-      unlisten.then((fn) => fn());
-    };
   }, []);
 
-  // Sincronizar volumen si cambia desde el widget del vinilo
-  useEffect(() => {
-    function handleVolumeSync(e: Event) {
-      const customEvent = e as CustomEvent<number>;
-      if (typeof customEvent.detail === "number") {
-        setMusicVolume(customEvent.detail);
-      }
-    }
-    window.addEventListener("music-volume-changed", handleVolumeSync);
-    return () => {
-      window.removeEventListener("music-volume-changed", handleVolumeSync);
-    };
-  }, []);
-
-  // Real-time gamepad listener
   useEffect(() => {
     function updateGamepads() {
       const gp = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -455,47 +224,6 @@ export default function Settings({
       clearInterval(interval);
     };
   }, []);
-
-  const uniquePlatforms = useMemo(() => {
-    const seen = new Set<string>();
-    return games
-      .map((g) => g.platform)
-      .filter((p) => {
-        if (seen.has(p)) return false;
-        seen.add(p);
-        return true;
-      })
-      .sort();
-  }, [games]);
-
-  function getDefaultCore(platform: string): string {
-    const defaults: Record<string, string> = {
-      SNES: "snes9x",
-      NES: "nestopia",
-      N64: "mupen64plus_next",
-      GBA: "mgba",
-      GBC: "gambatte",
-      GB: "gambatte",
-      NDS: "melonds",
-      "3DS": "citra",
-      GAMECUBE: "dolphin",
-      VB: "mednafen_vb",
-      MEGA_DRIVE: "genesis_plus_gx",
-      SMS: "smsplus",
-      GAME_GEAR: "gearsystem",
-      PCE: "mednafen_pce_fast",
-      "32X": "picodrive",
-      PS1: "pcsx_rearmed",
-      PSP: "ppsspp",
-      MAME: "fbneo",
-      NEOGEO: "fbneo",
-      NGP: "mednafen_ngp",
-      LYNX: "mednafen_lynx",
-      WSWAN: "mednafen_wswan",
-      COLECOVISION: "gearcoleco",
-    };
-    return defaults[platform] || "";
-  }
 
   function triggerSaveToast() {
     setSavedToast(true);
@@ -552,120 +280,6 @@ export default function Settings({
     });
   }
 
-  async function handleAddBiosFolder() {
-    let path;
-    try {
-      path = await open({ directory: true, title: "Seleccionar carpeta de BIOS (PlayStation, Neo Geo, etc.)" });
-    } catch (e) {
-      console.error("BIOS folder dialog failed:", e);
-      window.dispatchEvent(new CustomEvent("app-error", { detail: "Error al abrir selector de carpeta BIOS" }));
-      return;
-    }
-    if (path && !biosFolders.includes(path)) {
-      const next = [...biosFolders, path];
-      setBiosFolders(next);
-      await saveBiosFolders(next).catch(console.error);
-    }
-  }
-
-  function requestRemoveBiosFolder(path: string) {
-    setConfirmDialog({
-      isOpen: true,
-      type: "bios-folder",
-      target: path,
-      title: t("settings.confirm.biosTitle"),
-      message: t("settings.confirm.biosDesc"),
-      variant: "danger",
-    });
-  }
-
-  async function handleAddMusicFolder() {
-    let path;
-    try {
-      path = await open({ directory: true, title: "Seleccionar carpeta de música (MP3, OGG, FLAC, WAV, etc.)" });
-    } catch (e) {
-      console.error("Music folder dialog failed:", e);
-      window.dispatchEvent(new CustomEvent("app-error", { detail: "Error al abrir selector de carpeta de música" }));
-      return;
-    }
-    if (path && !musicFolders.includes(path)) {
-      const next = [...musicFolders, path];
-      setMusicFolders(next);
-      await saveMusicFolders(next).catch(console.error);
-      handleScanMusic();
-    }
-  }
-
-  function requestRemoveMusicFolder(path: string) {
-    setConfirmDialog({
-      isOpen: true,
-      type: "music-folder",
-      target: path,
-      title: t("settings.confirm.musicTitle"),
-      message: t("settings.confirm.musicDesc"),
-      variant: "danger",
-    });
-  }
-
-  async function handleAddVideoFolder() {
-    let path;
-    try {
-      path = await open({ directory: true, title: "Seleccionar carpeta de videos (.mp4) de juegos" });
-    } catch (e) {
-      console.error("Video folder dialog failed:", e);
-      window.dispatchEvent(new CustomEvent("app-error", { detail: "Error al abrir selector de carpeta de videos" }));
-      return;
-    }
-    if (path && !videoFolders.includes(path)) {
-      const next = [...videoFolders, path];
-      setVideoFolders(next);
-      await saveVideoFolders(next).catch(console.error);
-      handleScanLocalVideos();
-    }
-  }
-
-  function requestRemoveVideoFolder(path: string) {
-    setConfirmDialog({
-      isOpen: true,
-      type: "video-folder",
-      target: path,
-      title: t("settings.confirm.videoTitle", "Quitar Carpeta de Videos"),
-      message: t("settings.confirm.videoDesc", "¿Deseas quitar esta carpeta de videos?"),
-      variant: "danger",
-    });
-  }
-
-  async function handleScanLocalVideos() {
-    setScanningLocalVideos(true);
-    try {
-      const stats = await scanLocalVideos();
-      setVideoStats(stats);
-    } catch (e) {
-      console.error("Failed to scan local videos:", e);
-    } finally {
-      setScanningLocalVideos(false);
-    }
-  }
-
-  async function handleStartBatchScrape(onlyMissing: boolean) {
-    setIsBatchScraping(true);
-    try {
-      await scrapeLibraryVideos(onlyMissing);
-    } catch (e) {
-      setIsBatchScraping(false);
-      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al iniciar descarga masiva";
-      window.dispatchEvent(new CustomEvent("app-error", { detail: msg }));
-    }
-  }
-
-  async function handleCancelBatchScrape() {
-    try {
-      await cancelScrapeLibraryVideos();
-    } catch (e) {
-      console.error("Cancel batch scrape failed:", e);
-    }
-  }
-
   function requestDeleteProfile(name: string) {
     setConfirmDialog({
       isOpen: true,
@@ -685,19 +299,19 @@ export default function Settings({
       setFolders(next);
       await saveSettings(next, kioskMode).catch(console.error);
     } else if (confirmDialog.type === "bios-folder") {
-      const next = biosFolders.filter((f) => f !== confirmDialog.target);
-      setBiosFolders(next);
+      const next = librarySettings.biosFolders.filter((f) => f !== confirmDialog.target);
+      librarySettings.setBiosFolders(next);
       await saveBiosFolders(next).catch(console.error);
     } else if (confirmDialog.type === "music-folder") {
-      const next = musicFolders.filter((f) => f !== confirmDialog.target);
-      setMusicFolders(next);
+      const next = sound.musicFolders.filter((f) => f !== confirmDialog.target);
+      sound.setMusicFolders(next);
       await saveMusicFolders(next).catch(console.error);
-      handleScanMusic();
+      sound.handleScanMusic();
     } else if (confirmDialog.type === "video-folder") {
-      const next = videoFolders.filter((f) => f !== confirmDialog.target);
-      setVideoFolders(next);
+      const next = librarySettings.videoFolders.filter((f) => f !== confirmDialog.target);
+      librarySettings.setVideoFolders(next);
       await saveVideoFolders(next).catch(console.error);
-      handleScanLocalVideos();
+      librarySettings.handleScanLocalVideos();
     } else if (confirmDialog.type === "profile") {
       const name = confirmDialog.target;
       if (profiles.length > 1) {
@@ -721,18 +335,6 @@ export default function Settings({
     setConfirmDialog({ isOpen: false, type: null, target: "", title: "", message: "", variant: "danger" });
   }
 
-  function handleMusicVolumeChange(val: number) {
-    setMusicVolume(val);
-    localStorage.setItem("gameflix_music_volume", val.toString());
-    saveMusicVolume(val).catch(console.error);
-    window.dispatchEvent(new CustomEvent("music-volume-changed", { detail: val }));
-  }
-
-  function handleSfxVolumeChange(val: number) {
-    setSfxVolume(val);
-    localStorage.setItem("gameflix_sfx_volume", val.toString());
-  }
-
   async function handleKioskToggle() {
     const next = !kioskMode;
     setKiosk(next);
@@ -741,11 +343,6 @@ export default function Settings({
     } catch (e) {
       console.error("Kiosk toggle failed:", e);
     }
-  }
-
-  function handleRegionChange(r: string) {
-    setRegionPref(r);
-    localStorage.setItem("gameflix_region_pref", r);
   }
 
   async function handleCreateProfile() {
@@ -771,162 +368,61 @@ export default function Settings({
     }
   }
 
-  async function handleExport() {
+  async function handleRenameProfile(oldName: string, newName: string) {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === oldName) return;
+    if (profiles.some((p) => p.toLowerCase() === trimmed.toLowerCase() && p !== oldName)) return;
     try {
-      const json = await exportLibrary();
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "gameflix-backup.json";
-      a.click();
-      URL.revokeObjectURL(url);
+      await renameProfile(oldName, trimmed);
+      const nextProfiles = profiles.map((p) => (p === oldName ? trimmed : p));
+      const nextCurrent = currentProfile === oldName ? trimmed : currentProfile;
+      onProfilesChange(nextProfiles, nextCurrent);
     } catch (e) {
-      console.error("Export failed:", e);
-      window.dispatchEvent(new CustomEvent("app-error", { detail: "Error al exportar" }));
+      console.error("Rename profile failed:", e);
+      window.dispatchEvent(new CustomEvent("app-error", { detail: "Error al renombrar perfil" }));
     }
   }
 
-  async function handleImport(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      await importLibrary(text);
-      window.location.reload();
-    } catch (err) {
-      console.error("Import failed:", err);
-      window.dispatchEvent(new CustomEvent("app-error", { detail: "Error al importar" }));
-    }
-  }
+  const uniquePlatforms = useMemo(() => {
+    const seen = new Set<string>();
+    return games
+      .map((g) => g.platform)
+      .filter((p) => {
+        if (seen.has(p)) return false;
+        seen.add(p);
+        return true;
+      })
+      .sort();
+  }, [games]);
 
-  async function handleToggleLogs() {
-    if (errorLogs !== null) {
-      setErrorLogs(null);
-      return;
-    }
-    try {
-      const logs = await getErrorLogs();
-      setErrorLogs(logs || "Sin errores registrados");
-    } catch (e) {
-      setErrorLogs("Error al leer logs");
-    }
-  }
-
-  function handleCopyLogs() {
-    if (!errorLogs) return;
-    navigator.clipboard.writeText(errorLogs);
-    setCopiedLog(true);
-    setTimeout(() => setCopiedLog(false), 2000);
-  }
-
-  async function handleLinkRA() {
-    setRaFeedback(null);
-    if (!raUsername || !raPassword || !raApiKey) {
-      setRaFeedback({ msg: "Por favor completa usuario, contraseña y API Key", isError: true });
-      return;
-    }
-    try {
-      await saveRACredentials(raUsername, raPassword, raApiKey);
-      setRaLinkedUser(raUsername);
-      setRaPassword("");
-      setRaFeedback({ msg: "¡Cuenta vinculada y sesión iniciada con éxito!", isError: false });
-    } catch (e) {
-      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al vincular";
-      setRaFeedback({ msg, isError: true });
-    }
-  }
-
-  async function handleUnlinkRA() {
-    try {
-      await clearRACredentials();
-      setRaLinkedUser(null);
-      setRaUsername("");
-      setRaPassword("");
-      setRaApiKey("");
-      setRaFeedback({ msg: "Cuenta desvinculada", isError: false });
-    } catch (e) {
-      setRaFeedback({ msg: "Error al desvincular", isError: true });
-    }
-  }
-
-  async function handleToggleRAHardcore() {
-    const next = !raHardcore;
-    setRaHardcore(next);
-    try {
-      await setCheevosHardcore(next);
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  async function handleLinkSGDB() {
-    setSgdbFeedback(null);
-    if (!sgdbApiKey.trim()) {
-      setSgdbFeedback({ msg: "Por favor ingresa tu API Key de SteamGridDB", isError: true });
-      return;
-    }
-    setSgdbLoading(true);
-    try {
-      await saveSteamGridDBKey(sgdbApiKey.trim());
-      setSgdbLinked(true);
-      setSgdbFeedback({ msg: "¡API Key de SteamGridDB vinculada correctamente!", isError: false });
-    } catch (e) {
-      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al vincular API Key";
-      setSgdbFeedback({ msg, isError: true });
-    } finally {
-      setSgdbLoading(false);
-    }
-  }
-
-  async function handleUnlinkSGDB() {
-    try {
-      await clearSteamGridDBKey();
-      setSgdbLinked(false);
-      setSgdbApiKey("");
-      setSgdbFeedback({ msg: "API Key de SteamGridDB desvinculada", isError: false });
-    } catch (e) {
-      setSgdbFeedback({ msg: "Error al desvincular", isError: true });
-    }
-  }
-
-  async function handleLinkScreenScraper() {
-    setSsFeedback(null);
-    if (!ssDevId.trim() || !ssDevPass.trim()) {
-      setSsFeedback({ msg: "Por favor ingresa usuario Dev y contraseña Dev", isError: true });
-      return;
-    }
-    setSsLoading(true);
-    try {
-      await saveScreenscraperConfig(ssDevId.trim(), ssDevPass.trim(), ssUser.trim(), ssPass.trim());
-      setSsLinked(true);
-      setSsDevIdSaved(ssDevId.trim());
-      setSsUserSaved(ssUser.trim() || null);
-      setSsDevPass("");
-      setSsPass("");
-      setSsFeedback({ msg: "¡ScreenScraper vinculado y verificado correctamente!", isError: false });
-    } catch (e) {
-      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al vincular ScreenScraper";
-      setSsFeedback({ msg, isError: true });
-    } finally {
-      setSsLoading(false);
-    }
-  }
-
-  async function handleUnlinkScreenScraper() {
-    try {
-      await clearScreenscraperConfig();
-      setSsLinked(false);
-      setSsDevIdSaved(null);
-      setSsUserSaved(null);
-      setSsDevId("");
-      setSsDevPass("");
-      setSsUser("");
-      setSsPass("");
-      setSsFeedback({ msg: "ScreenScraper desvinculado", isError: false });
-    } catch (e) {
-      setSsFeedback({ msg: "Error al desvincular ScreenScraper", isError: true });
-    }
+  function getDefaultCore(platform: string): string {
+    const defaults: Record<string, string> = {
+      SNES: "snes9x",
+      NES: "nestopia",
+      N64: "mupen64plus_next",
+      GBA: "mgba",
+      GBC: "gambatte",
+      GB: "gambatte",
+      NDS: "melonds",
+      "3DS": "citra",
+      GAMECUBE: "dolphin",
+      WII: "dolphin",
+      VB: "mednafen_vb",
+      MEGA_DRIVE: "genesis_plus_gx",
+      SMS: "smsplus",
+      GAME_GEAR: "gearsystem",
+      PCE: "mednafen_pce_fast",
+      "32X": "picodrive",
+      PS1: "pcsx_rearmed",
+      PSP: "ppsspp",
+      MAME: "fbneo",
+      NEOGEO: "fbneo",
+      NGP: "mednafen_ngp",
+      LYNX: "mednafen_lynx",
+      WSWAN: "mednafen_wswan",
+      COLECOVISION: "gearcoleco",
+    };
+    return defaults[platform] || "";
   }
 
   return (
@@ -1000,7 +496,7 @@ export default function Settings({
           >
             <span className="settings-nav-icon">🌐</span>
             <span className="settings-nav-text">{t("settings.tabs.integrations")}</span>
-            {(raLinkedUser || sgdbLinked) && <span className="settings-pill-dot" />}
+            {(integrations.raLinkedUser || integrations.sgdbLinked) && <span className="settings-pill-dot" />}
           </button>
 
           <button
@@ -1035,27 +531,32 @@ export default function Settings({
             onScan={onScan}
             onAddFolder={addFolder}
             onRequestRemoveFolder={requestRemoveFolder}
-            biosFolders={biosFolders}
-            onAddBiosFolder={handleAddBiosFolder}
-            onRequestRemoveBiosFolder={requestRemoveBiosFolder}
-            videoFolders={videoFolders}
-            onAddVideoFolder={handleAddVideoFolder}
-            onRequestRemoveVideoFolder={requestRemoveVideoFolder}
-            videoStats={videoStats}
-            onScanLocalVideos={handleScanLocalVideos}
-            scanningLocalVideos={scanningLocalVideos}
-            ssLinked={ssLinked}
-            isBatchScraping={isBatchScraping}
-            batchProgress={batchProgress}
-            onStartBatchScrape={handleStartBatchScrape}
-            onCancelBatchScrape={handleCancelBatchScrape}
+            biosFolders={librarySettings.biosFolders}
+            onAddBiosFolder={librarySettings.handleAddBiosFolder}
+            onRequestRemoveBiosFolder={librarySettings.requestRemoveBiosFolder}
+            videoFolders={librarySettings.videoFolders}
+            onAddVideoFolder={librarySettings.handleAddVideoFolder}
+            onRequestRemoveVideoFolder={librarySettings.requestRemoveVideoFolder}
+            videoStats={librarySettings.videoStats}
+            onScanLocalVideos={librarySettings.handleScanLocalVideos}
+            scanningLocalVideos={librarySettings.scanningLocalVideos}
+            ssLinked={integrations.ssLinked}
+            isBatchScraping={librarySettings.isBatchScraping}
+            batchProgress={librarySettings.batchProgress}
+            onStartBatchScrape={librarySettings.handleStartBatchScrape}
+            onCancelBatchScrape={librarySettings.handleCancelBatchScrape}
+            sgdbLinked={integrations.sgdbLinked}
+            isBatchSteamGridScraping={librarySettings.isBatchSteamGridScraping}
+            batchSteamGridProgress={librarySettings.batchSteamGridProgress}
+            onStartBatchSteamGrid={librarySettings.handleStartBatchSteamGrid}
+            onCancelBatchSteamGrid={librarySettings.handleCancelBatchSteamGrid}
             onNavigateToIntegrations={() => setActiveTab("integrations")}
             sortBy={sortBy}
             onSortByChange={setSortBy}
-            regionPref={regionPref}
-            onRegionPrefChange={handleRegionChange}
-            onExport={handleExport}
-            onImport={handleImport}
+            regionPref={librarySettings.regionPref}
+            onRegionPrefChange={librarySettings.handleRegionChange}
+            onExport={librarySettings.handleExport}
+            onImport={librarySettings.handleImport}
           />
         )}
 
@@ -1089,27 +590,27 @@ export default function Settings({
         {activeTab === "sound" && (
           <SoundTab
             graphics={graphics}
-            audioDevices={audioDevices}
-            refreshingAudio={refreshingAudio}
-            refreshAudioDevices={refreshAudioDevices}
+            audioDevices={sound.audioDevices}
+            refreshingAudio={sound.refreshingAudio}
+            refreshAudioDevices={sound.refreshAudioDevices}
             updateGlobalGraphic={updateGlobalGraphic}
-            musicVolume={musicVolume}
-            handleMusicVolumeChange={handleMusicVolumeChange}
-            sfxVolume={sfxVolume}
-            handleSfxVolumeChange={handleSfxVolumeChange}
-            musicFolders={musicFolders}
-            handleAddMusicFolder={handleAddMusicFolder}
-            requestRemoveMusicFolder={requestRemoveMusicFolder}
-            musicTrackCount={musicTrackCount}
-            scanningMusic={scanningMusic}
-            musicFeedback={musicFeedback}
-            handleScanMusic={handleScanMusic}
-            handleOpenMusicFolder={handleOpenMusicFolder}
+            musicVolume={sound.musicVolume}
+            handleMusicVolumeChange={sound.handleMusicVolumeChange}
+            sfxVolume={sound.sfxVolume}
+            handleSfxVolumeChange={sound.handleSfxVolumeChange}
+            musicFolders={sound.musicFolders}
+            handleAddMusicFolder={sound.handleAddMusicFolder}
+            requestRemoveMusicFolder={sound.requestRemoveMusicFolder}
+            musicTrackCount={sound.musicTrackCount}
+            scanningMusic={sound.scanningMusic}
+            musicFeedback={sound.musicFeedback}
+            handleScanMusic={sound.handleScanMusic}
+            handleOpenMusicFolder={sound.handleOpenMusicFolder}
             savedToast={savedToast}
-            previewVideoMuted={previewVideoMuted}
-            handlePreviewVideoMutedChange={handlePreviewVideoMutedChange}
-            previewVideoVolume={previewVideoVolume}
-            handlePreviewVideoVolumeChange={handlePreviewVideoVolumeChange}
+            previewVideoMuted={sound.previewVideoMuted}
+            handlePreviewVideoMutedChange={sound.handlePreviewVideoMutedChange}
+            previewVideoVolume={sound.previewVideoVolume}
+            handlePreviewVideoVolumeChange={sound.handlePreviewVideoVolumeChange}
           />
         )}
 
@@ -1125,48 +626,7 @@ export default function Settings({
 
         {activeTab === "emulators" && <EmulatorsTab />}
 
-        {activeTab === "integrations" && (
-          <IntegrationsTab
-            raUsername={raUsername}
-            setRaUsername={setRaUsername}
-            raPassword={raPassword}
-            setRaPassword={setRaPassword}
-            raApiKey={raApiKey}
-            setRaApiKey={setRaApiKey}
-            raLinkedUser={raLinkedUser}
-            raHardcore={raHardcore}
-            raFeedback={raFeedback}
-            handleLinkRA={handleLinkRA}
-            handleUnlinkRA={handleUnlinkRA}
-            handleToggleRAHardcore={handleToggleRAHardcore}
-            sgdbApiKey={sgdbApiKey}
-            setSgdbApiKey={setSgdbApiKey}
-            sgdbLinked={sgdbLinked}
-            sgdbFeedback={sgdbFeedback}
-            sgdbLoading={sgdbLoading}
-            handleLinkSGDB={handleLinkSGDB}
-            handleUnlinkSGDB={handleUnlinkSGDB}
-            ssDevId={ssDevId}
-            setSsDevId={setSsDevId}
-            ssDevPass={ssDevPass}
-            setSsDevPass={setSsDevPass}
-            ssUser={ssUser}
-            setSsUser={setSsUser}
-            ssPass={ssPass}
-            setSsPass={setSsPass}
-            ssLinked={ssLinked}
-            ssDevIdSaved={ssDevIdSaved}
-            ssUserSaved={ssUserSaved}
-            ssFeedback={ssFeedback}
-            ssLoading={ssLoading}
-            handleLinkScreenScraper={handleLinkScreenScraper}
-            handleUnlinkScreenScraper={handleUnlinkScreenScraper}
-            isBatchScraping={isBatchScraping}
-            batchProgress={batchProgress}
-            handleStartBatchScrape={handleStartBatchScrape}
-            handleCancelBatchScrape={handleCancelBatchScrape}
-          />
-        )}
+        {activeTab === "integrations" && <IntegrationsTab {...integrations} />}
 
         {activeTab === "profiles" && (
           <ProfilesTab
@@ -1174,6 +634,7 @@ export default function Settings({
             profiles={profiles}
             handleSwitchProfile={handleSwitchProfile}
             requestDeleteProfile={requestDeleteProfile}
+            handleRenameProfile={handleRenameProfile}
             newProfileName={newProfileName}
             setNewProfileName={setNewProfileName}
             handleCreateProfile={handleCreateProfile}
@@ -1185,10 +646,10 @@ export default function Settings({
 
         {activeTab === "system" && (
           <SystemTab
-            errorLogs={errorLogs}
-            copiedLog={copiedLog}
-            handleToggleLogs={handleToggleLogs}
-            handleCopyLogs={handleCopyLogs}
+            errorLogs={systemSettings.errorLogs}
+            copiedLog={systemSettings.copiedLog}
+            handleToggleLogs={systemSettings.handleToggleLogs}
+            handleCopyLogs={systemSettings.handleCopyLogs}
             onOpenOnboarding={onOpenOnboarding}
           />
         )}
@@ -1198,13 +659,14 @@ export default function Settings({
         isOpen={confirmDialog.isOpen}
         title={confirmDialog.title}
         message={confirmDialog.message}
-        detail={confirmDialog.target}
-        confirmLabel={t("settings.confirm.delete")}
-        cancelLabel={t("settings.confirm.cancel")}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
         variant={confirmDialog.variant}
         onConfirm={handleConfirmAction}
         onCancel={handleCancelAction}
       />
+
+      {savedToast && <div className="settings-saved-toast">{t("settings.savedToast")}</div>}
     </div>
   );
 }

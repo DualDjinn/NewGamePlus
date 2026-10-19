@@ -1,6 +1,6 @@
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Game, ScanResult, AppSettings, GameMetadata, GameAchievementProgress, SGDBHero, SGDBLogo, SGDBGrid, FixMatchCandidate, MusicTrack, EmulatorInfo, ControllerMapping, SaveSlotInfo } from "../types";
+import type { Game, ScanResult, AppSettings, GameMetadata, SGDBHero, SGDBLogo, SGDBGrid, FixMatchCandidate, MusicTrack, EmulatorInfo, ControllerMapping, SaveSlotInfo } from "../types";
 
 export function getCoverUrl(path: string | null | undefined): string {
   if (!path) return "";
@@ -56,6 +56,24 @@ if (typeof window !== "undefined") {
 }
 
 export async function launchGame(romPath: string): Promise<string> {
+  // Guard Switch: sin prod.keys/firmware Eden muere al instante. Se abre el
+  // modal guiado en vez de lanzar a ciegas. Retorna centinela (no throw) para
+  // no disparar toasts de error en cada llamada.
+  if (typeof window !== "undefined" && isSwitchRom(romPath)) {
+    try {
+      if (await checkEden()) {
+        const reqs = await getEdenRequirements();
+        if (!reqs.has_prod_keys || !reqs.has_firmware) {
+          window.dispatchEvent(
+            new CustomEvent("eden-keys-required", { detail: { romPath } })
+          );
+          return "EdenKeysRequired";
+        }
+      }
+    } catch {
+      // Si el chequeo falla, el lanzamiento reportará el error real.
+    }
+  }
   if (isGameLaunching || activeLaunchedRomPath !== null) {
     console.warn("Un juego ya se está ejecutando o iniciando.");
     return "Juego ya en ejecución";
@@ -119,6 +137,74 @@ export async function checkAzahar(): Promise<boolean> {
   return invoke<boolean>("check_azahar");
 }
 
+export async function checkEden(): Promise<boolean> {
+  return invoke<boolean>("check_eden");
+}
+
+const SWITCH_ROM_EXTS = ["nsp", "xci", "nsz", "xcz", "nca", "nro"];
+
+export function isSwitchRom(romPath: string): boolean {
+  const ext = romPath.split(".").pop()?.toLowerCase() ?? "";
+  return SWITCH_ROM_EXTS.includes(ext);
+}
+
+export interface EdenRequirements {
+  has_prod_keys: boolean;
+  has_firmware: boolean;
+  keys_dir: string;
+  firmware_dir: string;
+}
+
+export async function getEdenRequirements(): Promise<EdenRequirements> {
+  return invoke<EdenRequirements>("eden_requirements");
+}
+
+export async function openEdenKeysFolder(): Promise<void> {
+  return invoke<void>("open_eden_keys_folder");
+}
+
+export async function openEdenFirmwareFolder(): Promise<void> {
+  return invoke<void>("open_eden_firmware_folder");
+}
+
+export async function importEdenKeysFrom(srcDir: string): Promise<EdenRequirements> {
+  return invoke<EdenRequirements>("import_eden_keys_from", { srcDir });
+}
+
+export async function importEdenFirmwareFrom(srcDir: string): Promise<EdenRequirements> {
+  return invoke<EdenRequirements>("import_eden_firmware_from", { srcDir });
+}
+
+export interface EdenDlcStatus {
+  installed_entries: number;
+  staging_count: number;
+  staging_dir: string;
+}
+
+export async function getEdenDlcStatus(): Promise<EdenDlcStatus> {
+  return invoke<EdenDlcStatus>("eden_dlc_status");
+}
+
+export async function stageEdenUpdateFiles(files: string[]): Promise<EdenDlcStatus> {
+  return invoke<EdenDlcStatus>("stage_eden_update_files", { files });
+}
+
+export async function openEdenGui(): Promise<string> {
+  return invoke<string>("open_eden_gui");
+}
+
+// Evento local (no Tauri): launchGame lo dispara cuando faltan keys/firmware.
+// App.tsx lo escucha una vez y abre EdenKeysModal: cubre modal, cards, hero,
+// arcade wheel y mando sin tocar cada llamada.
+export function onEdenKeysRequired(cb: (romPath: string) => void): () => void {
+  const handler = (e: Event) => {
+    const romPath = (e as CustomEvent<{ romPath: string }>).detail?.romPath;
+    if (romPath) cb(romPath);
+  };
+  window.addEventListener("eden-keys-required", handler);
+  return () => window.removeEventListener("eden-keys-required", handler);
+}
+
 export async function getSettings(): Promise<AppSettings> {
   return invoke<AppSettings>("get_settings");
 }
@@ -157,6 +243,10 @@ export async function deleteProfile(name: string): Promise<void> {
 
 export async function switchProfile(name: string): Promise<void> {
   return invoke<void>("switch_profile", { name });
+}
+
+export async function renameProfile(oldName: string, newName: string): Promise<void> {
+  return invoke<void>("rename_profile", { oldName, newName });
 }
 
 export async function exportLibrary(): Promise<string> {
@@ -218,29 +308,14 @@ export function onCoversUpdated(cb: () => void) {
   return listen("covers-updated", () => cb());
 }
 
-export async function saveRACredentials(username: string, password: string, apiKey: string): Promise<void> {
-  return invoke<void>("save_ra_credentials", { username, password, apiKey });
-}
-
-export async function getRACredentials(): Promise<string | null> {
-  return invoke<string | null>("get_ra_credentials");
-}
-
-export async function clearRACredentials(): Promise<void> {
-  return invoke<void>("clear_ra_credentials");
-}
-
-export async function getGameAchievements(romPath: string): Promise<GameAchievementProgress | null> {
-  return invoke<GameAchievementProgress | null>("get_game_achievements", { romPath });
-}
-
-export async function refreshGameAchievements(romPath: string): Promise<GameAchievementProgress | null> {
-  return invoke<GameAchievementProgress | null>("refresh_game_achievements", { romPath });
-}
-
-export async function setCheevosHardcore(enabled: boolean): Promise<void> {
-  return invoke<void>("set_cheevos_hardcore", { enabled });
-}
+export {
+  saveRACredentials,
+  getRACredentials,
+  clearRACredentials,
+  getGameAchievements,
+  refreshGameAchievements,
+  setCheevosHardcore,
+} from "./api";
 
 export async function saveSteamGridDBKey(apiKey: string): Promise<void> {
   return invoke<void>("save_steamgriddb_key", { apiKey });
@@ -276,6 +351,47 @@ export async function setGameLogo(gameId: string, logoUrl: string): Promise<stri
 
 export async function removeGameLogo(gameId: string): Promise<void> {
   return invoke<void>("remove_game_logo", { gameId });
+}
+
+export async function autoDownloadHero(gameId: string, query?: string): Promise<string> {
+  return invoke<string>("auto_download_steamgrid_hero", { gameId, query });
+}
+
+export async function autoDownloadLogo(gameId: string, query?: string): Promise<string> {
+  return invoke<string>("auto_download_steamgrid_logo", { gameId, query });
+}
+
+export interface SteamGridBatchProgressEvent {
+  current_index: number;
+  total: number;
+  game_id: string;
+  game_name: string;
+  status: "downloading" | "done_game" | "skipped" | "complete" | "cancelled";
+  percent: number;
+  downloaded_heroes: number;
+  downloaded_logos: number;
+  skipped_count: number;
+  failed_count: number;
+}
+
+export async function batchScrapeSteamGrid(
+  scrapeHeroes: boolean,
+  scrapeLogos: boolean,
+  onlyMissing: boolean
+): Promise<void> {
+  return invoke("batch_scrape_steamgrid_assets", {
+    scrapeHeroes,
+    scrapeLogos,
+    onlyMissing,
+  });
+}
+
+export async function cancelBatchScrapeSteamGrid(): Promise<void> {
+  return invoke("cancel_batch_scrape_steamgrid");
+}
+
+export function onSteamGridBatchProgress(cb: (payload: SteamGridBatchProgressEvent) => void) {
+  return listen<SteamGridBatchProgressEvent>("scrape-steamgrid-progress", (e) => cb(e.payload));
 }
 
 export interface GraphicsSettings {
@@ -379,60 +495,17 @@ export async function updateGameTitle(
   });
 }
 
-export interface CastNetworkInfo {
-  ip: string;
-  hostname: string;
-  is_connected: boolean;
-}
-
-export interface LanDevice {
-  id: string;
-  name: string;
-  ip: string;
-  device_type: string;
-  status: string;
-  protocol: string;
-}
-
-export interface SunshineStatus {
-  is_installed: boolean;
-  is_running: boolean;
-  web_ui_url: string;
-  version: string | null;
-  exe_path: string | null;
-}
-
-export async function getCastNetworkInfo(): Promise<CastNetworkInfo> {
-  return invoke<CastNetworkInfo>("get_cast_network_info");
-}
-
-export async function openWirelessDisplay(): Promise<void> {
-  return invoke<void>("open_wireless_display");
-}
-
-export async function discoverLanDevices(): Promise<LanDevice[]> {
-  return invoke<LanDevice[]>("discover_lan_devices");
-}
-
-export async function checkSunshineStatus(): Promise<SunshineStatus> {
-  return invoke<SunshineStatus>("check_sunshine_status");
-}
-
-export async function startSunshine(): Promise<string> {
-  return invoke<string>("start_sunshine");
-}
-
-export async function stopSunshine(): Promise<string> {
-  return invoke<string>("stop_sunshine");
-}
-
-export async function downloadSunshinePortable(): Promise<string> {
-  return invoke<string>("download_sunshine_portable");
-}
-
-export async function pairMoonlightPin(pin: string): Promise<string> {
-  return invoke<string>("pair_moonlight_pin", { pin });
-}
+export type { CastNetworkInfo, LanDevice, SunshineStatus } from "./api";
+export {
+  getCastNetworkInfo,
+  openWirelessDisplay,
+  discoverLanDevices,
+  checkSunshineStatus,
+  startSunshine,
+  stopSunshine,
+  downloadSunshinePortable,
+  pairMoonlightPin,
+} from "./api";
 
 export async function isWindowFullscreen(): Promise<boolean> {
   try {
@@ -700,6 +773,47 @@ export async function scrapeLibraryVideos(onlyMissing: boolean): Promise<void> {
 
 export async function cancelScrapeLibraryVideos(): Promise<void> {
   return await invoke("cancel_scrape_library_videos");
+}
+
+// Netplay API
+export interface NetplaySession {
+  session_id: string;
+  port: number;
+  address: string;
+  is_host: boolean;
+  pid: number;
+}
+
+export async function netplayCreateRoom(
+  coreName: string,
+  romPath: string,
+  port: number
+): Promise<NetplaySession> {
+  return invoke<NetplaySession>("netplay_create_room", { coreName, romPath, port });
+}
+
+export async function netplayJoinRoom(
+  coreName: string,
+  romPath: string,
+  address: string,
+  port: number,
+  sessionId: string
+): Promise<NetplaySession> {
+  return invoke<NetplaySession>("netplay_join_room", {
+    coreName,
+    romPath,
+    address,
+    port,
+    sessionId,
+  });
+}
+
+export async function netplayStop(): Promise<void> {
+  return invoke<void>("netplay_stop");
+}
+
+export function onNetplaySessionEnded(cb: (session: NetplaySession) => void) {
+  return listen<NetplaySession>("netplay-session-ended", (e) => cb(e.payload));
 }
 
 export function onScrapeBatchProgress(cb: (payload: BatchScrapeProgressEvent) => void) {

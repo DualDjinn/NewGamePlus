@@ -1,48 +1,124 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import type { Game, Section, SettingsTab, GraphicsConsole } from "./types";
-import { searchSettingsOptions, SETTINGS_OPTIONS, type SettingsSearchOption } from "./lib/settingsSearch";
+import { searchSettingsOptions, resolveSettingsOptions, type SettingsSearchOption } from "./lib/settingsSearch";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
   toggleFavorite,
-  getCoverUrl,
   launchGame,
   isWindowFullscreen,
   toggleWindowFullscreen,
   saveSettings,
   onInGamePauseOpen,
   onInGamePauseClose,
+  onEdenKeysRequired,
   getActiveLaunchedRomPath,
 } from "./lib/tauri";
-import InGameOverlayModal from "./components/InGameOverlayModal";
-import HeroBanner from "./components/HeroBanner";
-import ArcadeWheelLayout from "./components/ArcadeWheelLayout";
 import CategoryRow from "./components/CategoryRow";
-import GameCard from "./components/GameCard";
-import GameDetailModal from "./components/GameDetailModal";
-import Settings from "./components/Settings";
 import Sidebar from "./components/Sidebar";
-import CastModal from "./components/CastModal";
 import AppHeader from "./components/AppHeader";
 import ControllerHUD from "./components/ControllerHUD";
 import SplashScreen from "./components/SplashScreen";
 import ScanProgressHUD from "./components/ScanProgressHUD";
 import ScanCompleteModal from "./components/ScanCompleteModal";
-import OnboardingModal from "./components/OnboardingModal";
+
+// Lazy-loaded heavy components for optimal startup performance
+const Settings = lazy(() => import("./components/Settings"));
+const GameDetailModal = lazy(() => import("./components/GameDetailModal"));
+const CastModal = lazy(() => import("./components/CastModal"));
+const OnboardingModal = lazy(() => import("./components/OnboardingModal"));
+const CreateUserModal = lazy(() => import("./components/CreateUserModal"));
+const InGameOverlayModal = lazy(() => import("./components/InGameOverlayModal"));
+const EdenKeysModal = lazy(() => import("./components/EdenKeysModal"));
+import { HomeView, LibraryView, GenresView } from "./views";
 import { MusicProvider } from "./context/MusicContext";
 import { useGamepad } from "./hooks/useGamepad";
 import { useLibraryGames } from "./hooks/useLibraryGames";
 import { useGenreCatalog } from "./hooks/useGenreCatalog";
 import { useGameSearch } from "./hooks/useGameSearch";
-import { getGenreTheme } from "./lib/genreThemes";
-import { getLocalizedGenreName } from "./lib/genreLocalization";
 import "./App.css";
 
+export type ActiveModal =
+  | { type: "game_detail"; game: Game; action?: "edit" | "hero" | "logo" | "video" | null }
+  | { type: "cast" }
+  | { type: "onboarding" }
+  | { type: "in_game_pause"; game: Game | null; screenshotPath: string | null }
+  | { type: "eden_keys"; romPath: string }
+  | null;
+
 function App() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [section, setSection] = useState<Section>("home");
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
-  const [selectedGameAction, setSelectedGameAction] = useState<"edit" | "hero" | "logo" | "video" | null>(null);
+  const [activeModal, setActiveModal] = useState<ActiveModal>(null);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+
+  // Derived modal accessors for clean backward compatibility
+  const selectedGame = useMemo(() => (activeModal?.type === "game_detail" ? activeModal.game : null), [activeModal]);
+  const selectedGameAction = useMemo(() => (activeModal?.type === "game_detail" ? (activeModal.action ?? null) : null), [activeModal]);
+  const castModalOpen = activeModal?.type === "cast";
+  const onboardingOpen = activeModal?.type === "onboarding";
+  const inGamePauseOpen = activeModal?.type === "in_game_pause";
+  const inGameScreenshot = activeModal?.type === "in_game_pause" ? activeModal.screenshotPath : null;
+  const inGameActiveGame = activeModal?.type === "in_game_pause" ? activeModal.game : null;
+  const edenKeysRom = activeModal?.type === "eden_keys" ? activeModal.romPath : null;
+
+  const setSelectedGame = useCallback(
+    (gameOrFn: Game | null | ((prev: Game | null) => Game | null), action?: "edit" | "hero" | "logo" | "video" | null) => {
+      setActiveModal((prev) => {
+        const currentGame = prev?.type === "game_detail" ? prev.game : null;
+        const nextGame = typeof gameOrFn === "function" ? gameOrFn(currentGame) : gameOrFn;
+        if (!nextGame) {
+          return prev?.type === "game_detail" ? null : prev;
+        }
+        return {
+          type: "game_detail",
+          game: nextGame,
+          action: action ?? (prev?.type === "game_detail" ? prev.action : null),
+        };
+      });
+    },
+    []
+  );
+
+  const setSelectedGameAction = useCallback((action: "edit" | "hero" | "logo" | "video" | null) => {
+    setActiveModal((prev) => (prev?.type === "game_detail" ? { ...prev, action } : prev));
+  }, []);
+
+  const setCastModalOpen = useCallback((open: boolean | ((prev: boolean) => boolean)) => {
+    setActiveModal((prev) => {
+      const isOpen = typeof open === "function" ? open(prev?.type === "cast") : open;
+      return isOpen ? { type: "cast" } : (prev?.type === "cast" ? null : prev);
+    });
+  }, []);
+
+  const setOnboardingOpen = useCallback((open: boolean | ((prev: boolean) => boolean)) => {
+    setActiveModal((prev) => {
+      const isOpen = typeof open === "function" ? open(prev?.type === "onboarding") : open;
+      return isOpen ? { type: "onboarding" } : (prev?.type === "onboarding" ? null : prev);
+    });
+  }, []);
+
+  const setInGamePauseOpen = useCallback((open: boolean | ((prev: boolean) => boolean)) => {
+    setActiveModal((prev) => {
+      const isOpen = typeof open === "function" ? open(prev?.type === "in_game_pause") : open;
+      return isOpen
+        ? prev?.type === "in_game_pause"
+          ? prev
+          : { type: "in_game_pause", game: null, screenshotPath: null }
+        : prev?.type === "in_game_pause"
+        ? null
+        : prev;
+    });
+  }, []);
+
+  const setEdenKeysRom = useCallback((rom: string | null | ((prev: string | null) => string | null)) => {
+    setActiveModal((prev) => {
+      const currentRom = prev?.type === "eden_keys" ? prev.romPath : null;
+      const nextRom = typeof rom === "function" ? rom(currentRom) : rom;
+      return nextRom ? { type: "eden_keys", romPath: nextRom } : (prev?.type === "eden_keys" ? null : prev);
+    });
+  }, []);
+
   const [showNavFocus, setShowNavFocus] = useState(false);
   const [homeFocus, setHomeFocus] = useState<{ row: number; col: number }>({ row: 0, col: 0 });
   const [flatFocusIdx, setFlatFocusIdx] = useState<number>(0);
@@ -54,14 +130,17 @@ function App() {
   const [settingsSearchQuery, setSettingsSearchQuery] = useState("");
   const [settingsSearchDropdownOpen, setSettingsSearchDropdownOpen] = useState(false);
   const settingsSearchInputRef = useRef<HTMLInputElement>(null);
-  const [castModalOpen, setCastModalOpen] = useState(false);
-  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [inGamePauseOpen, setInGamePauseOpen] = useState(false);
-  const [inGameScreenshot, setInGameScreenshot] = useState<string | null>(null);
-  const [inGameActiveGame, setInGameActiveGame] = useState<Game | null>(null);
   const [isGameRunning, setIsGameRunning] = useState(false);
   const prevSectionRef = useRef<Section>(section);
+  // Timestamp of the last game exit: confirm/open inputs within the grace
+  // window are ignored so a button held while quitting can't pop the detail modal.
+  const lastGameExitRef = useRef<number>(0);
+  const EXIT_INPUT_GRACE_MS = 500;
+  const exitedRecently = useCallback(
+    () => Date.now() - lastGameExitRef.current < EXIT_INPUT_GRACE_MS,
+    []
+  );
 
   useEffect(() => {
     const handleLaunch = () => {
@@ -69,6 +148,7 @@ function App() {
       setSelectedGame(null); // Ensure detail modal is closed so it cannot capture keys while playing
     };
     const handleClose = () => {
+      lastGameExitRef.current = Date.now();
       setIsGameRunning(false);
       setInGamePauseOpen(false);
     };
@@ -133,13 +213,15 @@ function App() {
         (activeRom ? games.find((g) => g.rom_path === activeRom) : null) ||
         selectedGame ||
         null;
-      setInGameActiveGame(runningGame);
-      setInGameScreenshot(payload.screenshot_path || null);
-      setInGamePauseOpen(true);
+      setActiveModal({
+        type: "in_game_pause",
+        game: runningGame,
+        screenshotPath: payload.screenshot_path || null,
+      });
     });
 
     const unlistenClose = onInGamePauseClose(() => {
-      setInGamePauseOpen(false);
+      setActiveModal((prev) => (prev?.type === "in_game_pause" ? null : prev));
     });
 
     return () => {
@@ -147,6 +229,10 @@ function App() {
       unlistenClose.then((fn) => fn());
     };
   }, [games, selectedGame]);
+
+  useEffect(() => {
+    return onEdenKeysRequired((romPath) => setEdenKeysRom(romPath));
+  }, []);
 
   // Hook 2: Genre Catalog & Dynamic Categories
   const {
@@ -173,6 +259,7 @@ function App() {
   const {
     searchQuery,
     setSearchQuery,
+    debouncedQuery,
     searchInputRef,
     searchDropdownOpen,
     setSearchDropdownOpen,
@@ -196,12 +283,33 @@ function App() {
 
   useEffect(() => {
     if (loaded) {
+      const userConfigured = localStorage.getItem("newgameplus_user_profile_configured");
+      if (!userConfigured || currentProfile === "Por defecto") {
+        setCreateUserOpen(true);
+        return;
+      }
       const completed = localStorage.getItem("newgameplus_onboarding_completed");
       if (!completed && folders.length === 0 && games.length === 0) {
         setOnboardingOpen(true);
       }
     }
-  }, [loaded, folders.length, games.length]);
+  }, [loaded, currentProfile, folders.length, games.length]);
+
+  const handleCreateUserComplete = useCallback(
+    async (chosenName: string) => {
+      setCreateUserOpen(false);
+      const updatedProfiles = profiles.includes(chosenName)
+        ? profiles
+        : [...profiles.filter((p) => p !== "Por defecto" && p !== currentProfile), chosenName];
+      await handleProfilesChange(updatedProfiles, chosenName);
+
+      const completed = localStorage.getItem("newgameplus_onboarding_completed");
+      if (!completed && folders.length === 0 && games.length === 0) {
+        setOnboardingOpen(true);
+      }
+    },
+    [profiles, currentProfile, handleProfilesChange, folders.length, games.length]
+  );
 
   const handleCloseOnboarding = useCallback(() => {
     localStorage.setItem("newgameplus_onboarding_completed", "true");
@@ -223,10 +331,10 @@ function App() {
 
   const filteredSettingsOptions = useMemo(() => {
     if (!settingsSearchQuery.trim()) {
-      return SETTINGS_OPTIONS.slice(0, 8);
+      return resolveSettingsOptions(t).slice(0, 8);
     }
-    return searchSettingsOptions(settingsSearchQuery);
-  }, [settingsSearchQuery]);
+    return searchSettingsOptions(settingsSearchQuery, t);
+  }, [settingsSearchQuery, t, i18n.language]);
 
   const handleSelectSettingsOption = useCallback((item: SettingsSearchOption) => {
     setSettingsTab(item.tab);
@@ -535,17 +643,19 @@ function App() {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
       } else if (section === "home" && layoutStyle === "arcade") {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
-      } else if (currentFocusedGame) {
+      } else if (currentFocusedGame && !exitedRecently()) {
         setSelectedGame(currentFocusedGame);
       }
     },
     onCancel: () => {
-      if (onboardingOpen) {
-        handleCloseOnboarding();
-      } else if (scanCompletedResult) {
+      if (scanCompletedResult) {
         dismissScanCompleted();
-      } else if (selectedGame) {
-        setSelectedGame(null);
+      } else if (activeModal) {
+        if (activeModal.type === "onboarding") {
+          handleCloseOnboarding();
+        } else {
+          setActiveModal(null);
+        }
       } else if (section !== "home") {
         setSection("home");
       }
@@ -578,7 +688,7 @@ function App() {
           console.error("Launch failed:", e);
           const msg = e instanceof Error ? e.message : String(e);
           window.dispatchEvent(
-            new CustomEvent("app-error", { detail: `Error al lanzar el juego: ${msg}` })
+            new CustomEvent("app-error", { detail: t("common.launchError", { msg }) })
           );
         }
       }
@@ -643,14 +753,14 @@ function App() {
         e.preventDefault();
         setShowNavFocus(true);
         moveFocus("up");
-      } else if (e.key === "Enter" && currentFocusedGame) {
+      } else if (e.key === "Enter" && currentFocusedGame && !exitedRecently()) {
         e.preventDefault();
         setSelectedGame(currentFocusedGame);
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedGame, currentFocusedGame, moveFocus]);
+  }, [selectedGame, currentFocusedGame, moveFocus, exitedRecently]);
 
   // Disable focus outline on mouse interaction
   useEffect(() => {
@@ -760,213 +870,75 @@ function App() {
 
           <main className="app-content">
             {section === "settings" && (
-              <Settings
-                onScan={handleScanWrapper}
-                scanning={scanning}
-                folders={folders}
-                setFolders={setFolders}
-                kioskMode={kioskMode}
-                setKioskMode={setKioskMode}
-                scanMessage={scanMessage}
-                scanCores={scanCores}
-                scanProgress={scanProgress}
-                sortBy={sortBy}
-                setSortBy={setSortBy}
-                profiles={profiles}
-                currentProfile={currentProfile}
-                onProfilesChange={handleProfilesChange}
-                platformCores={platformCores}
-                onPlatformCoreChange={handlePlatformCoreChange}
+              <Suspense fallback={null}>
+                <Settings
+                  onScan={handleScanWrapper}
+                  scanning={scanning}
+                  folders={folders}
+                  setFolders={setFolders}
+                  kioskMode={kioskMode}
+                  setKioskMode={setKioskMode}
+                  scanMessage={scanMessage}
+                  scanCores={scanCores}
+                  scanProgress={scanProgress}
+                  sortBy={sortBy}
+                  setSortBy={setSortBy}
+                  profiles={profiles}
+                  currentProfile={currentProfile}
+                  onProfilesChange={handleProfilesChange}
+                  platformCores={platformCores}
+                  onPlatformCoreChange={handlePlatformCoreChange}
+                  games={games}
+                  theme={theme}
+                  onThemeChange={handleThemeChange}
+                  layoutStyle={layoutStyle}
+                  onLayoutStyleChange={handleLayoutStyleChange}
+                  activeTab={settingsTab}
+                  onActiveTabChange={setSettingsTab}
+                  activeGraphicsConsole={settingsGraphicsConsole}
+                  onActiveGraphicsConsoleChange={setSettingsGraphicsConsole}
+                  splashEnabled={splashEnabled}
+                  onSplashEnabledChange={handleSplashEnabledChange}
+                  splashSoundEnabled={splashSoundEnabled}
+                  onSplashSoundEnabledChange={handleSplashSoundEnabledChange}
+                  onPreviewSplash={handlePreviewSplash}
+                  onOpenOnboarding={() => setOnboardingOpen(true)}
+                />
+              </Suspense>
+            )}
+
+            {loaded === true && section === "home" && (
+              <HomeView
                 games={games}
-                theme={theme}
-                onThemeChange={handleThemeChange}
+                setGames={setGames}
+                featured={featured}
                 layoutStyle={layoutStyle}
-                onLayoutStyleChange={handleLayoutStyleChange}
-                activeTab={settingsTab}
-                onActiveTabChange={setSettingsTab}
-                activeGraphicsConsole={settingsGraphicsConsole}
-                onActiveGraphicsConsoleChange={setSettingsGraphicsConsole}
-                splashEnabled={splashEnabled}
-                onSplashEnabledChange={handleSplashEnabledChange}
-                splashSoundEnabled={splashSoundEnabled}
-                onSplashSoundEnabledChange={handleSplashSoundEnabledChange}
-                onPreviewSplash={handlePreviewSplash}
+                handleLayoutStyleChange={handleLayoutStyleChange}
+                searchQuery={debouncedQuery}
+                searchResults={searchResults}
+                homeRows={homeRows}
+                homeFocus={homeFocus}
+                showNavFocus={showNavFocus}
+                flatFocusIdx={flatFocusIdx}
+                onSelectGame={setSelectedGame}
+                onFavoriteChanged={handleFavoriteChanged}
+                onOpenSettings={() => setSection("settings")}
                 onOpenOnboarding={() => setOnboardingOpen(true)}
               />
             )}
 
-            {loaded === true && section === "home" && games.length === 0 && (
-              <div className="app-welcome" style={{ padding: "80px 20px", textAlign: "center" }}>
-                <h1>NewGame+</h1>
-                <p style={{ color: "#94a3b8", maxWidth: "480px", margin: "14px auto 24px", lineHeight: "1.5" }}>
-                  Tu biblioteca está vacía. Añade tus carpetas de juegos o abre el asistente guiado para comenzar.
-                </p>
-                <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-                  <button className="app-welcome-btn" onClick={() => setOnboardingOpen(true)}>
-                    📖 Abrir Asistente de Inicio
-                  </button>
-                  <button
-                    className="app-welcome-btn"
-                    style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff" }}
-                    onClick={() => setSection("settings")}
-                  >
-                    ⚙️ Ir a Ajustes
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {loaded === true && section === "home" && games.length > 0 && (
-              <>
-                {layoutStyle === "arcade" ? (
-                  <ArcadeWheelLayout
-                    games={games}
-                    initialCategoryType="platforms"
-                    onFavoriteChanged={handleFavoriteChanged}
-                    onGameUpdated={(updated) => {
-                      setGames((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
-                    }}
-                    onHeroChanged={(gameId, newHeroPath) => {
-                      setGames((prev) =>
-                        prev.map((g) => (g.id === gameId ? { ...g, hero_path: newHeroPath } : g))
-                      );
-                    }}
-                    onLogoChanged={(gameId, newLogoPath) => {
-                      setGames((prev) =>
-                        prev.map((g) => (g.id === gameId ? { ...g, logo_path: newLogoPath } : g))
-                      );
-                    }}
-                    onOpenSettings={() => setSection("settings")}
-                    onBack={() => handleLayoutStyleChange("classic")}
-                  />
-                ) : (
-                  <>
-                    <HeroBanner
-                      games={featured}
-                      allGames={games}
-                      onSelect={setSelectedGame}
-                      onFavoriteChanged={handleFavoriteChanged}
-                      layoutStyle={layoutStyle}
-                    />
-                    {layoutStyle === "classic" && searchQuery.trim() ? (
-                      <div style={{ padding: "0 48px 48px" }}>
-                        {searchResults.length > 0 ? (
-                          <CategoryRow
-                            title={t("search.searchResultsWithCount", { count: searchResults.length })}
-                            games={searchResults}
-                            onSelect={setSelectedGame}
-                            onFavoriteChanged={handleFavoriteChanged}
-                            focusedId={showNavFocus ? searchResults[flatFocusIdx]?.id : null}
-                          />
-                        ) : (
-                          <p
-                            style={{
-                              color: "#777",
-                              padding: "32px 0",
-                              textAlign: "center",
-                              fontSize: "16px",
-                            }}
-                          >
-                            {t("search.noResults", { query: searchQuery })}
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      homeRows.map((row, rowIdx) => {
-                        const isRowActive = homeFocus.row === rowIdx;
-                        const focusedIdInRow =
-                          showNavFocus && isRowActive && row.games.length > 0
-                            ? row.games[Math.min(homeFocus.col, row.games.length - 1)]?.id
-                            : null;
-                        return (
-                          <CategoryRow
-                            key={row.id}
-                            title={row.title}
-                            games={row.games}
-                            onSelect={setSelectedGame}
-                            onFavoriteChanged={handleFavoriteChanged}
-                            focusedId={focusedIdInRow}
-                          />
-                        );
-                      })
-                    )}
-                  </>
-                )}
-              </>
-            )}
-
             {loaded === true && section === "library" && (
-              <div className="library-container">
-                {availableCompanies.length > 0 && (
-                  <div className="library-filter-pill-container">
-                    <div className="library-filter-pill">
-                      <button
-                        type="button"
-                        className={`library-filter-item ${selectedCompany === "all" ? "active" : ""}`}
-                        onClick={() => setSelectedCompany("all")}
-                      >
-                        Todos
-                      </button>
-                      {availableCompanies.map((company) => (
-                        <button
-                          key={company}
-                          type="button"
-                          className={`library-filter-item ${
-                            selectedCompany === company ? "active" : ""
-                          }`}
-                          onClick={() =>
-                            setSelectedCompany(company === selectedCompany ? "all" : company)
-                          }
-                        >
-                          {company}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {librarySections.length > 0 ? (
-                  <div className="library-sections-list">
-                    {librarySections.map((sec) => {
-                      return (
-                        <div key={sec.platform} className="library-platform-block">
-                          <div className="library-platform-header">
-                            <div className="library-platform-title-group">
-                              <span
-                                className="library-platform-indicator"
-                                style={{ backgroundColor: sec.color }}
-                              />
-                              <h2 className="library-platform-title">{sec.displayName}</h2>
-                              <span className="library-platform-count">
-                                {sec.games.length} {sec.games.length === 1 ? "juego" : "juegos"}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="library-grid">
-                            {sec.games.map((game) => {
-                              const globalIdx = libraryGames.findIndex((g) => g.id === game.id);
-                              return (
-                                <GameCard
-                                  key={game.id}
-                                  game={game}
-                                  onSelect={setSelectedGame}
-                                  onFavoriteChanged={handleFavoriteChanged}
-                                  focused={showNavFocus && flatFocusIdx === globalIdx}
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p style={{ color: "#555", textAlign: "center", padding: "48px" }}>
-                    No se encontraron juegos
-                  </p>
-                )}
-              </div>
+              <LibraryView
+                availableCompanies={availableCompanies}
+                selectedCompany={selectedCompany}
+                setSelectedCompany={setSelectedCompany}
+                librarySections={librarySections}
+                libraryGames={libraryGames}
+                onSelectGame={setSelectedGame}
+                onFavoriteChanged={handleFavoriteChanged}
+                showNavFocus={showNavFocus}
+                flatFocusIdx={flatFocusIdx}
+              />
             )}
 
             {loaded === true && section === "favorites" && (
@@ -992,7 +964,7 @@ function App() {
                 {searchResults.length > 0 ? (
                   <CategoryRow
                     title={t("search.resultsWithCount", { count: searchResults.length })}
-                    games={searchResults}
+                    games={searchResults.slice(0, 60)}
                     onSelect={setSelectedGame}
                     onFavoriteChanged={handleFavoriteChanged}
                     focusedId={showNavFocus ? searchResults[flatFocusIdx]?.id : null}
@@ -1005,192 +977,110 @@ function App() {
               </div>
             )}
 
-            {loaded === true && section === "genre" && selectedGenre && (
-              <div className="library-container">
-                <div className="genre-view-header">
-                  <button
-                    type="button"
-                    className="genre-back-btn"
-                    onClick={() => setSection("genres")}
-                    aria-label={t("genres.backToGenres")}
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="18"
-                      height="18"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <line x1="19" y1="12" x2="5" y2="12" />
-                      <polyline points="12 19 5 12 12 5" />
-                    </svg>
-                    <span>{t("genres.backToGenres")}</span>
-                  </button>
-
-                  <div className="genre-view-title-wrap">
-                    <h2 className="genre-view-title">
-                      {effectiveCompany !== "all"
-                        ? `${getLocalizedGenreName(selectedGenre, t)} • ${effectiveCompany}`
-                        : getLocalizedGenreName(selectedGenre, t)}
-                    </h2>
-                    <span className="genre-view-count">
-                      {t("library.totalGames", { count: activeGenreGames.length })}
-                    </span>
-                  </div>
-                </div>
-
-                {activeGenreSections.length > 0 ? (
-                  <div className="library-sections-list">
-                    {activeGenreSections.map((sec) => {
-                      return (
-                        <div key={sec.platform} className="library-platform-block">
-                          <div className="library-platform-header">
-                            <div className="library-platform-title-group">
-                              <span
-                                className="library-platform-indicator"
-                                style={{ backgroundColor: sec.color }}
-                              />
-                              <h2 className="library-platform-title">{sec.displayName}</h2>
-                              <span className="library-platform-count">
-                                {sec.games.length} {sec.games.length === 1 ? "juego" : "juegos"}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="library-grid">
-                            {sec.games.map((game) => {
-                              const globalIdx = activeGenreGames.findIndex((g) => g.id === game.id);
-                              return (
-                                <GameCard
-                                  key={game.id}
-                                  game={game}
-                                  onSelect={setSelectedGame}
-                                  onFavoriteChanged={handleFavoriteChanged}
-                                  focused={showNavFocus && flatFocusIdx === globalIdx}
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p style={{ color: "#555", textAlign: "center", padding: "48px" }}>
-                    {t("genres.noGamesInGenre")}{" "}
-                    {effectiveCompany !== "all" ? t("genres.forCompany", { company: effectiveCompany }) : ""}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {loaded === true && section === "genres" && (
-              <div className="genres-container">
-                <div className="genres-header">
-                  <div className="genres-header-info">
-                    <h1 className="genres-title">
-                      {t("genres.title")}
-                      {effectiveCompany !== "all" && (
-                        <span className="genres-company-badge">{effectiveCompany}</span>
-                      )}
-                    </h1>
-                    <p className="genres-subtitle">{t("genres.subtitle")}</p>
-                  </div>
-                </div>
-
-                {genreList.length > 0 ? (
-                  <div className="genre-cards-grid">
-                    {genreList.map((g) => {
-                      const itemTheme = getGenreTheme(g.name);
-                      const bgSrc = g.imagePath ? getCoverUrl(g.imagePath) : "";
-                      const localizedGenreName = getLocalizedGenreName(g.name, t);
-                      return (
-                        <button
-                          key={g.name}
-                          className="modern-genre-card"
-                          style={
-                            {
-                              "--genre-color": itemTheme.color,
-                              "--genre-glow": itemTheme.glow,
-                              "--genre-gradient": itemTheme.gradient,
-                            } as React.CSSProperties
-                          }
-                          onClick={() => handleSelectGenre(g.name)}
-                        >
-                          <div className="modern-genre-card-inner">
-                            {bgSrc ? (
-                              <img src={bgSrc} alt="" className="modern-genre-card-bg" loading="lazy" />
-                            ) : (
-                              <div className="modern-genre-fallback-bg" />
-                            )}
-                            <div className="modern-genre-card-overlay" />
-
-                            <div className="modern-genre-card-top">
-                              <span className="modern-genre-count-badge">
-                                {t("library.totalGames", { count: g.count })}
-                              </span>
-                            </div>
-
-                            <div className="modern-genre-card-bottom">
-                              <span className="modern-genre-name">{localizedGenreName}</span>
-                              {g.topGameName && (
-                                <span className="modern-genre-featured-label" title={g.topGameName}>
-                                  {t("genres.featured", { name: g.topGameName })}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p style={{ color: "#777", textAlign: "center", padding: "60px 0" }}>
-                    {t("genres.noGenresAvailable")}{" "}
-                    {effectiveCompany !== "all" ? t("genres.forCompany", { company: effectiveCompany }) : ""}
-                  </p>
-                )}
-              </div>
+            {loaded === true && (section === "genres" || (section === "genre" && selectedGenre)) && (
+              <GenresView
+                section={section}
+                effectiveCompany={effectiveCompany}
+                genreList={genreList}
+                selectedGenre={selectedGenre}
+                activeGenreGames={activeGenreGames}
+                activeGenreSections={activeGenreSections}
+                onSelectGenre={handleSelectGenre}
+                onBackToGenres={() => setSection("genres")}
+                onSelectGame={setSelectedGame}
+                onFavoriteChanged={handleFavoriteChanged}
+                showNavFocus={showNavFocus}
+                flatFocusIdx={flatFocusIdx}
+              />
             )}
           </main>
         </div>
 
-        {selectedGame && (
-          <GameDetailModal
-            game={selectedGame}
-            initialAction={selectedGameAction}
-            onClose={() => {
-              setSelectedGame(null);
-              setSelectedGameAction(null);
-            }}
-            onFavoriteChanged={handleFavoriteChanged}
-            onHeroChanged={(gameId, newHeroPath) => {
-              setGames((prev) =>
-                prev.map((g) => (g.id === gameId ? { ...g, hero_path: newHeroPath } : g))
-              );
-              if (selectedGame && selectedGame.id === gameId) {
-                setSelectedGame({ ...selectedGame, hero_path: newHeroPath });
-              }
-            }}
-            onLogoChanged={(gameId, newLogoPath) => {
-              setGames((prev) =>
-                prev.map((g) => (g.id === gameId ? { ...g, logo_path: newLogoPath } : g))
-              );
-              if (selectedGame && selectedGame.id === gameId) {
-                setSelectedGame({ ...selectedGame, logo_path: newLogoPath });
-              }
-            }}
-            onGameUpdated={(updated) => {
-              setGames((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
-              setSelectedGame(updated);
-            }}
-          />
-        )}
+        <Suspense fallback={null}>
+          {selectedGame && (
+            <GameDetailModal
+              game={selectedGame}
+              initialAction={selectedGameAction}
+              onClose={() => {
+                setSelectedGame(null);
+                setSelectedGameAction(null);
+              }}
+              onFavoriteChanged={handleFavoriteChanged}
+              onHeroChanged={(gameId, newHeroPath) => {
+                setGames((prev) =>
+                  prev.map((g) => (g.id === gameId ? { ...g, hero_path: newHeroPath } : g))
+                );
+                if (selectedGame && selectedGame.id === gameId) {
+                  setSelectedGame({ ...selectedGame, hero_path: newHeroPath });
+                }
+              }}
+              onLogoChanged={(gameId, newLogoPath) => {
+                setGames((prev) =>
+                  prev.map((g) => (g.id === gameId ? { ...g, logo_path: newLogoPath } : g))
+                );
+                if (selectedGame && selectedGame.id === gameId) {
+                  setSelectedGame({ ...selectedGame, logo_path: newLogoPath });
+                }
+              }}
+              onGameUpdated={(updated) => {
+                setGames((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+                setSelectedGame(updated);
+              }}
+            />
+          )}
 
-        <CastModal isOpen={castModalOpen} onClose={() => setCastModalOpen(false)} />
+          {castModalOpen && (
+            <CastModal isOpen={castModalOpen} onClose={() => setCastModalOpen(false)} />
+          )}
+
+          {createUserOpen && (
+            <CreateUserModal
+              isOpen={createUserOpen}
+              currentProfile={currentProfile}
+              existingProfiles={profiles}
+              onComplete={handleCreateUserComplete}
+            />
+          )}
+
+          {onboardingOpen && (
+            <OnboardingModal
+              isOpen={onboardingOpen}
+              onClose={handleCloseOnboarding}
+              folders={folders}
+              onAddFolder={handleAddFolderFromOnboarding}
+              onStartScan={(f) => {
+                handleCloseOnboarding();
+                handleScanWrapper(f);
+              }}
+            />
+          )}
+
+          {inGamePauseOpen && (
+            <InGameOverlayModal
+              isOpen={inGamePauseOpen}
+              game={inGameActiveGame}
+              screenshotPath={inGameScreenshot}
+              onClose={() => setInGamePauseOpen(false)}
+            />
+          )}
+
+          {edenKeysRom !== null && (
+            <EdenKeysModal
+              romPath={edenKeysRom}
+              onClose={() => setEdenKeysRom(null)}
+              onPlay={(romPath) => {
+                setEdenKeysRom(null);
+                launchGame(romPath).catch((e) => {
+                  console.error("Launch failed:", e);
+                  const msg = e instanceof Error ? e.message : String(e);
+                  window.dispatchEvent(
+                    new CustomEvent("app-error", { detail: t("common.launchError", { msg }) })
+                  );
+                });
+              }}
+            />
+          )}
+        </Suspense>
 
         <ScanCompleteModal
           isOpen={!!scanCompletedResult}
@@ -1208,28 +1098,10 @@ function App() {
           message={scanMessage}
         />
 
-        <OnboardingModal
-          isOpen={onboardingOpen}
-          onClose={handleCloseOnboarding}
-          folders={folders}
-          onAddFolder={handleAddFolderFromOnboarding}
-          onStartScan={(f) => {
-            handleCloseOnboarding();
-            handleScanWrapper(f);
-          }}
-        />
-
-        <InGameOverlayModal
-          isOpen={inGamePauseOpen}
-          game={inGameActiveGame}
-          screenshotPath={inGameScreenshot}
-          onClose={() => setInGamePauseOpen(false)}
-        />
-
         <ControllerHUD
           section={section}
-          hasModalOpen={selectedGame !== null || castModalOpen || onboardingOpen || inGamePauseOpen || !!scanCompletedResult}
-          selectedGameId={selectedGame?.id ?? null}
+          hasModalOpen={activeModal !== null || !!scanCompletedResult || createUserOpen}
+          selectedGameId={activeModal?.type === "game_detail" ? activeModal.game.id : null}
         />
 
         {showSplash && (

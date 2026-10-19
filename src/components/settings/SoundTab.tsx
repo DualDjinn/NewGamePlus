@@ -58,18 +58,18 @@ export default function SoundTab({
         style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
       >
         <div>
-          <h2>Sonido &amp; Salida de Audio</h2>
-          <p>Selecciona el dispositivo de audio del sistema (auriculares, parlantes) y driver de sonido.</p>
+          <h2>{t("settings.sound.panelTitle")}</h2>
+          <p>{t("settings.sound.panelDesc")}</p>
         </div>
-        {savedToast && <span className="settings-badge-ok">✓ Guardado</span>}
+        {savedToast && <span className="settings-badge-ok">{t("settings.sound.saved")}</span>}
       </div>
 
       {/* Dispositivo de Salida */}
       <section className="settings-card highlight" id="settings-audio-device">
         <div className="settings-card-header">
           <div>
-            <h3>Dispositivo de Salida de Audio</h3>
-            <p>Selecciona por qué parlantes o auriculares deseas escuchar los juegos.</p>
+            <h3>{t("settings.sound.outTitle")}</h3>
+            <p>{t("settings.sound.outDesc")}</p>
           </div>
           <button
             type="button"
@@ -77,15 +77,15 @@ export default function SoundTab({
             onClick={refreshAudioDevices}
             disabled={refreshingAudio}
           >
-            {refreshingAudio ? "Buscando..." : "🔄 Actualizar Dispositivos"}
+            {refreshingAudio ? t("settings.sound.searchingDevices") : t("settings.sound.refreshDevices")}
           </button>
         </div>
 
         <div className="settings-row-option">
           <div>
-            <span className="settings-option-title">Dispositivo Activo</span>
+            <span className="settings-option-title">{t("settings.sound.activeDevice")}</span>
             <p className="settings-option-desc">
-              Elige el dispositivo de salida específico o déjalo en predeterminado para seguir a Windows.
+              {t("settings.sound.activeDeviceDesc")}
             </p>
           </div>
           <select
@@ -94,7 +94,7 @@ export default function SoundTab({
             onChange={(e) => updateGlobalGraphic("audio_device", e.target.value)}
             style={{ minWidth: "320px" }}
           >
-            <option value="">🌟 Predeterminado del Sistema (Auto-conmutar)</option>
+            <option value="">{t("settings.sound.systemDefault")}</option>
             {audioDevices.map((dev) => {
               const devLower = dev.toLowerCase();
               const icon =
@@ -121,20 +121,18 @@ export default function SoundTab({
         <div className="settings-divider" />
 
         <p className="settings-hint">
-          💡 <strong>Modo Predeterminado:</strong> Con la opción <em>"Predeterminado del Sistema"</em> y el driver{" "}
-          <em>WASAPI</em>, el juego conmuta automáticamente de los parlantes a los auriculares en el momento en que
-          los conectes o los selecciones en la barra de tareas de Windows.
+          💡 <strong>{t("settings.sound.defaultModeTitle")}</strong> {t("settings.sound.defaultModeHint", { opt: t("settings.sound.systemDefaultShort"), driver: "WASAPI" })}
         </p>
       </section>
 
       {/* Volumen Master */}
       <section className="settings-card" id="settings-emulation-volume">
-        <h3>Volumen de Emulación</h3>
+        <h3>{t("settings.sound.emuVolume")}</h3>
         <div className="settings-row-option" style={{ marginTop: "12px" }}>
           <div>
-            <span className="settings-option-title">Nivel de Volumen: {graphics.audio_volume ?? 100}%</span>
+            <span className="settings-option-title">{t("settings.sound.emuVolumeLevel", { v: graphics.audio_volume ?? 100 })}</span>
             <p className="settings-option-desc">
-              Ganancia de salida del juego (100% = Ganancia Original 0 dB).
+              {t("settings.sound.emuVolumeDesc")}
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -156,14 +154,13 @@ export default function SoundTab({
 
       {/* Controlador de Audio (Driver) */}
       <section className="settings-card" id="settings-audio-driver">
-        <h3>Controlador de Audio (Driver de Emulación)</h3>
+        <h3>{t("settings.sound.driverTitle")}</h3>
 
         <div className="settings-row-option" style={{ marginTop: "12px" }}>
           <div>
-            <span className="settings-option-title">API de Sonido en Windows</span>
+            <span className="settings-option-title">{t("settings.sound.driverApi")}</span>
             <p className="settings-option-desc">
-              XAudio2 proporciona la máxima compatibilidad y estabilidad con auriculares USB, Bluetooth, interfaces y
-              parlantes.
+              {t("settings.sound.driverApiDesc")}
             </p>
           </div>
           <select
@@ -171,9 +168,9 @@ export default function SoundTab({
             value={graphics.audio_driver || "xaudio"}
             onChange={(e) => updateGlobalGraphic("audio_driver", e.target.value)}
           >
-            <option value="xaudio">XAudio2 (Recomendado - Máxima compatibilidad)</option>
-            <option value="wasapi">WASAPI (Windows Audio Session API)</option>
-            <option value="dsound">DirectSound (Legado)</option>
+            <option value="xaudio">{t("settings.sound.driverXaudio")}</option>
+            <option value="wasapi">{t("settings.sound.driverWasapi")}</option>
+            <option value="dsound">{t("settings.sound.driverDsound")}</option>
           </select>
         </div>
 
@@ -181,36 +178,36 @@ export default function SoundTab({
 
         <div className="settings-row-option">
           <div>
-            <span className="settings-option-title">Latencia de Audio</span>
-            <p className="settings-option-desc">Tamaño del búfer de sonido para evitar cortes o retrasos.</p>
+            <span className="settings-option-title">{t("settings.sound.latency")}</span>
+            <p className="settings-option-desc">{t("settings.sound.latencyDesc")}</p>
           </div>
           <select
             className="settings-select"
             value={graphics.audio_latency || 64}
             onChange={(e) => updateGlobalGraphic("audio_latency", parseInt(e.target.value, 10))}
           >
-            <option value={32}>32 ms (Mínima latencia / Respuesta ultra-rápida)</option>
-            <option value={64}>64 ms (Equilibrada / Recomendada)</option>
-            <option value={128}>128 ms (Alta estabilidad / PCs de bajos recursos)</option>
+            <option value={32}>{t("settings.sound.latency32")}</option>
+            <option value={64}>{t("settings.sound.latency64")}</option>
+            <option value={128}>{t("settings.sound.latency128")}</option>
           </select>
         </div>
       </section>
 
       {/* Volumen de Interfaz, Música y Efectos */}
       <section className="settings-card highlight" id="settings-sound-volume">
-        <h3>Volumen de la Interfaz &amp; Música</h3>
+        <h3>{t("settings.sound.ifaceVolume")}</h3>
         <p style={{ marginTop: "4px", fontSize: "0.9rem", color: "var(--text-muted, #9ca3af)" }}>
-          Configura los niveles de sonido para la música de fondo y los efectos interactivos de la aplicación.
+          {t("settings.sound.ifaceVolumeDesc")}
         </p>
 
         {/* Selector de Volumen de Música de Fondo */}
         <div className="settings-row-option" style={{ marginTop: "16px" }}>
           <div>
             <span className="settings-option-title">
-              Música de Fondo: {Math.round(musicVolume * 100)}%
+              {t("settings.sound.bgMusic", { v: Math.round(musicVolume * 100) })}
             </span>
             <p className="settings-option-desc">
-              Volumen de los temas musicales y reproductor de vinilo (con fade in y fade out suave).
+              {t("settings.sound.bgMusicDesc")}
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -235,10 +232,10 @@ export default function SoundTab({
         <div className="settings-row-option">
           <div>
             <span className="settings-option-title">
-              Efectos de Sonido (Lanzamiento de Juego): {Math.round(sfxVolume * 100)}%
+              {t("settings.sound.sfxTitle", { v: Math.round(sfxVolume * 100) })}
             </span>
             <p className="settings-option-desc">
-              Volumen del sonido que se reproduce al pulsar Play para arrancar una partida.
+              {t("settings.sound.sfxDesc")}
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -311,10 +308,9 @@ export default function SoundTab({
       <section className="settings-card" id="settings-music-player">
         <div className="settings-card-header">
           <div>
-            <h3>Música de Fondo (Reproductor Vinilo)</h3>
+            <h3>{t("settings.sound.musicPlayerTitle")}</h3>
             <p>
-              Escanea tus temas musicales o abre la carpeta para agregar nuevas canciones en formatos OGG, MP3,
-              OPUS, FLAC o WAV.
+              {t("settings.sound.musicPlayerDesc")}
             </p>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
@@ -323,7 +319,7 @@ export default function SoundTab({
               className="settings-btn-secondary"
               onClick={handleOpenMusicFolder}
             >
-              📂 Abrir Carpeta
+              {t("settings.sound.openFolder")}
             </button>
             <button
               type="button"
@@ -331,18 +327,18 @@ export default function SoundTab({
               onClick={handleScanMusic}
               disabled={scanningMusic}
             >
-              {scanningMusic ? "Escaneando..." : "🔄 Escanear Música"}
+              {scanningMusic ? t("settings.sound.scanningMusic") : t("settings.sound.scanMusic")}
             </button>
           </div>
         </div>
 
         <div className="settings-row-option">
           <div>
-            <span className="settings-option-title">Colección de Música</span>
+            <span className="settings-option-title">{t("settings.sound.collection")}</span>
             <p className="settings-option-desc">
               {musicTrackCount !== null
-                ? `${musicTrackCount} temas disponibles en la rotación del vinilo.`
-                : "Cargando temas musicales..."}
+                ? t("settings.sound.tracksCount", { count: musicTrackCount })
+                : t("settings.sound.loadingTracks")}
             </p>
           </div>
           {musicFeedback && (
@@ -355,24 +351,23 @@ export default function SoundTab({
       <section className="settings-card" id="settings-music-folders">
         <div className="settings-card-header">
           <div>
-            <h3>Carpetas de Música</h3>
+            <h3>{t("settings.sound.musicFoldersTitle")}</h3>
             <p>
-              Directorios adicionales con tus archivos de música (MP3, OGG, FLAC, WAV, OPUS). La colección integrada
-              en <code>public/music</code> se incluye siempre como base.
+              {t("settings.sound.musicFoldersDesc1")} <code>public/music</code> {t("settings.sound.musicFoldersDesc2")}
             </p>
           </div>
           <button type="button" onClick={handleAddMusicFolder} className="settings-btn-add">
-            + Agregar Carpeta de Música
+            {t("settings.sound.addMusicFolder")}
           </button>
         </div>
 
         <ul className="settings-folders">
           <li className="settings-folder-item" style={{ opacity: 0.9 }}>
-            <span className="settings-folder-path" title="Colección integrada del sistema">
-              ⭐ public/music (Colección integrada de GameFlix)
+            <span className="settings-folder-path" title={t("settings.sound.integratedTitle")}>
+              {t("settings.sound.integratedName")}
             </span>
             <span style={{ fontSize: "0.8rem", color: "var(--text-muted, #9ca3af)", paddingRight: "8px" }}>
-              Base
+              {t("settings.sound.integratedBase")}
             </span>
           </li>
           {musicFolders.map((mf) => (
@@ -382,7 +377,7 @@ export default function SoundTab({
                 type="button"
                 onClick={() => requestRemoveMusicFolder(mf)}
                 className="settings-btn-delete"
-                title="Quitar carpeta"
+                title={t("common.removeFolder")}
               >
                 ×
               </button>

@@ -48,9 +48,10 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/icon.ico",
+      "icons/icon.png"
     ],
-    "resources": ["binaries/RetroArch", "binaries/libretrodb.sqlite", "binaries/RPCS3"],
+    "resources": ["binaries/RetroArch", "binaries/libretrodb.sqlite", "binaries/RPCS3", "binaries/Azahar", "binaries/Eden"],
     "windows": {
       "nsis": {
         "installMode": "currentUser",

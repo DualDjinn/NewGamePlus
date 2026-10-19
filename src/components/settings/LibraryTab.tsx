@@ -1,7 +1,11 @@
 import { useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { SortKey } from "../../types";
-import type { LocalVideoStats, BatchScrapeProgressEvent } from "../../lib/tauri";
+import type {
+  LocalVideoStats,
+  BatchScrapeProgressEvent,
+  SteamGridBatchProgressEvent,
+} from "../../lib/tauri";
 
 export interface LibraryTabProps {
   folders: string[];
@@ -26,6 +30,15 @@ export interface LibraryTabProps {
   batchProgress?: BatchScrapeProgressEvent | null;
   onStartBatchScrape?: (onlyMissing: boolean) => void;
   onCancelBatchScrape?: () => void;
+  sgdbLinked?: boolean;
+  isBatchSteamGridScraping?: boolean;
+  batchSteamGridProgress?: SteamGridBatchProgressEvent | null;
+  onStartBatchSteamGrid?: (
+    scrapeHeroes: boolean,
+    scrapeLogos: boolean,
+    onlyMissing: boolean
+  ) => void;
+  onCancelBatchSteamGrid?: () => void;
   onNavigateToIntegrations?: () => void;
   sortBy: SortKey;
   onSortByChange: (sort: SortKey) => void;
@@ -58,6 +71,11 @@ export default function LibraryTab({
   batchProgress,
   onStartBatchScrape,
   onCancelBatchScrape,
+  sgdbLinked = false,
+  isBatchSteamGridScraping = false,
+  batchSteamGridProgress,
+  onStartBatchSteamGrid,
+  onCancelBatchSteamGrid,
   onNavigateToIntegrations,
   sortBy,
   onSortByChange,
@@ -68,19 +86,22 @@ export default function LibraryTab({
 }: LibraryTabProps) {
   const { t } = useTranslation();
   const [batchOnlyMissing, setBatchOnlyMissing] = useState(true);
+  const [sgdbOnlyMissing, setSgdbOnlyMissing] = useState(true);
+  const [sgdbHeroes, setSgdbHeroes] = useState(true);
+  const [sgdbLogos, setSgdbLogos] = useState(true);
   return (
     <div className="settings-tab-panel">
       <div className="settings-panel-header">
-        <h2>Biblioteca &amp; Escaneo</h2>
-        <p>Gestiona tus directorios de ROMs, archivos BIOS y copias de seguridad.</p>
+        <h2>{t("settings.librarySection.header")}</h2>
+        <p>{t("settings.librarySection.headerDesc")}</p>
       </div>
 
       {/* Escaneo Principal */}
       <section className="settings-card highlight" id="settings-scan">
         <div className="settings-card-header">
           <div>
-            <h3>Escanear Biblioteca</h3>
-            <p>Indexa nuevos juegos, busca carátulas y verifica compatibilidad.</p>
+            <h3>{t("settings.librarySection.scanTitle")}</h3>
+            <p>{t("settings.librarySection.scanDesc")}</p>
           </div>
           <button
             type="button"
@@ -88,7 +109,7 @@ export default function LibraryTab({
             onClick={() => onScan(folders)}
             disabled={scanning || folders.length === 0}
           >
-            {scanning ? "Escaneando..." : "▶ Escanear Ahora"}
+            {scanning ? t("common.scanning") : t("settings.librarySection.scanNow")}
           </button>
         </div>
 
@@ -104,10 +125,10 @@ export default function LibraryTab({
         {scanCores && (scanCores.installed.length > 0 || scanCores.needed.length > 0) && (
           <div className="settings-scan-cores-box">
             {scanCores.installed.length > 0 && (
-              <span className="settings-badge-ok">✓ Cores listos: {scanCores.installed.join(", ")}</span>
+              <span className="settings-badge-ok">{t("settings.librarySection.coresReady", { cores: scanCores.installed.join(", ") })}</span>
             )}
             {scanCores.needed.length > 0 && (
-              <span className="settings-badge-warn">⚠ Cores pendientes: {scanCores.needed.join(", ")}</span>
+              <span className="settings-badge-warn">{t("settings.librarySection.coresPending", { cores: scanCores.needed.join(", ") })}</span>
             )}
           </div>
         )}
@@ -117,11 +138,11 @@ export default function LibraryTab({
       <section className="settings-card" id="settings-rom-folders">
         <div className="settings-card-header">
           <div>
-            <h3>Carpetas de ROMs</h3>
-            <p>Directorios donde se encuentran los archivos de tus juegos.</p>
+            <h3>{t("settings.librarySection.romTitle")}</h3>
+            <p>{t("settings.librarySection.romDesc")}</p>
           </div>
           <button type="button" onClick={onAddFolder} className="settings-btn-add">
-            + Agregar Carpeta
+            {t("settings.librarySection.addFolderBtn")}
           </button>
         </div>
 
@@ -133,14 +154,14 @@ export default function LibraryTab({
                 type="button"
                 onClick={() => onRequestRemoveFolder(f)}
                 className="settings-btn-delete"
-                title="Quitar"
+                title={t("common.remove")}
               >
                 ×
               </button>
             </li>
           ))}
           {folders.length === 0 && (
-            <li className="settings-empty">No hay carpetas configuradas aún.</li>
+            <li className="settings-empty">{t("settings.librarySection.noFoldersYet")}</li>
           )}
         </ul>
       </section>
@@ -149,11 +170,11 @@ export default function LibraryTab({
       <section className="settings-card" id="settings-bios-folders">
         <div className="settings-card-header">
           <div>
-            <h3>Carpetas de BIOS / System</h3>
-            <p>Directorios con archivos BIOS (PlayStation, PS2, Sega CD, Neo Geo, Saturn, etc.).</p>
+            <h3>{t("settings.librarySection.biosTitle")}</h3>
+            <p>{t("settings.librarySection.biosDesc")}</p>
           </div>
           <button type="button" onClick={onAddBiosFolder} className="settings-btn-add">
-            + Agregar Carpeta de BIOS
+            {t("settings.librarySection.addBiosBtn")}
           </button>
         </div>
 
@@ -165,7 +186,7 @@ export default function LibraryTab({
                 type="button"
                 onClick={() => onRequestRemoveBiosFolder(bf)}
                 className="settings-btn-delete"
-                title="Quitar carpeta"
+                title={t("common.removeFolder")}
               >
                 ×
               </button>
@@ -173,7 +194,7 @@ export default function LibraryTab({
           ))}
           {biosFolders.length === 0 && (
             <li className="settings-empty">
-              Sin carpetas personalizadas. Usando ubicación por defecto: <code>binaries/RetroArch/system</code>
+              {t("settings.librarySection.noBiosCustom")} <code>binaries/RetroArch/system</code>
             </li>
           )}
         </ul>
@@ -199,7 +220,7 @@ export default function LibraryTab({
                 type="button"
                 onClick={() => onRequestRemoveVideoFolder?.(vf)}
                 className="settings-btn-delete"
-                title="Quitar carpeta"
+                title={t("common.removeFolder")}
               >
                 ×
               </button>
@@ -273,7 +294,7 @@ export default function LibraryTab({
               className="settings-btn-secondary"
               onClick={onNavigateToIntegrations}
             >
-              ⚙ Configurar ScreenScraper
+              {t("settings.librarySection.configureSs")}
             </button>
           )}
         </div>
@@ -298,12 +319,12 @@ export default function LibraryTab({
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", fontSize: "0.84rem" }}>
                   <span style={{ fontWeight: 600, color: "var(--accent, #00f0ff)" }}>
-                    {batchProgress.status === "downloading" ? "Descargando:" : "Procesando:"} {batchProgress.game_name} ({batchProgress.current_index}/{batchProgress.total})
+                    {batchProgress.status === "downloading" ? t("settings.librarySection.statusDownloading") : t("settings.librarySection.statusProcessing")} {batchProgress.game_name} ({batchProgress.current_index}/{batchProgress.total})
                   </span>
                   <span>{batchProgress.percent}%</span>
                 </div>
                 <p className="settings-progress-msg" style={{ marginTop: "4px" }}>
-                  ✓ {batchProgress.downloaded_count} descargados • ⏭ {batchProgress.skipped_count} omitidos • ⚠ {batchProgress.failed_count} fallidos
+                  {t("settings.librarySection.progressLine", { done: batchProgress.downloaded_count, skipped: batchProgress.skipped_count, failed: batchProgress.failed_count })}
                 </p>
               </div>
             )}
@@ -326,17 +347,118 @@ export default function LibraryTab({
         )}
       </section>
 
+      {/* Descarga Masiva de Heroes y Logos (SteamGridDB) */}
+      <section className="settings-card" id="settings-batch-steamgrid">
+        <div className="settings-card-header">
+          <div>
+            <h3>🎨 {t("librarySection.batchSteamGridTitle", "Descarga Masiva de Heroes y Logos (SteamGridDB)")}</h3>
+            <p>{t("librarySection.batchSteamGridSubtitle", "Descarga automáticamente los banners panorámicos HD y logos transparentes de toda tu biblioteca en segundo plano.")}</p>
+          </div>
+          {sgdbLinked ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {isBatchSteamGridScraping ? (
+                <button
+                  type="button"
+                  className="settings-btn-delete"
+                  style={{ padding: "6px 14px", borderRadius: "6px", fontSize: "0.85rem" }}
+                  onClick={onCancelBatchSteamGrid}
+                >
+                  {t("settings.librarySection.cancelBtn")}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="settings-btn-primary"
+                  onClick={() => onStartBatchSteamGrid?.(sgdbHeroes, sgdbLogos, sgdbOnlyMissing)}
+                  disabled={!sgdbHeroes && !sgdbLogos}
+                >
+                  {t("settings.librarySection.startBtn")}
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="settings-btn-secondary"
+              onClick={onNavigateToIntegrations}
+            >
+              {t("settings.librarySection.configureSgdb")}
+            </button>
+          )}
+        </div>
+
+        {sgdbLinked && (
+          <div style={{ marginTop: "10px" }}>
+            {!isBatchSteamGridScraping && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", fontSize: "0.88rem", color: "var(--text-muted, #94a3b8)" }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={sgdbHeroes}
+                    onChange={(e) => setSgdbHeroes(e.target.checked)}
+                  />
+                  <span>{t("settings.librarySection.heroesOpt")}</span>
+                </label>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={sgdbLogos}
+                    onChange={(e) => setSgdbLogos(e.target.checked)}
+                  />
+                  <span>{t("settings.librarySection.logosOpt")}</span>
+                </label>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={sgdbOnlyMissing}
+                    onChange={(e) => setSgdbOnlyMissing(e.target.checked)}
+                  />
+                  <span>{t("settings.librarySection.missingOnlyArt")}</span>
+                </label>
+              </div>
+            )}
+
+            {isBatchSteamGridScraping && batchSteamGridProgress && (
+              <div className="settings-scan-progress-box" style={{ marginTop: "10px" }}>
+                <div className="settings-progress">
+                  <div className="settings-progress-bar" style={{ width: `${batchSteamGridProgress.percent}%` }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", fontSize: "0.84rem" }}>
+                  <span style={{ fontWeight: 600, color: "var(--accent, #00f0ff)" }}>
+                    {batchSteamGridProgress.status === "downloading" ? t("settings.librarySection.statusDownloading") : t("settings.librarySection.statusProcessing")} {batchSteamGridProgress.game_name} ({batchSteamGridProgress.current_index}/{batchSteamGridProgress.total})
+                  </span>
+                  <span>{batchSteamGridProgress.percent}%</span>
+                </div>
+                <p className="settings-progress-msg" style={{ marginTop: "4px" }}>
+                  {t("settings.librarySection.sgdbProgressLine", { heroes: batchSteamGridProgress.downloaded_heroes, logos: batchSteamGridProgress.downloaded_logos, skipped: batchSteamGridProgress.skipped_count, failed: batchSteamGridProgress.failed_count })}
+                </p>
+              </div>
+            )}
+
+            {!isBatchSteamGridScraping && batchSteamGridProgress && (batchSteamGridProgress.status === "complete" || batchSteamGridProgress.status === "cancelled") && (
+              <div style={{ marginTop: "10px", padding: "8px 12px", borderRadius: "6px", background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.2)", fontSize: "0.85rem" }}>
+                <span>
+                  {batchSteamGridProgress.status === "complete"
+                    ? t("settings.librarySection.sgdbCompleted", { heroes: batchSteamGridProgress.downloaded_heroes, logos: batchSteamGridProgress.downloaded_logos, skipped: batchSteamGridProgress.skipped_count })
+                    : t("settings.librarySection.sgdbCancelled")}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
       {/* Preferencias de Biblioteca */}
       <section className="settings-card" id="settings-library-prefs">
-        <h3>Preferencias de Biblioteca</h3>
+        <h3>{t("settings.librarySection.prefsTitle")}</h3>
 
         <div className="settings-row-option">
           <div>
-            <span className="settings-option-title">Orden Predeterminado</span>
-            <p className="settings-option-desc">Criterio de ordenación al entrar a tu biblioteca.</p>
+            <span className="settings-option-title">{t("settings.librarySection.sortDefault")}</span>
+            <p className="settings-option-desc">{t("settings.librarySection.sortDefaultDesc")}</p>
           </div>
           <div className="settings-sort-group">
-            {([["name", "Nombre"], ["platform", "Plataforma"], ["last_played", "Última vez"]] as [SortKey, string][]).map(([key, label]) => (
+            {([["name", t("settings.librarySection.sortName")], ["platform", t("settings.librarySection.sortPlatform")], ["last_played", t("settings.librarySection.sortLast")]] as [SortKey, string][]).map(([key, label]) => (
               <button
                 key={key}
                 type="button"
@@ -353,8 +475,8 @@ export default function LibraryTab({
 
         <div className="settings-row-option">
           <div>
-            <span className="settings-option-title">Prioridad de Región de Carátulas</span>
-            <p className="settings-option-desc">Región preferida al buscar portadas retro.</p>
+            <span className="settings-option-title">{t("settings.librarySection.regionTitle")}</span>
+            <p className="settings-option-desc">{t("settings.librarySection.regionDesc")}</p>
           </div>
           <div className="settings-sort-group">
             <button
@@ -369,14 +491,14 @@ export default function LibraryTab({
               className={`settings-sort-btn ${regionPref === "eur" ? "active" : ""}`}
               onClick={() => onRegionPrefChange("eur")}
             >
-              🇪🇺 Europa
+              {t("settings.librarySection.regionEu")}
             </button>
             <button
               type="button"
               className={`settings-sort-btn ${regionPref === "jp" ? "active" : ""}`}
               onClick={() => onRegionPrefChange("jp")}
             >
-              🇯🇵 Japón
+              {t("settings.librarySection.regionJp")}
             </button>
           </div>
         </div>
@@ -384,14 +506,14 @@ export default function LibraryTab({
 
       {/* Copias de Seguridad */}
       <section className="settings-card" id="settings-backup">
-        <h3>Respaldo y Copias de Seguridad</h3>
-        <p className="settings-hint">Exporta o importa el registro de tus juegos, favoritos e historial.</p>
+        <h3>{t("settings.librarySection.backupTitle")}</h3>
+        <p className="settings-hint">{t("settings.librarySection.backupDesc")}</p>
         <div className="settings-row" style={{ marginTop: '12px' }}>
           <button type="button" className="settings-btn-secondary" onClick={onExport}>
-            📥 Exportar Respaldo JSON
+            {t("settings.librarySection.exportBtn")}
           </button>
           <label className="settings-btn-secondary" style={{ cursor: 'pointer' }}>
-            📤 Importar Respaldo JSON
+            {t("settings.librarySection.importBtn")}
             <input type="file" accept=".json" onChange={onImport} hidden />
           </label>
         </div>

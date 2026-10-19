@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { GameAchievementProgress } from "../types";
 import "./AchievementList.css";
 
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function AchievementList({ progress, onRefresh, refreshing }: Props) {
+  const { t } = useTranslation();
   const sortedAchievements = [...progress.achievements].sort((a, b) => {
     if (a.date_earned && !b.date_earned) return -1;
     if (!a.date_earned && b.date_earned) return 1;
@@ -80,8 +82,8 @@ export default function AchievementList({ progress, onRefresh, refreshing }: Pro
 
         <div className="achievement-summary-stats">
           <div className="summary-stat-count">
-            <span className="stat-count-unlocked">{progress.unlocked}</span>
-            <span className="stat-count-total"> / {progress.total} logros</span>
+            <span className="stat-count-unlocked">
+          {progress.unlocked === 1 ? t("achievements.countLabel_one", { unlocked: progress.unlocked, total: progress.total }) : t("achievements.countLabel_other", { unlocked: progress.unlocked, total: progress.total })}</span>
           </div>
           {totalPoints > 0 && (
             <div className="summary-stat-points">
@@ -96,7 +98,7 @@ export default function AchievementList({ progress, onRefresh, refreshing }: Pro
           className={`achievement-refresh-btn ${refreshing ? "spinning" : ""}`}
           onClick={onRefresh}
           disabled={refreshing}
-          title="Actualizar logros desde RetroAchievements"
+          title={t("achievements.refreshTitle")}
         >
           <svg
             className="achievement-refresh-icon"
@@ -114,16 +116,16 @@ export default function AchievementList({ progress, onRefresh, refreshing }: Pro
             <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
             <path d="M3 21v-5h5" />
           </svg>
-          <span>{refreshing ? "Sincronizando…" : "Actualizar"}</span>
+          <span>{refreshing ? t("achievements.syncing") : t("achievements.refresh")}</span>
         </button>
       </div>
 
       {/* Panel Derecho: Lista Scrolleable de Logros */}
       <div className="achievement-list-section">
         <div className="achievement-list-header">
-          <span className="achievement-list-title">Logros del Juego</span>
+          <span className="achievement-list-title">{t("achievements.listTitle")}</span>
           <span className="achievement-list-badge">
-            {progress.unlocked} de {progress.total} completados
+            {t("achievements.completedBadge", { unlocked: progress.unlocked, total: progress.total })}
           </span>
         </div>
 
@@ -178,7 +180,7 @@ export default function AchievementList({ progress, onRefresh, refreshing }: Pro
                   <span className="achievement-desc">{ach.description}</span>
                   {unlocked && (
                     <span className="achievement-date">
-                      Desbloqueado: {new Date(ach.date_earned!).toLocaleDateString()}
+                      {t("achievements.unlockedOn", { date: new Date(ach.date_earned!).toLocaleDateString() })}
                     </span>
                   )}
                 </div>

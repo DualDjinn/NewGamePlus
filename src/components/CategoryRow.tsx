@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, memo } from "react";
 import type { Game } from "../types";
 import GameCard from "./GameCard";
 import "./CategoryRow.css";
@@ -11,7 +11,7 @@ interface Props {
   focusedId?: string | null;
 }
 
-export default function CategoryRow({ title, games, onSelect, onFavoriteChanged, focusedId }: Props) {
+function CategoryRow({ title, games, onSelect, onFavoriteChanged, focusedId }: Props) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [canScroll, setCanScroll] = useState({ left: false, right: true });
 
@@ -126,3 +126,5 @@ export default function CategoryRow({ title, games, onSelect, onFavoriteChanged,
     </div>
   );
 }
+
+export default memo(CategoryRow);

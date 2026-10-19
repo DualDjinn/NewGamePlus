@@ -1,4 +1,4 @@
-use crate::emulator::{get_azahar_exe, get_retroarch_exe, get_rpcs3_exe};
+use crate::emulator::{get_azahar_exe, get_eden_exe, get_retroarch_exe, get_rpcs3_exe};
 use crate::state::storage::get_data_dir;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -134,10 +134,18 @@ fn detect_one(
             exe_path: None,
         },
         Some(exe) => {
-            let mut ver = run_version_arg(&exe, &["--version"])
-                .as_deref()
-                .and_then(parse_retroarch_version)
-                .map(|v| normalize_tag(&v));
+            // ponytail: solo RetroArch (CLI) se sondea con `--version`.
+            // Los standalone son GUIs: ejecutarlas aquí ABRE su ventana
+            // (Eden ignora flags desconocidos y lanza la GUI; el hilo encima
+            // la deja viva tras el timeout). Su versión sale del manifest.
+            let mut ver = if id == "retroarch" {
+                run_version_arg(&exe, &["--version"])
+                    .as_deref()
+                    .and_then(parse_retroarch_version)
+                    .map(|v| normalize_tag(&v))
+            } else {
+                None
+            };
             if ver.is_none() {
                 ver = manifest.installed.get(id).cloned();
             }
@@ -159,6 +167,7 @@ pub fn detect_installed() -> Vec<EmulatorInfo> {
     let ra = get_retroarch_exe();
     let rpcs3 = get_rpcs3_exe();
     let azahar = get_azahar_exe();
+    let eden = get_eden_exe();
     let sunshine = crate::commands::cast::get_sunshine_exe();
     vec![
         detect_one(
@@ -177,6 +186,12 @@ pub fn detect_installed() -> Vec<EmulatorInfo> {
             "azahar",
             "Azahar (3DS)",
             azahar.exists().then_some(azahar),
+            &manifest,
+        ),
+        detect_one(
+            "eden",
+            "Eden (Switch)",
+            eden.exists().then_some(eden),
             &manifest,
         ),
         detect_one("sunshine", "Sunshine (Cast)", sunshine, &manifest),
@@ -230,6 +245,20 @@ fn github_latest(repo: &str) -> Result<serde_json::Value, String> {
     resp.json::<serde_json::Value>().map_err(|e| e.to_string())
 }
 
+fn forgejo_latest(api_url: &str) -> Result<serde_json::Value, String> {
+    // Mismo esquema que GitHub (tag_name/assets[]) en el Forgejo de Eden.
+    let client = crate::emulator::downloader::get_http_client();
+    let resp = client
+        .get(api_url)
+        .header("User-Agent", "NewGamePlus-Updater")
+        .send()
+        .map_err(|e| format!("HTTP error: {}", e))?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}: {}", resp.status(), api_url));
+    }
+    resp.json::<serde_json::Value>().map_err(|e| e.to_string())
+}
+
 fn pick_asset(release: &serde_json::Value, want: &dyn Fn(&str) -> bool) -> Option<LatestRelease> {
     let tag = release.get("tag_name")?.as_str()?.to_string();
     let assets = release.get("assets")?.as_array()?;
@@ -278,6 +307,25 @@ pub fn fetch_latest_azahar() -> Option<LatestRelease> {
     })
 }
 
+pub fn fetch_latest_eden() -> Option<LatestRelease> {
+    // ponytail: Eden publica en su Forgejo (canal estable), no en GitHub.
+    forgejo_latest("https://git.eden-emu.dev/api/v1/repos/eden-emu/eden/releases/latest")
+        .ok()
+        .and_then(|r| {
+            // Preferir PGO (recomendado en su web), fallback a cualquier Windows amd64.
+            pick_asset(&r, &|n| {
+                n.contains("Windows")
+                    && n.contains("amd64")
+                    && n.contains("clang-pgo")
+                    && n.ends_with(".zip")
+            })
+            .or_else(|| {
+                pick_asset(&r, &|n| {
+                    n.contains("Windows") && n.contains("amd64") && n.ends_with(".zip")
+                })
+            })
+        })
+}
 pub fn fetch_latest_sunshine() -> Option<LatestRelease> {
     github_latest("LizardByte/Sunshine").ok().and_then(|r| {
         pick_asset(&r, &|n| {
@@ -292,12 +340,14 @@ pub fn check_all() -> Vec<EmulatorInfo> {
     let latest_ra = fetch_latest_retroarch();
     let latest_rpcs3 = fetch_latest_rpcs3();
     let latest_azahar = fetch_latest_azahar();
+    let latest_eden = fetch_latest_eden();
     let latest_sunshine = fetch_latest_sunshine();
     for info in &mut infos {
         let latest = match info.id.as_str() {
             "retroarch" => latest_ra.clone(),
             "rpcs3" => latest_rpcs3.as_ref().map(|r| normalize_tag(&r.tag)),
             "azahar" => latest_azahar.as_ref().map(|r| normalize_tag(&r.tag)),
+            "eden" => latest_eden.as_ref().map(|r| normalize_tag(&r.tag)),
             "sunshine" => latest_sunshine.as_ref().map(|r| normalize_tag(&r.tag)),
             _ => None,
         };

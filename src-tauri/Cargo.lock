@@ -1095,7 +1095,7 @@ dependencies = [
 
 [[package]]
 name = "gameflix"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "md5",
  "rayon",
@@ -1109,6 +1109,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-global-shortcut",
  "urlencoding",
+ "uuid",
  "walkdir",
  "windows 0.62.2",
  "zip",

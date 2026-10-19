@@ -729,6 +729,36 @@
   transform: translateY(0);
 }
 
+.osu-btn-netplay {
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 0 16px;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(59, 130, 246, 0.4);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.osu-btn-netplay:hover {
+  background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(59, 130, 246, 0.55);
+}
+
+.osu-btn-netplay:active {
+  transform: translateY(0);
+}
+
 .osu-btn-favorite {
   width: 40px;
   height: 40px;
@@ -876,18 +906,19 @@
   position: absolute;
   top: 14px;
   left: 16px;
-  max-width: 325px;
-  max-height: 98px;
+  max-width: 380px;
+  max-height: 120px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-start;
   z-index: 5;
   pointer-events: none;
+  transition: max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .osu-video-logo-img {
   max-width: 100%;
-  max-height: 98px;
+  max-height: 100%;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -1131,8 +1162,12 @@
   border-left: 5px solid var(--console-color, #00f0ff);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
-  position: relative;
   overflow: hidden;
+  /* Sticky: la última consola visitada queda fija bajo la barra de buscar
+     dentro de .osu-carousel-scroll; la siguiente cabecera la reemplaza. */
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 /* Subtle ambient brand color light behind the logo */
@@ -1171,6 +1206,19 @@
 }
 
 .osu-group-header.expanded::before {
+  opacity: 0.85;
+}
+
+/* Console cursor (no console open): focused header glows so the user sees
+   which console the wheel/mando cursor is on. Same neon language as expanded,
+   without the scale pop to avoid layout shift while moving between consoles. */
+.osu-group-header.console-focused {
+  border: 1.5px solid var(--console-color, #00f0ff);
+  border-left: 6px solid var(--console-color, #00f0ff);
+  box-shadow: 0 0 20px var(--console-color-glow, rgba(0, 240, 255, 0.35)), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.osu-group-header.console-focused::before {
   opacity: 0.85;
 }
 
@@ -1299,7 +1347,12 @@
   cursor: pointer;
   transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
   overflow: visible;
-  scroll-margin: 14px;
+  /* Margen para que el auto-scroll (mando/rueda) no deje la carta activa
+     escondida bajo la cabecera sticky (58px + aire). */
+  scroll-margin-top: 70px;
+  scroll-margin-bottom: 14px;
+  scroll-margin-left: 14px;
+  scroll-margin-right: 14px;
 }
 
 .osu-game-card:hover {
@@ -1316,8 +1369,35 @@
   background: linear-gradient(90deg, rgba(42, 54, 86, 0.98) 0%, rgba(30, 38, 64, 0.94) 55%, rgba(20, 26, 46, 0.88) 100%);
   border-color: #ffd700;
   border-width: 1.5px;
+  border-right: none;
+  border-radius: 8px 0 0 8px;
   box-shadow: -8px 0 22px rgba(255, 215, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.65);
   z-index: 10;
+}
+
+/* Espacio derecho de la carta seleccionada: llena el hueco con el color representativo de la consola */
+.osu-game-card::after {
+  content: "";
+  position: absolute;
+  top: -1.5px;
+  bottom: -1.5px;
+  right: -21px;
+  width: 21px;
+  background: var(--console-color, #00f0ff);
+  background: linear-gradient(180deg, var(--console-color, #00f0ff) 0%, color-mix(in srgb, var(--console-color, #00f0ff) 75%, #000) 100%);
+  border-top: 1.5px solid #ffd700;
+  border-bottom: 1.5px solid #ffd700;
+  border-right: 1.5px solid #ffd700;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 4px 0 16px var(--console-color-glow, rgba(0, 240, 255, 0.45));
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+  transition: opacity 0.16s ease;
+}
+
+.osu-game-card.selected::after {
+  opacity: 1;
 }
 
 /* Left Disc / Pip Indicator */
@@ -1573,8 +1653,10 @@
 .osu-edit-modal-title-wrap {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
+  flex: 1;
+  margin-right: 12px;
 }
 
 .osu-edit-modal-badge {
@@ -1589,6 +1671,14 @@
   width: fit-content;
 }
 
+.osu-edit-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
 .osu-edit-modal-title {
   margin: 0;
   font-size: 17px;
@@ -1597,7 +1687,124 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 320px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.osu-edit-modal-title:hover {
+  color: #38bdf8;
+}
+
+.osu-edit-modal-btn-rename {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.osu-edit-modal-btn-rename:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #38bdf8;
+  transform: translateY(-1px);
+}
+
+.osu-edit-modal-title-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
   max-width: 440px;
+  margin-top: 2px;
+}
+
+.osu-edit-modal-title-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1.5px solid #38bdf8;
+  border-radius: 7px;
+  padding: 6px 12px;
+  outline: none;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.osu-edit-modal-title-input:focus {
+  border-color: #7dd3fc;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
+}
+
+.osu-edit-modal-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.osu-edit-title-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.osu-edit-title-btn-save {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.osu-edit-title-btn-save:hover:not(:disabled) {
+  background: #7dd3fc;
+  transform: translateY(-1px);
+}
+
+.osu-edit-title-btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.osu-edit-title-btn-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #94a3b8;
+}
+
+.osu-edit-title-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.osu-edit-title-btn-restore {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  font-size: 11px;
+}
+
+.osu-edit-title-btn-restore:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fff;
 }
 
 .osu-edit-modal-close {
@@ -1756,6 +1963,30 @@
   font-weight: 700;
   padding: 1px 7px;
   border-radius: 4px;
+}
+
+.osu-edit-tag-btn {
+  background: rgba(0, 240, 255, 0.15);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  color: #00f0ff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: auto;
+}
+
+.osu-edit-tag-btn:hover:not(:disabled) {
+  background: rgba(0, 240, 255, 0.35);
+  border-color: #00f0ff;
+  transform: translateY(-1px);
+}
+
+.osu-edit-tag-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .osu-edit-tag-video {

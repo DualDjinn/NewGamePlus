@@ -1,7 +1,7 @@
 use crate::emulator::downloader::download_file;
 use crate::emulator::versions::{
-    fetch_latest_azahar, fetch_latest_retroarch, fetch_latest_rpcs3, fetch_latest_sunshine,
-    load_manifest, now_secs, save_manifest, LatestRelease,
+    fetch_latest_azahar, fetch_latest_eden, fetch_latest_retroarch, fetch_latest_rpcs3,
+    fetch_latest_sunshine, load_manifest, now_secs, save_manifest, LatestRelease,
 };
 use crate::emulator::RETROARCH_PID;
 use crate::state::lock_state;
@@ -322,6 +322,19 @@ pub fn update_standalone(app: &tauri::AppHandle, id: &str) -> Result<String, Str
                 &bin.join("Azahar"),
                 &["azahar.exe", "azahar-qt.exe"],
                 &[],
+            )
+        }
+        "eden" => {
+            let latest =
+                fetch_latest_eden().ok_or("No se pudo averiguar la última versión de Eden")?;
+            update_standalone_inner(
+                app,
+                "eden",
+                "Eden",
+                &latest,
+                &bin.join("Eden"),
+                &["eden.exe"],
+                &["user", "config"],
             )
         }
         "sunshine" => {

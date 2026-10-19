@@ -1,3 +1,4 @@
+use crate::state::storage::get_data_dir;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -40,19 +41,9 @@ pub struct RAUserSummary {
     pub total_achievements_earned: u32,
 }
 
-fn get_data_dir() -> PathBuf {
-    let dir = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("data");
-    let _ = std::fs::create_dir_all(&dir);
-    dir
-}
-
 pub fn get_achievements_cache_dir() -> PathBuf {
     let dir = get_data_dir().join("achievements");
-    let _ = std::fs::create_dir_all(&dir);
+    let _ = fs::create_dir_all(&dir);
     dir
 }
 
@@ -220,6 +211,7 @@ pub fn ra_is_supported_platform(platform: &str) -> bool {
             | "GBC"
             | "GBA"
             | "NDS"
+            | "3DS"
             | "MEGA_DRIVE"
             | "SMS"
             | "GAME_GEAR"
@@ -228,6 +220,10 @@ pub fn ra_is_supported_platform(platform: &str) -> bool {
             | "PS1"
             | "PS2"
             | "PSP"
+            | "GAMECUBE"
+            | "GC"
+            | "NGC"
+            | "WII"
             | "NEOGEO"
             | "MAME"
             | "VB"
@@ -306,14 +302,14 @@ pub fn ra_hash_rom(path: &Path, platform: &str) -> Result<String, String> {
         return Ok(format!("{:x}", hash));
     }
 
-    // Para medios de disco óptico (PS1, PS2, PSP, etc.) o archivos grandes (>64MB),
+    // Para medios de disco óptico (PS1, PS2, PSP, GameCube, Wii, etc.) o archivos grandes (>64MB),
     // RetroAchievements no hashea la imagen ISO/BIN completa (usa seriales o pistas específicas).
     // Hashear gigabytes en disco satura el I/O y causa congelamientos. Omitir para ir directo a la resolución inteligente.
     let file_size = file.metadata().map(|m| m.len()).unwrap_or(0);
     if file_size > 64 * 1024 * 1024
         || matches!(
             plat_lower.as_str(),
-            "ps1" | "ps2" | "psp" | "gamecube" | "dreamcast"
+            "ps1" | "ps2" | "psp" | "gamecube" | "gc" | "ngc" | "wii" | "dreamcast"
         )
     {
         return Err("Omitiendo hash completo de archivo grande/disco para usar resolución por título/consola".into());
@@ -386,9 +382,12 @@ pub fn ra_get_console_id(platform: &str) -> Option<u32> {
         "SMS" => Some(11),
         "PS1" => Some(12),
         "GAME_GEAR" => Some(14),
+        "GAMECUBE" | "GC" | "NGC" => Some(16),
         "NDS" => Some(18),
+        "WII" => Some(19),
         "PS2" => Some(21),
         "PSP" => Some(41),
+        "3DS" => Some(62),
         "NEOGEO" => Some(27),
         "VB" => Some(28),
         "NGP" => Some(39),
@@ -460,9 +459,29 @@ pub fn ra_get_console_games(
 }
 
 fn clean_title_for_match(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
+    let trimmed = s.trim();
+    // Si empieza con serial de 6 caracteres tipo RMCE01 - ... o GM8E01_...
+    let clean_s = if trimmed.len() > 8
+        && trimmed.as_bytes()[..6]
+            .iter()
+            .all(|b| b.is_ascii_alphanumeric())
+        && (trimmed.chars().nth(6) == Some(' ')
+            || trimmed.chars().nth(6) == Some('-')
+            || trimmed.chars().nth(6) == Some('_'))
+    {
+        let rest = trimmed[6..].trim_start_matches(|c| c == ' ' || c == '-' || c == '_');
+        if !rest.is_empty() {
+            rest
+        } else {
+            trimmed
+        }
+    } else {
+        trimmed
+    };
+
+    let mut out = String::with_capacity(clean_s.len());
     // Normalizar diacríticos / diéresis comunes (ej. Einhänder -> Einhander)
-    let s_lower = s.to_lowercase();
+    let s_lower = clean_s.to_lowercase();
     let s_norm = s_lower
         .replace(['á', 'à', 'ä', 'â'], "a")
         .replace(['é', 'è', 'ë', 'ê'], "e")
@@ -585,6 +604,9 @@ pub fn ra_resolve_game_id_by_title(
 
             if g_norm.starts_with(&user_norm) || user_norm.starts_with(&g_norm) {
                 score += 15;
+            }
+            if matched_words == u_words.len() && matched_words == g_words.len() {
+                score += 20; // Todas las palabras coinciden aunque cambie el orden ("Zelda, The" vs "The Zelda")
             }
             if g.NumAchievements > 0 {
                 score += 5; // Priorizar juegos que tienen logros activos

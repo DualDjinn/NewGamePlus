@@ -80,6 +80,7 @@ describe("useGameSearch", () => {
           games: mockGames,
           sortGames,
           selectedCompany: "all",
+          debounceMs: 0,
         })
       );
 
@@ -99,6 +100,7 @@ describe("useGameSearch", () => {
           games: mockGames,
           sortGames,
           selectedCompany: "all",
+          debounceMs: 0,
         })
       );
 
@@ -109,12 +111,40 @@ describe("useGameSearch", () => {
       expect(result.current.navbarSearchResults[0].name.startsWith("Super")).toBe(true);
     });
 
+    it("should debounce search queries when debounceMs > 0", async () => {
+      const { result } = renderHook(() =>
+        useGameSearch({
+          games: mockGames,
+          sortGames,
+          selectedCompany: "all",
+          debounceMs: 50,
+        })
+      );
+
+      act(() => {
+        result.current.setSearchQuery("mario");
+      });
+
+      // Before timer finishes: debouncedQuery not updated yet
+      expect(result.current.searchQuery).toBe("mario");
+      expect(result.current.debouncedQuery).toBe("");
+
+      // Wait for debounce
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 60));
+      });
+
+      expect(result.current.debouncedQuery).toBe("mario");
+      expect(result.current.searchResults.length).toBe(2);
+    });
+
     it("should filter libraryGames by selectedCompany", () => {
       const { result } = renderHook(() =>
         useGameSearch({
           games: mockGames,
           sortGames,
           selectedCompany: "PlayStation",
+          debounceMs: 0,
         })
       );
 

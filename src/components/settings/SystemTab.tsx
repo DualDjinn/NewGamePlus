@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 export interface SystemTabProps {
   errorLogs: string | null;
   copiedLog: boolean;
@@ -13,19 +15,20 @@ export default function SystemTab({
   handleCopyLogs,
   onOpenOnboarding,
 }: SystemTabProps) {
+  const { t } = useTranslation();
   return (
     <div className="settings-tab-panel">
       <div className="settings-panel-header">
-        <h2>Sistema &amp; Diagnóstico</h2>
-        <p>Registro de errores, información de la aplicación y licencias.</p>
+        <h2>{t("settings.systemPanel.panelTitle")}</h2>
+        <p>{t("settings.systemPanel.panelDesc")}</p>
       </div>
 
       {/* Asistente de Bienvenida */}
       <section className="settings-card" id="settings-onboarding">
         <div className="settings-card-header">
           <div>
-            <h3>📖 Asistente de Bienvenida</h3>
-            <p>Vuelve a abrir la guía interactiva paso a paso para configurar ROMs, SteamGridDB y RetroAchievements.</p>
+            <h3>{t("settings.systemPanel.onboardTitle")}</h3>
+            <p>{t("settings.systemPanel.onboardDesc")}</p>
           </div>
           {onOpenOnboarding && (
             <button
@@ -33,7 +36,7 @@ export default function SystemTab({
               className="settings-btn-primary"
               onClick={onOpenOnboarding}
             >
-              Iniciar Asistente
+              {t("settings.systemPanel.onboardBtn")}
             </button>
           )}
         </div>
@@ -43,17 +46,17 @@ export default function SystemTab({
       <section className="settings-card" id="settings-logs">
         <div className="settings-card-header">
           <div>
-            <h3>Registro de Errores (Logs)</h3>
-            <p>Útil para diagnosticar problemas al lanzar emuladores o escanear.</p>
+            <h3>{t("settings.systemPanel.logsTitle")}</h3>
+            <p>{t("settings.systemPanel.logsDesc")}</p>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             {errorLogs !== null && (
               <button type="button" className="settings-btn-secondary" onClick={handleCopyLogs}>
-                {copiedLog ? "✓ Copiado" : "📋 Copiar Log"}
+                {copiedLog ? t("settings.systemPanel.copied") : t("settings.systemPanel.copyLog")}
               </button>
             )}
             <button type="button" className="settings-btn-secondary" onClick={handleToggleLogs}>
-              {errorLogs !== null ? "Ocultar" : "Ver Logs"}
+              {errorLogs !== null ? t("settings.systemPanel.hide") : t("settings.systemPanel.viewLogs")}
             </button>
           </div>
         </div>
@@ -65,27 +68,26 @@ export default function SystemTab({
 
       {/* Acerca de */}
       <section className="settings-card settings-about" id="settings-about">
-        <h3>Acerca de NewGame+</h3>
+        <h3>{t("settings.systemPanel.aboutTitle")}</h3>
         <div className="settings-about-box">
           <div className="settings-about-header">
             <span className="settings-about-logo">NewGame+</span>
             <span className="settings-badge">v0.1.0</span>
           </div>
           <p className="settings-gpl">
-            NewGame+ es un frontend retro de alto rendimiento impulsado por <strong>Tauri</strong>, <strong>React</strong> y{" "}
+            NewGame+ {t("settings.systemPanel.aboutPowered")} <strong>Tauri</strong>, <strong>React</strong> {t("settings.systemPanel.aboutAnd")}{" "}
             <strong>Rust</strong>.
           </p>
           <p className="settings-gpl">
-            Utiliza <a href="https://www.retroarch.com/" target="_blank" rel="noreferrer">RetroArch</a> y{" "}
-            <a href="https://www.libretro.com/" target="_blank" rel="noreferrer">libretro</a> bajo la licencia
-            GNU GPL v3. Los cores de emulación son distribuidos bajo sus respectivas licencias.
+            {t("settings.systemPanel.aboutUses")} <a href="https://www.retroarch.com/" target="_blank" rel="noreferrer">RetroArch</a> {t("settings.systemPanel.aboutAnd")}{" "}
+            <a href="https://www.libretro.com/" target="_blank" rel="noreferrer">libretro</a> {t("settings.systemPanel.aboutGpl")}
           </p>
           <p className="settings-gpl">
-            Las carátulas se obtienen de{" "}
+            {t("settings.systemPanel.aboutCovers")}{" "}
             <a href="https://github.com/libretro/libretro-thumbnails" target="_blank" rel="noreferrer">
               libretro-thumbnails
             </a>{" "}
-            y{" "}
+            {t("settings.systemPanel.aboutAnd")}{" "}
             <a href="https://www.steamgriddb.com/" target="_blank" rel="noreferrer">
               SteamGridDB
             </a>

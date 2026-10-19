@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import {
   saveSteamGridDBKey,
@@ -29,6 +30,7 @@ export default function OnboardingModal({
   initialRaUser = "",
 }: OnboardingModalProps) {
   const trapRef = useFocusTrap<HTMLDivElement>(isOpen);
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
 
   // SteamGridDB local state
@@ -65,10 +67,10 @@ export default function OnboardingModal({
     try {
       await saveSteamGridDBKey(steamGridKey.trim());
       setHasSteamGridKey(true);
-      setSgFeedback("✓ Clave guardada correctamente");
+      setSgFeedback(t("onboarding.keySaved"));
     } catch (e) {
       console.error("Failed to save SteamGridDB key:", e);
-      setSgFeedback("Error al guardar la clave");
+      setSgFeedback(t("onboarding.keySaveError"));
     } finally {
       setSavingSteamGrid(false);
     }
@@ -81,10 +83,10 @@ export default function OnboardingModal({
     try {
       await saveRACredentials(raUsername.trim(), "", raApiKey.trim());
       await setCheevosHardcore(raHardcore);
-      setRaFeedback("✓ Credenciales guardadas correctamente");
+      setRaFeedback(t("onboarding.credsSaved"));
     } catch (e) {
       console.error("Failed to save RA credentials:", e);
-      setRaFeedback("Error al guardar credenciales");
+      setRaFeedback(t("onboarding.credsSaveError"));
     } finally {
       setSavingRa(false);
     }
@@ -109,7 +111,7 @@ export default function OnboardingModal({
     >
       <div className="onboarding-card" ref={trapRef}>
         {/* Stepper Dots */}
-        <div className="onboarding-stepper" aria-label="Progreso del asistente">
+        <div className="onboarding-stepper" aria-label={t("onboarding.progress")}>
           {Array.from({ length: TOTAL_STEPS }).map((_, idx) => (
             <div key={idx} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <div
@@ -132,12 +134,12 @@ export default function OnboardingModal({
         {currentStep === 0 && (
           <>
             <div className="onboarding-header">
-              <span className="onboarding-badge">Primeros Pasos</span>
+              <span className="onboarding-badge">{t("onboarding.gettingStarted")}</span>
               <h2 id="onboarding-title" className="onboarding-title">
-                ¡Te damos la bienvenida a NewGame+!
+                {t("onboarding.welcome")}
               </h2>
               <p className="onboarding-subtitle">
-                Tu centro multimedia y biblioteca de emulación retro definitivo. Configura tu experiencia en 3 sencillos pasos.
+                {t("onboarding.welcomeDesc")}
               </p>
             </div>
 
@@ -146,9 +148,9 @@ export default function OnboardingModal({
                 <div className="onboarding-feature-item">
                   <span className="onboarding-feature-icon">📁</span>
                   <div>
-                    <div className="onboarding-feature-title">Indexación Automática</div>
+                    <div className="onboarding-feature-title">{t("onboarding.featIndex")}</div>
                     <p className="onboarding-feature-desc">
-                      Agrega tus carpetas de ROMs. NewGame+ detecta consolas y descarga núcleos oficiales de RetroArch y emuladores por ti.
+                      {t("onboarding.featIndexDesc")}
                     </p>
                   </div>
                 </div>
@@ -156,9 +158,9 @@ export default function OnboardingModal({
                 <div className="onboarding-feature-item">
                   <span className="onboarding-feature-icon">🎨</span>
                   <div>
-                    <div className="onboarding-feature-title">Pósters y Banners HD</div>
+                    <div className="onboarding-feature-title">{t("onboarding.featPosters")}</div>
                     <p className="onboarding-feature-desc">
-                      Integración comunitaria con SteamGridDB para carátulas de alta resolución, logos transparentes y banners hero estilo Netflix.
+                      {t("onboarding.featPostersDesc")}
                     </p>
                   </div>
                 </div>
@@ -166,9 +168,9 @@ export default function OnboardingModal({
                 <div className="onboarding-feature-item">
                   <span className="onboarding-feature-icon">🏆</span>
                   <div>
-                    <div className="onboarding-feature-title">Logros Retro en Vivo</div>
+                    <div className="onboarding-feature-title">{t("onboarding.featAchievements")}</div>
                     <p className="onboarding-feature-desc">
-                      Desbloquea trofeos oficiales mientras juegas con soporte para RetroAchievements y modo Hardcore.
+                      {t("onboarding.featAchievementsDesc")}
                     </p>
                   </div>
                 </div>
@@ -176,9 +178,9 @@ export default function OnboardingModal({
                 <div className="onboarding-feature-item">
                   <span className="onboarding-feature-icon">🎮</span>
                   <div>
-                    <div className="onboarding-feature-title">Navegación por Mando</div>
+                    <div className="onboarding-feature-title">{t("onboarding.featGamepad")}</div>
                     <p className="onboarding-feature-desc">
-                      Conecta tu mando de Xbox o PlayStation y disfruta de una experiencia 100% estilo consola de sofá sin tocar el ratón.
+                      {t("onboarding.featGamepadDesc")}
                     </p>
                   </div>
                 </div>
@@ -191,12 +193,12 @@ export default function OnboardingModal({
         {currentStep === 1 && (
           <>
             <div className="onboarding-header">
-              <span className="onboarding-badge">Paso 1 de 4</span>
+              <span className="onboarding-badge">{t("onboarding.step1of4")}</span>
               <h2 id="onboarding-title" className="onboarding-title">
-                Carpetas de ROMs y Juegos
+                {t("onboarding.romFolders")}
               </h2>
               <p className="onboarding-subtitle">
-                Indica dónde almacenas tus juegos. Puedes agregar una carpeta principal (ej. <code>F:\Roms</code>) o carpetas individuales por consola.
+                {t("onboarding.romFoldersDesc")} <code>F:\Roms</code> {t("onboarding.romFoldersDesc2")}
               </p>
             </div>
 
@@ -204,34 +206,34 @@ export default function OnboardingModal({
               <div className="onboarding-box">
                 <div className="onboarding-box-header">
                   <span className="onboarding-box-title">
-                    📂 Carpetas Seleccionadas ({folders.length})
+                    {t("onboarding.selectedFolders", { count: folders.length })}
                   </span>
                   <button
                     type="button"
                     className="onboarding-link-btn"
                     onClick={onAddFolder}
                   >
-                    + Explorar y Agregar Carpeta
+                    {t("onboarding.browseAdd")}
                   </button>
                 </div>
 
                 {folders.length === 0 ? (
                   <p className="onboarding-empty-text">
-                    Aún no has agregado ninguna carpeta de ROMs. Haz clic en "Explorar y Agregar Carpeta" para comenzar.
+                    {t("onboarding.noFoldersYet")}
                   </p>
                 ) : (
                   <ul className="onboarding-list">
                     {folders.map((f, i) => (
                       <li key={i} className="onboarding-list-item">
                         <span>{f}</span>
-                        <span style={{ color: "#34d399", fontSize: "0.8rem" }}>✓ Lista</span>
+                        <span style={{ color: "#34d399", fontSize: "0.8rem" }}>{t("onboarding.ready")}</span>
                       </li>
                     ))}
                   </ul>
                 )}
 
                 <p style={{ fontSize: "0.82rem", color: "#94a3b8", margin: 0, lineHeight: 1.4 }}>
-                  💡 <strong>Tip:</strong> NewGame+ escaneará subcarpetas automáticamente y descargará los núcleos necesarios sin que tengas que configurar emuladores manualmente.
+                  💡 <strong>{t("onboarding.tip")}</strong> {t("onboarding.romTip")}
                 </p>
               </div>
             </div>
@@ -242,12 +244,12 @@ export default function OnboardingModal({
         {currentStep === 2 && (
           <>
             <div className="onboarding-header">
-              <span className="onboarding-badge">Paso 2 de 4</span>
+              <span className="onboarding-badge">{t("onboarding.step2of4")}</span>
               <h2 id="onboarding-title" className="onboarding-title">
-                🎨 Carátulas y Banners HD (SteamGridDB)
+                {t("onboarding.sgdbTitle")}
               </h2>
               <p className="onboarding-subtitle">
-                SteamGridDB proporciona el arte visual cinematográfico: logos transparentes, carátulas verticales HD y fondos hero panorámicos.
+                {t("onboarding.sgdbDesc")}
               </p>
             </div>
 
@@ -255,7 +257,7 @@ export default function OnboardingModal({
               <div className="onboarding-box">
                 <div className="onboarding-box-header">
                   <span className="onboarding-box-title">
-                    Obtén tu API Key Gratuita
+                    {t("onboarding.getFreeKey")}
                   </span>
                   <a
                     href="https://www.steamgriddb.com/profile/preferences/api"
@@ -263,19 +265,19 @@ export default function OnboardingModal({
                     rel="noreferrer"
                     className="onboarding-link-btn"
                   >
-                    🔗 Abrir SteamGridDB (Perfil &gt; Preferencias &gt; API)
+                    {t("onboarding.openSgdb")}
                   </a>
                 </div>
 
                 <div className="onboarding-input-group">
                   <label className="onboarding-input-label" htmlFor="sgdb-input">
-                    Pega tu SteamGridDB API Key (Bearer Token):
+                    {t("onboarding.pasteKey")}
                   </label>
                   <input
                     id="sgdb-input"
                     type="password"
                     className="onboarding-input"
-                    placeholder="Pega aquí tu clave..."
+                    placeholder={t("onboarding.keyPh")}
                     value={steamGridKey}
                     onChange={(e) => setSteamGridKey(e.target.value)}
                   />
@@ -288,12 +290,12 @@ export default function OnboardingModal({
                     onClick={handleSaveSteamGrid}
                     disabled={savingSteamGrid || !steamGridKey.trim()}
                   >
-                    {savingSteamGrid ? "Guardando..." : "Guardar Clave"}
+                    {savingSteamGrid ? t("onboarding.saving") : t("onboarding.saveKey")}
                   </button>
 
                   {hasSteamGridKey && (
                     <span className="onboarding-status-pill success">
-                      ✓ SteamGridDB Conectado
+                      {t("onboarding.sgdbConnected")}
                     </span>
                   )}
                   {sgFeedback && !hasSteamGridKey && (
@@ -303,7 +305,7 @@ export default function OnboardingModal({
               </div>
 
               <p style={{ fontSize: "0.82rem", color: "#94a3b8", margin: 0 }}>
-                ℹ️ <em>Este paso es opcional pero muy recomendado. Puedes omitirlo y configurarlo más tarde en Ajustes &gt; Integraciones.</em>
+                ℹ️ <em>{t("onboarding.optionalStep")}</em>
               </p>
             </div>
           </>
@@ -313,12 +315,12 @@ export default function OnboardingModal({
         {currentStep === 3 && (
           <>
             <div className="onboarding-header">
-              <span className="onboarding-badge">Paso 3 de 4</span>
+              <span className="onboarding-badge">{t("onboarding.step3of4")}</span>
               <h2 id="onboarding-title" className="onboarding-title">
-                🏆 Logros Retro (RetroAchievements)
+                {t("onboarding.raTitle")}
               </h2>
               <p className="onboarding-subtitle">
-                Desbloquea trofeos mientras juegas a tus clásicos favoritos de NES, SNES, GBA, PS1, Mega Drive y más con sonido y avisos en pantalla.
+                {t("onboarding.raDesc")}
               </p>
             </div>
 
@@ -326,7 +328,7 @@ export default function OnboardingModal({
               <div className="onboarding-box">
                 <div className="onboarding-box-header">
                   <span className="onboarding-box-title">
-                    Cuenta de RetroAchievements
+                    {t("onboarding.raAccount")}
                   </span>
                   <a
                     href="https://retroachievements.org/controlpanel.php"
@@ -334,19 +336,19 @@ export default function OnboardingModal({
                     rel="noreferrer"
                     className="onboarding-link-btn"
                   >
-                    🔗 Abrir Panel de Control (retroachievements.org)
+                    {t("onboarding.openRaPanel")}
                   </a>
                 </div>
 
                 <div className="onboarding-input-group">
                   <label className="onboarding-input-label" htmlFor="ra-user">
-                    Nombre de Usuario:
+                    {t("onboarding.username")}
                   </label>
                   <input
                     id="ra-user"
                     type="text"
                     className="onboarding-input"
-                    placeholder="Tu usuario en RetroAchievements"
+                    placeholder={t("onboarding.usernamePh")}
                     value={raUsername}
                     onChange={(e) => setRaUsername(e.target.value)}
                   />
@@ -354,13 +356,13 @@ export default function OnboardingModal({
 
                 <div className="onboarding-input-group">
                   <label className="onboarding-input-label" htmlFor="ra-key">
-                    Web API Key:
+                    {t("onboarding.apiKey")}
                   </label>
                   <input
                     id="ra-key"
                     type="password"
                     className="onboarding-input"
-                    placeholder="Tu Web API Key (Settings > Keys en la web)"
+                    placeholder={t("onboarding.apiKeyPh")}
                     value={raApiKey}
                     onChange={(e) => setRaApiKey(e.target.value)}
                   />
@@ -375,7 +377,7 @@ export default function OnboardingModal({
                     style={{ accentColor: "#f59e0b", cursor: "pointer" }}
                   />
                   <label htmlFor="ra-hardcore" style={{ fontSize: "0.85rem", color: "#cbd5e1", cursor: "pointer" }}>
-                    Modo Hardcore (sin rebobinado ni trampas, insignias de maestría oficiales)
+                    {t("onboarding.hardcoreOpt")}
                   </label>
                 </div>
 
@@ -386,7 +388,7 @@ export default function OnboardingModal({
                     onClick={handleSaveRA}
                     disabled={savingRa || !raUsername.trim() || !raApiKey.trim()}
                   >
-                    {savingRa ? "Guardando..." : "Guardar Credenciales"}
+                    {savingRa ? t("onboarding.saving") : t("onboarding.saveCreds")}
                   </button>
 
                   {raFeedback && (
@@ -398,7 +400,7 @@ export default function OnboardingModal({
               </div>
 
               <p style={{ fontSize: "0.82rem", color: "#94a3b8", margin: 0 }}>
-                ℹ️ <em>Si aún no tienes cuenta, puedes registrarte gratis en cualquier momento y configurarlo desde Ajustes &gt; Integraciones.</em>
+                ℹ️ <em>{t("onboarding.noAccountYet")}</em>
               </p>
             </div>
           </>
@@ -408,43 +410,43 @@ export default function OnboardingModal({
         {currentStep === 4 && (
           <>
             <div className="onboarding-header">
-              <span className="onboarding-badge">¡Todo Listo!</span>
+              <span className="onboarding-badge">{t("onboarding.allReady")}</span>
               <h2 id="onboarding-title" className="onboarding-title">
-                Controles y Navegación
+                {t("onboarding.controlsNav")}
               </h2>
               <p className="onboarding-subtitle">
-                NewGame+ está optimizado tanto para mandos como para teclado. ¡Conéctalo y juega directamente!
+                {t("onboarding.controlsNavDesc")}
               </p>
             </div>
 
             <div className="onboarding-body">
               <div className="onboarding-box">
                 <div className="onboarding-box-title" style={{ marginBottom: "14px" }}>
-                  🎮 Controles de Mando (Xbox / PlayStation)
+                  {t("onboarding.padControls")}
                 </div>
                 <div className="onboarding-controls-grid">
                   <div className="onboarding-control-row">
-                    <span className="onboarding-control-action">Navegar por la cuadrícula</span>
+                    <span className="onboarding-control-action">{t("onboarding.ctrlGrid")}</span>
                     <span className="onboarding-control-key">D-Pad / Stick</span>
                   </div>
                   <div className="onboarding-control-row">
-                    <span className="onboarding-control-action">Abrir ficha / Lanzar</span>
+                    <span className="onboarding-control-action">{t("onboarding.ctrlOpen")}</span>
                     <span className="onboarding-control-key">A / ✕</span>
                   </div>
                   <div className="onboarding-control-row">
-                    <span className="onboarding-control-action">Volver / Cerrar modal</span>
+                    <span className="onboarding-control-action">{t("onboarding.ctrlBack")}</span>
                     <span className="onboarding-control-key">B / ◯</span>
                   </div>
                   <div className="onboarding-control-row">
-                    <span className="onboarding-control-action">Marcar Favorito</span>
+                    <span className="onboarding-control-action">{t("onboarding.ctrlFav")}</span>
                     <span className="onboarding-control-key">Y / △</span>
                   </div>
                   <div className="onboarding-control-row">
-                    <span className="onboarding-control-action">Lanzamiento rápido</span>
+                    <span className="onboarding-control-action">{t("onboarding.ctrlQuick")}</span>
                     <span className="onboarding-control-key">X / ▢</span>
                   </div>
                   <div className="onboarding-control-row">
-                    <span className="onboarding-control-action">Pantalla Completa</span>
+                    <span className="onboarding-control-action">{t("onboarding.ctrlFullscreen")}</span>
                     <span className="onboarding-control-key">F11</span>
                   </div>
                 </div>
@@ -452,7 +454,7 @@ export default function OnboardingModal({
 
               {folders.length > 0 && (
                 <div style={{ textAlign: "center", color: "#34d399", fontSize: "0.9rem", fontWeight: 600 }}>
-                  ✓ {folders.length} carpeta(s) lista(s) para ser indexadas.
+                  {t("onboarding.foldersReady", { count: folders.length })}
                 </div>
               )}
             </div>
@@ -468,7 +470,7 @@ export default function OnboardingModal({
                 className="onboarding-btn-secondary"
                 onClick={() => setCurrentStep((s) => s - 1)}
               >
-                ← Anterior
+                {t("onboarding.back")}
               </button>
             )}
           </div>
@@ -480,7 +482,7 @@ export default function OnboardingModal({
                 className="onboarding-btn-ghost"
                 onClick={() => setCurrentStep((s) => s + 1)}
               >
-                Omitir
+                {t("onboarding.skip")}
               </button>
             )}
 
@@ -490,7 +492,7 @@ export default function OnboardingModal({
                 className="onboarding-btn-primary"
                 onClick={() => setCurrentStep((s) => s + 1)}
               >
-                Siguiente →
+                {t("onboarding.next")}
               </button>
             ) : (
               <button
@@ -499,7 +501,7 @@ export default function OnboardingModal({
                 onClick={handleFinalize}
                 autoFocus
               >
-                {folders.length > 0 ? "🚀 Escanear e Iniciar NewGame+" : "✨ Comenzar a Explorar"}
+                {folders.length > 0 ? t("onboarding.scanStart") : t("onboarding.exploreStart")}
               </button>
             )}
           </div>

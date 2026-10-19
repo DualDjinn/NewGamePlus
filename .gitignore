@@ -10,6 +10,13 @@ src-tauri/data/
 src-tauri/binaries/*
 !src-tauri/binaries/.gitkeep
 
+# Eden / Switch: emulador, keys y firmware nunca se commitean
+src-tauri/binaries/Eden/
+prod.keys
+title.keys
+*.keys
+firmware/
+
 # Temporary test logs
 err_*.txt
 test_*.txt

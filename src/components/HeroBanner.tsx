@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useTranslation } from "react-i18next";
 import type { Game, LayoutStyle } from "../types";
 import { launchGame, getCoverUrl } from "../lib/tauri";
@@ -15,7 +15,7 @@ interface Props {
   layoutStyle?: LayoutStyle;
 }
 
-export default function HeroBanner({
+function HeroBanner({
   games,
   allGames = [],
   onSelect,
@@ -31,8 +31,13 @@ export default function HeroBanner({
   }, [featured.length]);
 
   useEffect(() => {
-    if (featured.length === 0) return;
-    const timer = setInterval(next, 8000);
+    if (featured.length <= 1) return;
+    const timer = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return; // Pausar rotacion cuando la ventana esta minimizada o en segundo plano
+      }
+      next();
+    }, 8000);
     return () => clearInterval(timer);
   }, [next, featured.length]);
 
@@ -65,8 +70,11 @@ export default function HeroBanner({
 
         {featured.map((g, idx) => {
           const isActive = idx === current;
+          const isNext = idx === (current + 1) % featured.length;
+          // Solo cargar imagenes del slide activo y del proximo slide para ahorrar VRAM
+          const shouldLoad = isActive || isNext;
           const bgPath = g.hero_path || g.cover_path;
-          const src = getCoverUrl(bgPath);
+          const src = shouldLoad ? getCoverUrl(bgPath) : null;
 
           return (
             <div
@@ -81,6 +89,8 @@ export default function HeroBanner({
                     src={src}
                     alt=""
                     className="hero-bg-img"
+                    loading={isActive ? "eager" : "lazy"}
+                    decoding="async"
                   />
                 )}
                 <div className="hero-gradient" />
@@ -233,3 +243,5 @@ export default function HeroBanner({
     </div>
   );
 }
+
+export default memo(HeroBanner);

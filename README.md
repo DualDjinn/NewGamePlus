@@ -25,12 +25,12 @@ npm run build      # tsc + vite build
 1. La app auto-descarga RetroArch portable en primer lanzamiento (`setup-retroarch.ps1` para hacerlo manual).
 2. Configura tus carpetas de ROMs en Ajustes → Biblioteca → Escanear.
 3. Opcional: claves de RetroAchievements y SteamGridDB en Ajustes (se guardan en local; ver nota de seguridad abajo).
-4. Opcionales por plataforma: `setup-rpcs3.ps1` (PS3), `setup-azahar.ps1` (3DS), `setup-sunshine.ps1` (cast/Moonlight).
+4. El instalador ya incluye RetroArch, RPCS3, Azahar y Eden (los `setup-*.ps1` quedan como fallback manual). Para Switch: coloca `prod.keys` y el firmware en la carpeta `user/` de Eden (Ajustes → Emuladores → Eden te muestra el estado y abre la carpeta); sin ellos los juegos no abren.
 
 ### Actualización de emuladores
 
 Ajustes → **Emuladores**: muestra la versión instalada vs la última disponible de
-RetroArch, RPCS3, Azahar y Sunshine, con botón de actualización por componente
+RetroArch, RPCS3, Azahar, Eden y Sunshine, con botón de actualización por componente
 (descarga → backup `.bak` → reemplazo con restauración automática si falla) y
 botón aparte para re-descargar los cores libretro nightly.
 

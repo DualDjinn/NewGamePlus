@@ -137,25 +137,56 @@ pub(crate) fn fetch_achievements_internal(
         .and_then(|h| achievements::ra_resolve_game_id(&h).ok())
         .filter(|&id| id > 0);
 
-    // 2. Fallback inteligente para plataformas de disco (PS1, PS2, PSP, etc.) o si el hash no resolvió
+    // 2. Fallback inteligente para plataformas de disco (PS1, PS2, PSP, GameCube, Wii, etc.) o si el hash no resolvió
     if ra_game_id.is_none() {
         if let Some(console_id) = achievements::ra_get_console_id(&platform) {
             let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-            let mut candidates: Vec<&str> = Vec::new();
-            if let Some(d) = display_name.as_deref() {
+            let mut candidates: Vec<String> = Vec::new();
+            if let Some(d) = display_name {
                 candidates.push(d);
             }
-            if let Some(n) = game_name.as_deref() {
-                candidates.push(n);
+            if let Some(n) = game_name {
+                if !candidates.contains(&n) {
+                    candidates.push(n);
+                }
             }
-            if !stem.is_empty() && !candidates.contains(&stem) {
-                candidates.push(stem);
+            if !stem.is_empty() && !candidates.contains(&stem.to_string()) {
+                candidates.push(stem.to_string());
             }
 
+            // Para GameCube y Wii, si es un archivo de disco ISO/GCM con cabecera legible, extraer título interno
+            if matches!(
+                platform.to_uppercase().as_str(),
+                "GAMECUBE" | "GC" | "NGC" | "WII"
+            ) {
+                if let Ok(mut f) = std::fs::File::open(path) {
+                    use std::io::Read;
+                    let mut buf = [0u8; 96];
+                    if f.read_exact(&mut buf).is_ok() {
+                        let is_gc = buf.len() >= 32 && buf[0x1c..0x20] == [0xc2, 0x33, 0x9f, 0x3d];
+                        let is_wii = buf.len() >= 32 && buf[0x18..0x1c] == [0x5d, 0x1c, 0x9e, 0xa3];
+                        if is_gc || is_wii {
+                            let title_bytes = &buf[0x20..0x60];
+                            if let Some(null_pos) = title_bytes.iter().position(|&b| b == 0) {
+                                if let Ok(internal_title) =
+                                    std::str::from_utf8(&title_bytes[..null_pos])
+                                {
+                                    let t = internal_title.trim().to_string();
+                                    if !t.is_empty() && !candidates.contains(&t) {
+                                        candidates.push(t);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            let cand_refs: Vec<&str> = candidates.iter().map(|s| s.as_str()).collect();
             if let Ok(console_games) =
                 achievements::ra_get_console_games(&username, &api_key, console_id)
             {
-                ra_game_id = achievements::ra_resolve_game_id_by_title(&candidates, &console_games);
+                ra_game_id = achievements::ra_resolve_game_id_by_title(&cand_refs, &console_games);
             }
         }
     }

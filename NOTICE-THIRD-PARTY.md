@@ -20,6 +20,11 @@ Si redistribuyes un instalador que ya los contenga, estas son tus obligaciones.
 
 - Web: https://azahar-emu.org — Licencia: **GPL-2.0+**. Mismas obligaciones de atribución + fuente.
 
+## Eden (emulador Switch standalone, fork de Yuzu)
+
+- Web: https://eden-emu.dev — Fuente: https://git.eden-emu.dev/eden-emu/eden — Licencia: **GPL** (heredada de Yuzu). Mismas obligaciones de atribución + fuente: al publicar un instalador que lo contenga, anota la versión exacta empaquetada (visible en Ajustes → Emuladores) en la descripción del Release.
+- Las keys (`prod.keys`) y el firmware de Switch **no se distribuyen**: cada usuario los extrae de su propia consola.
+
 ## Sunshine / Moonlight (cast opcional)
 
 - Sunshine: https://github.com/LizardByte/Sunshine — Licencia: **GPL-3.0**.

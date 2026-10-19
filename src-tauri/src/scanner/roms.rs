@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tauri::Emitter;
 
-use crate::emulator::{check_azahar, check_rpcs3, core_exists, ensure_core};
+use crate::emulator::{check_azahar, check_eden, check_rpcs3, core_exists, ensure_core};
 use crate::metadata;
 use crate::platforms;
 use crate::state::lock_state;
@@ -238,6 +238,11 @@ pub fn scan_and_fetch_cores_inner(
                         .find(|eg| eg.rom_path == rom_path)
                         .cloned()
                     {
+                        // Actualizar plataforma y core por si la detección mejoró
+                        // (e.g. RVZ reclasificado de GAMECUBE a WII)
+                        g.platform = info.platform.into();
+                        g.core_name = info.core_name.into();
+
                         let rom_name = if info.platform == "PS3" {
                             game_name.clone()
                         } else {
@@ -571,6 +576,7 @@ pub fn scan_and_fetch_cores_inner(
                     let installed = match g.core_name.as_str() {
                         "rpcs3" => check_rpcs3().unwrap_or(false),
                         "azahar" => check_azahar().unwrap_or(false),
+                        "eden" => check_eden().unwrap_or(false),
                         "pc" | "native" | "windows" => true,
                         _ => false,
                     };
@@ -613,6 +619,24 @@ pub fn scan_and_fetch_cores_inner(
         }
     }
     cores_needed.retain(|c| !downloaded.contains(c));
+
+    // Escanear e incorporar juegos instalados de PC (Steam, Riot Games, Epic, etc.)
+    let pc_games = crate::scanner::installed_pc::scan_all_installed_pc_games(
+        &app,
+        &thumb_dir,
+        &heroes_dir,
+        &logos_dir,
+        &existing_games,
+        steamgrid_key.as_deref(),
+    );
+    for pc_game in pc_games {
+        if !all_games
+            .iter()
+            .any(|g| g.id == pc_game.id || g.rom_path == pc_game.rom_path)
+        {
+            all_games.push(pc_game);
+        }
+    }
 
     // Persistencia atómica
     {

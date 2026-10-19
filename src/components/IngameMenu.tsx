@@ -10,9 +10,12 @@ import {
   ingameQuit,
   ingameVolume,
   ingameMute,
+  launchGame,
+  isGameRunning,
   type SaveSlot,
   type RunningGameInfo,
 } from "../lib/tauri";
+import ControllerMappingModal from "./ControllerMappingModal";
 import "./IngameMenu.css";
 
 /** Helper to identify platform name from ROM path */
@@ -70,6 +73,9 @@ function getPlatformInfo(romPath?: string): { name: string; tag: string } {
   if (lower.includes("/gamecube/") || lower.includes("/gc/")) {
     return { name: "GameCube", tag: "GAMECUBE" };
   }
+  if (lower.includes("/wii/") || lower.includes("nintendo wii")) {
+    return { name: "Nintendo Wii", tag: "WII" };
+  }
   if (lower.includes("/dreamcast/") || lower.endsWith(".cdi") || lower.endsWith(".gdi")) {
     return { name: "Dreamcast", tag: "DC" };
   }
@@ -113,6 +119,11 @@ export const IngameMenu: React.FC = () => {
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [busy, setBusy] = useState<boolean>(false);
   const [busySlot, setBusySlot] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<"slots" | "gamepad">("slots");
+  const [showMapping, setShowMapping] = useState<boolean>(false);
+  const [mappingSaved, setMappingSaved] = useState<boolean>(false);
+  const [confirmRelaunch, setConfirmRelaunch] = useState<boolean>(false);
+  const [relaunching, setRelaunching] = useState<boolean>(false);
   const [sessionSeconds, setSessionSeconds] = useState<number>(0);
   const [status, setStatus] = useState<{
     type: "success" | "error" | "info";
@@ -179,6 +190,8 @@ export const IngameMenu: React.FC = () => {
         setConfirmOverwriteSlot(null);
         setConfirmDeleteSlot(null);
         setConfirmQuit(false);
+        setConfirmRelaunch(false);
+        setRelaunching(false);
       }
     });
 
@@ -201,11 +214,19 @@ export const IngameMenu: React.FC = () => {
   // Keyboard navigation & global shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Mapping modal open: let it own Escape/cancel, ignore menu shortcuts
+      if (showMapping) {
+        return;
+      }
       // Priority 1: Dismiss open confirmation modals/popovers
       if (e.key === "Escape") {
         e.preventDefault();
         if (confirmQuit) {
           setConfirmQuit(false);
+          return;
+        }
+        if (confirmRelaunch) {
+          setConfirmRelaunch(false);
           return;
         }
         if (confirmOverwriteSlot !== null) {
@@ -223,6 +244,10 @@ export const IngameMenu: React.FC = () => {
       if (e.key === "F9") {
         e.preventDefault();
         handleContinue();
+        return;
+      }
+
+      if (activeTab !== "slots") {
         return;
       }
 
@@ -246,7 +271,7 @@ export const IngameMenu: React.FC = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [confirmQuit, confirmOverwriteSlot, confirmDeleteSlot]);
+  }, [confirmQuit, confirmRelaunch, confirmOverwriteSlot, confirmDeleteSlot, showMapping, activeTab]);
 
   // Save to specific slot
   const handleSaveToSlot = async (slotNum: number) => {
@@ -346,6 +371,44 @@ export const IngameMenu: React.FC = () => {
     }
   };
 
+  // Relaunch game from scratch so a newly saved mapping takes effect.
+  // No autosave is staged: the game restarts from its beginning.
+  const handleRelaunchToApply = async () => {
+    if (busy || relaunching || !game) return;
+    setRelaunching(true);
+    setBusy(true);
+    showStatus("Reiniciando el juego para aplicar el nuevo mapeo...", "info", 10000);
+    try {
+      await ingameQuit();
+      // Wait until the backend waiter clears RUNNING before relaunching
+      const deadline = Date.now() + 9000;
+      let stopped = false;
+      while (Date.now() < deadline) {
+        try {
+          if (!(await isGameRunning())) {
+            stopped = true;
+            break;
+          }
+        } catch {}
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      if (!stopped) {
+        throw new Error("El emulador no se cerró a tiempo.");
+      }
+      await launchGame(game.rom_path);
+      setConfirmRelaunch(false);
+      setMappingSaved(false);
+      try {
+        await getCurrentWindow().hide();
+      } catch {}
+    } catch (err: any) {
+      showStatus(`✕ Error al reiniciar: ${err?.toString() || err}`, "error");
+    } finally {
+      setRelaunching(false);
+      setBusy(false);
+    }
+  };
+
   const platform = getPlatformInfo(game?.rom_path);
   const allSlots = [1, 2, 3, 4, 5];
 
@@ -398,8 +461,34 @@ export const IngameMenu: React.FC = () => {
           </div>
         )}
 
+        {/* Menu tabs */}
+        <nav className="ingame-tabs" role="tablist" aria-label="Secciones del menú">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "slots"}
+            className={`ingame-tab-btn ${activeTab === "slots" ? "active" : ""}`}
+            onClick={() => setActiveTab("slots")}
+            disabled={busy}
+          >
+            💾 Ranuras
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "gamepad"}
+            className={`ingame-tab-btn ${activeTab === "gamepad" ? "active" : ""}`}
+            onClick={() => setActiveTab("gamepad")}
+            disabled={busy}
+          >
+            🎮 Mando
+          </button>
+        </nav>
+
         {/* Unified 5-Slot Carousel / Grid */}
         <main className="ingame-body">
+          {activeTab === "slots" && (
+          <>
           <div className="ingame-slots-header">
             <h2 className="ingame-slots-title">Ranuras de Guardado</h2>
             <span className="ingame-slots-subtitle">
@@ -616,6 +705,80 @@ export const IngameMenu: React.FC = () => {
               );
             })}
           </div>
+          </>
+          )}
+
+          {activeTab === "gamepad" && (
+          <div className="ingame-gamepad-tab">
+            <div className="ingame-slots-header">
+              <h2 className="ingame-slots-title">Mando &amp; RetroPad</h2>
+              <span className="ingame-slots-subtitle">
+                Reasigna los botones de tu mando. El mapeo es global y se aplica al reiniciar el juego.
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className="igm-btn-save-here ingame-open-mapping-btn"
+              onClick={() => setShowMapping(true)}
+              disabled={busy}
+            >
+              <span>🎮</span>
+              <span>Personalizar mapeo</span>
+            </button>
+
+            {mappingSaved && !confirmRelaunch && (
+              <div className="igm-confirm-box overwrite ingame-relaunch-hint">
+                <span className="igm-confirm-msg">Mapeo guardado. Para aplicarlo hay que reiniciar el juego desde el inicio.</span>
+                <div className="igm-confirm-buttons">
+                  <button
+                    type="button"
+                    className="igm-btn-confirm-yes"
+                    onClick={() => setConfirmRelaunch(true)}
+                    disabled={busy}
+                  >
+                    Reiniciar y aplicar
+                  </button>
+                  <button
+                    type="button"
+                    className="igm-btn-confirm-no"
+                    onClick={() => {
+                      setMappingSaved(false);
+                      showStatus("Mapeo guardado. Se aplicará la próxima vez que inicies el juego.", "info");
+                    }}
+                    disabled={busy}
+                  >
+                    Más tarde
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {confirmRelaunch && (
+              <div className="igm-confirm-box delete ingame-relaunch-hint">
+                <span className="igm-confirm-msg">¿Reiniciar el juego ahora? Se perderá el progreso no guardado.</span>
+                <div className="igm-confirm-buttons">
+                  <button
+                    type="button"
+                    className="igm-btn-confirm-delete"
+                    onClick={handleRelaunchToApply}
+                    disabled={busy}
+                  >
+                    {relaunching ? "Reiniciando..." : "Sí, reiniciar"}
+                  </button>
+                  <button
+                    type="button"
+                    className="igm-btn-confirm-no"
+                    onClick={() => setConfirmRelaunch(false)}
+                    disabled={busy}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          )}
         </main>
 
         {/* Bottom Dock: Audio + Controller Legend + Quit */}
@@ -734,6 +897,18 @@ export const IngameMenu: React.FC = () => {
             )}
           </div>
         </footer>
+
+        {/* Controller mapping overlay (Mando tab) */}
+        <ControllerMappingModal
+          isOpen={showMapping}
+          onClose={() => setShowMapping(false)}
+          currentPlatform={platform.name}
+          onSaved={() => {
+            setShowMapping(false);
+            setMappingSaved(true);
+            setConfirmRelaunch(false);
+          }}
+        />
       </div>
     </div>
   );

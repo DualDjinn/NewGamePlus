@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Game, MusicTrack } from "../types";
-import { getCoverUrl, getMusicTracks, saveMusicVolume, getMusicVolume, onRetroarchExited } from "../lib/tauri";
+import { getCoverUrl, getMusicTracks, saveMusicVolume, getMusicVolume } from "../lib/tauri";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { MUSIC_TRACKS } from "../data/musicTracks";
 
@@ -40,9 +40,11 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const wasPlayingBeforeGameRef = useRef<boolean>(false);
+  const wasPlayingSessionRef = useRef<number>(0);
   const userInteractedRef = useRef<boolean>(false);
   const fadeIntervalRef = useRef<number | null>(null);
   const isTransitioningRef = useRef<boolean>(false);
+  const gameSessionRef = useRef<number>(0); // Tracks current game session
 
   const isPlayingRef = useRef<boolean>(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -50,6 +52,7 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
   volumeRef.current = volume;
   const isMutedRef = useRef<boolean>(isMuted);
   isMutedRef.current = isMuted;
+  const fadeGenRef = useRef<number>(0);
 
   const clearFade = () => {
     if (fadeIntervalRef.current !== null) {
@@ -60,6 +63,7 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
 
   const fadeIn = (audio: HTMLAudioElement, targetVol: number, durationMs: number = 800) => {
     clearFade();
+    const gen = ++fadeGenRef.current;
     if (isMuted || targetVol <= 0) {
       audio.volume = 0;
       audio.play().catch(() => {});
@@ -72,6 +76,7 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
     if (playPromise !== undefined) {
       playPromise
         .then(() => {
+          if (fadeGenRef.current !== gen) return;
           setIsPlaying(true);
           const steps = 16;
           const stepTime = durationMs / steps;
@@ -79,6 +84,10 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
           let currentStep = 0;
 
           fadeIntervalRef.current = window.setInterval(() => {
+            if (fadeGenRef.current !== gen) {
+              clearFade();
+              return;
+            }
             currentStep++;
             const nextVol = Math.min(targetVol, startVol + volStep * currentStep);
             if (audio) audio.volume = nextVol;
@@ -90,14 +99,17 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
           }, stepTime);
         })
         .catch(() => {
-          setIsPlaying(false);
-          audio.volume = targetVol;
+          if (fadeGenRef.current === gen) {
+            setIsPlaying(false);
+            audio.volume = targetVol;
+          }
         });
     }
   };
 
   const fadeOut = (audio: HTMLAudioElement, durationMs: number = 600, onComplete?: () => void) => {
     clearFade();
+    const gen = ++fadeGenRef.current;
     if (audio.paused || audio.volume <= 0) {
       audio.pause();
       setIsPlaying(false);
@@ -112,6 +124,10 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
     let currentStep = 0;
 
     fadeIntervalRef.current = window.setInterval(() => {
+      if (fadeGenRef.current !== gen) {
+        clearFade();
+        return;
+      }
       currentStep++;
       const nextVol = Math.max(0, startVol - volStep * currentStep);
       if (audio) audio.volume = nextVol;
@@ -259,21 +275,24 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
     function handleGameLaunched() {
       const audio = audioRef.current;
       if (audio) {
-        // Record if music was actively playing when game launched
+        // Increment session ID for this new game session
+        const sessionId = ++gameSessionRef.current;
+        // Record if music was actively playing when THIS game session launched
         const currentlyPlaying = (!audio.paused && !audio.ended) || isPlayingRef.current;
         wasPlayingBeforeGameRef.current = currentlyPlaying;
-        if (currentlyPlaying) {
-          fadeOut(audio, 500);
-        } else {
-          audio.pause();
-          setIsPlaying(false);
-        }
+        wasPlayingSessionRef.current = sessionId;
+        clearFade();
+        ++fadeGenRef.current;
+        audio.pause();
+        audio.volume = isMutedRef.current ? 0 : volumeRef.current;
+        setIsPlaying(false);
       }
     }
 
     function handleGameClosed() {
       const audio = audioRef.current;
-      if (wasPlayingBeforeGameRef.current && audio) {
+      // Only resume if this game-closed matches the current game session
+      if (wasPlayingBeforeGameRef.current && audio && wasPlayingSessionRef.current === gameSessionRef.current) {
         // Reset flag so it only triggers once per game session
         wasPlayingBeforeGameRef.current = false;
         fadeIn(audio, isMutedRef.current ? 0 : volumeRef.current, 800);
@@ -283,26 +302,13 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
     window.addEventListener("game-launched", handleGameLaunched);
     window.addEventListener("game-closed", handleGameClosed);
 
-    // Also listen directly to onRetroarchExited as a direct fallback
-    let unlistenRetroarch: (() => void) | null = null;
-    onRetroarchExited(() => {
-      handleGameClosed();
-    })
-      .then((unlisten) => {
-        unlistenRetroarch = unlisten;
-      })
-      .catch(() => {});
-
     return () => {
       window.removeEventListener("game-launched", handleGameLaunched);
       window.removeEventListener("game-closed", handleGameClosed);
-      if (unlistenRetroarch) {
-        unlistenRetroarch();
-      }
     };
   }, []);
 
-  function togglePlay() {
+  const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -311,9 +317,9 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
     } else {
       fadeIn(audio, isMuted ? 0 : volume, 800);
     }
-  }
+  }, [isPlaying, isMuted, volume]);
 
-  function changeTrack(direction: 1 | -1) {
+  const changeTrack = useCallback((direction: 1 | -1) => {
     const audio = audioRef.current;
     const applyNext = () => {
       isTransitioningRef.current = false;
@@ -330,17 +336,17 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
       clearFade();
       applyNext();
     }
-  }
+  }, [tracks.length, isPlaying]);
 
-  function handleNextTrack() {
+  const handleNextTrack = useCallback(() => {
     changeTrack(1);
-  }
+  }, [changeTrack]);
 
-  function handlePrevTrack() {
+  const handlePrevTrack = useCallback(() => {
     changeTrack(-1);
-  }
+  }, [changeTrack]);
 
-  function handleVolumeChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newVol = parseFloat(e.target.value);
     setVolume(newVol);
     localStorage.setItem("gameflix_music_volume", newVol.toString());
@@ -353,29 +359,45 @@ export const MusicProvider: React.FC<{ games: Game[]; children: React.ReactNode 
       clearFade();
       audioRef.current.volume = isMuted ? 0 : newVol;
     }
-  }
+  }, [isMuted]);
 
-  function toggleMute() {
+  const toggleMute = useCallback(() => {
     setIsMuted((prev) => !prev);
-  }
+  }, []);
+
+  const contextValue = useMemo<MusicContextType>(
+    () => ({
+      tracks,
+      currentTrack,
+      currentIndex,
+      isPlaying,
+      volume,
+      isMuted,
+      coverUrl,
+      togglePlay,
+      handleNextTrack,
+      handlePrevTrack,
+      handleVolumeChange,
+      toggleMute,
+    }),
+    [
+      tracks,
+      currentTrack,
+      currentIndex,
+      isPlaying,
+      volume,
+      isMuted,
+      coverUrl,
+      togglePlay,
+      handleNextTrack,
+      handlePrevTrack,
+      handleVolumeChange,
+      toggleMute,
+    ]
+  );
 
   return (
-    <MusicContext.Provider
-      value={{
-        tracks,
-        currentTrack,
-        currentIndex,
-        isPlaying,
-        volume,
-        isMuted,
-        coverUrl,
-        togglePlay,
-        handleNextTrack,
-        handlePrevTrack,
-        handleVolumeChange,
-        toggleMute,
-      }}
-    >
+    <MusicContext.Provider value={contextValue}>
       <audio ref={audioRef} onEnded={handleNextTrack} preload="auto" />
       {children}
     </MusicContext.Provider>

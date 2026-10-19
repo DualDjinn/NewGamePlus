@@ -188,6 +188,24 @@ pub struct ControllerMapping {
     pub btn_l3: String,
     #[serde(default = "default_btn_r3")]
     pub btn_r3: String,
+    #[serde(default = "default_dpad_up")]
+    pub dpad_up: String,
+    #[serde(default = "default_dpad_down")]
+    pub dpad_down: String,
+    #[serde(default = "default_dpad_left")]
+    pub dpad_left: String,
+    #[serde(default = "default_dpad_right")]
+    pub dpad_right: String,
+    #[serde(default = "default_l_stick_x_plus")]
+    pub l_stick_x_plus: String,
+    #[serde(default = "default_l_stick_x_minus")]
+    pub l_stick_x_minus: String,
+    #[serde(default = "default_l_stick_y_plus")]
+    pub l_stick_y_plus: String,
+    #[serde(default = "default_l_stick_y_minus")]
+    pub l_stick_y_minus: String,
+    #[serde(default = "default_analog_dpad_mode")]
+    pub analog_dpad_mode: String,
     #[serde(default)]
     pub swap_ab_xy: bool,
 }
@@ -205,10 +223,10 @@ fn default_btn_y() -> String {
     "3".into()
 }
 fn default_btn_start() -> String {
-    "7".into()
+    "9".into()
 }
 fn default_btn_select() -> String {
-    "6".into()
+    "8".into()
 }
 fn default_btn_l() -> String {
     "4".into()
@@ -217,16 +235,43 @@ fn default_btn_r() -> String {
     "5".into()
 }
 fn default_btn_l2() -> String {
-    "+4".into()
+    "6".into()
 }
 fn default_btn_r2() -> String {
-    "+5".into()
+    "7".into()
 }
 fn default_btn_l3() -> String {
-    "8".into()
+    "10".into()
 }
 fn default_btn_r3() -> String {
-    "9".into()
+    "11".into()
+}
+fn default_dpad_up() -> String {
+    "12".into()
+}
+fn default_dpad_down() -> String {
+    "13".into()
+}
+fn default_dpad_left() -> String {
+    "14".into()
+}
+fn default_dpad_right() -> String {
+    "15".into()
+}
+fn default_l_stick_x_plus() -> String {
+    "+0".into()
+}
+fn default_l_stick_x_minus() -> String {
+    "-0".into()
+}
+fn default_l_stick_y_plus() -> String {
+    "+1".into()
+}
+fn default_l_stick_y_minus() -> String {
+    "-1".into()
+}
+fn default_analog_dpad_mode() -> String {
+    "0".into()
 }
 
 impl Default for ControllerMapping {
@@ -244,6 +289,15 @@ impl Default for ControllerMapping {
             btn_r2: default_btn_r2(),
             btn_l3: default_btn_l3(),
             btn_r3: default_btn_r3(),
+            dpad_up: default_dpad_up(),
+            dpad_down: default_dpad_down(),
+            dpad_left: default_dpad_left(),
+            dpad_right: default_dpad_right(),
+            l_stick_x_plus: default_l_stick_x_plus(),
+            l_stick_x_minus: default_l_stick_x_minus(),
+            l_stick_y_plus: default_l_stick_y_plus(),
+            l_stick_y_minus: default_l_stick_y_minus(),
+            analog_dpad_mode: default_analog_dpad_mode(),
             swap_ab_xy: false,
         }
     }
@@ -281,7 +335,7 @@ impl Default for AppState {
                 folders: Vec::new(),
                 kiosk_mode: false,
                 profiles: vec![Profile {
-                    name: "Por defecto".into(),
+                    name: "Perfil 1".into(),
                     favorites: HashSet::new(),
                     last_played: HashMap::new(),
                     play_time_secs: HashMap::new(),
@@ -297,7 +351,7 @@ impl Default for AppState {
                     screenscraper_dev_id: None,
                     screenscraper_dev_pass: None,
                 }],
-                current_profile: "Por defecto".into(),
+                current_profile: "Perfil 1".into(),
                 platform_cores: HashMap::new(),
                 theme: default_theme(),
                 layout_style: default_layout_style(),

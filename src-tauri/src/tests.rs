@@ -67,6 +67,109 @@ mod tests {
     }
 
     #[test]
+    fn switch_eden_detection() {
+        assert!(platforms::is_standalone_emulator("eden"));
+        for rom in [
+            r"F:\Roms\Switch\Zelda TOTK.xci",
+            r"F:\Roms\Switch\Mario Odyssey.nsp",
+            r"F:\Roms\Switch\Hollow Knight.nsz",
+            r"F:\Roms\Switch\Celeste.xcz",
+        ] {
+            let detected = platforms::detect_platform(rom);
+            assert!(detected.is_some(), "Debe detectar {}", rom);
+            let info = detected.unwrap();
+            assert_eq!(info.platform, "SWITCH");
+            assert_eq!(info.core_name, "eden");
+        }
+    }
+
+    #[test]
+    fn eden_requirements_detect_keys_and_firmware() {
+        use crate::emulator::standalone::{
+            eden_requirements_in, import_eden_firmware_in, import_eden_keys_in,
+        };
+        let base = std::env::temp_dir().join(format!("ngplus_eden_reqs_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        // Vacío: nada presente
+        let empty = eden_requirements_in(&base);
+        assert!(!empty.has_prod_keys);
+        assert!(!empty.has_firmware);
+        // Importar keys desde una carpeta externa con prod.keys
+        let src_keys =
+            std::env::temp_dir().join(format!("ngplus_eden_srckeys_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&src_keys);
+        std::fs::create_dir_all(&src_keys).unwrap();
+        std::fs::write(src_keys.join("prod.keys"), "fake").unwrap();
+        std::fs::write(src_keys.join("title.keys"), "fake").unwrap();
+        let after_keys = import_eden_keys_in(&src_keys, &base).expect("Debe importar keys");
+        assert!(after_keys.has_prod_keys);
+        assert!(!after_keys.has_firmware);
+        assert!(base.join("user").join("keys").join("title.keys").is_file());
+        // Importar sin prod.keys debe fallar
+        let src_empty =
+            std::env::temp_dir().join(format!("ngplus_eden_srcempty_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&src_empty);
+        std::fs::create_dir_all(&src_empty).unwrap();
+        assert!(import_eden_keys_in(&src_empty, &base).is_err());
+        // Importar firmware desde carpeta con archivos
+        let src_fw = std::env::temp_dir().join(format!("ngplus_eden_srcfw_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&src_fw);
+        std::fs::create_dir_all(&src_fw).unwrap();
+        std::fs::write(src_fw.join("firmware.nca"), "fake").unwrap();
+        let full = import_eden_firmware_in(&src_fw, &base).expect("Debe importar firmware");
+        assert!(full.has_prod_keys);
+        assert!(full.has_firmware);
+        assert!(full.keys_dir.ends_with("user\\keys") || full.keys_dir.ends_with("user/keys"));
+        assert!(
+            full.firmware_dir.contains("registered"),
+            "Debe exponer la ruta de firmware"
+        );
+        // Carpeta de firmware vacía debe fallar
+        assert!(import_eden_firmware_in(&src_empty, &base).is_err());
+        let _ = std::fs::remove_dir_all(&base);
+        let _ = std::fs::remove_dir_all(&src_keys);
+        let _ = std::fs::remove_dir_all(&src_empty);
+        let _ = std::fs::remove_dir_all(&src_fw);
+    }
+
+    #[test]
+    fn eden_dlc_staging_and_status() {
+        use crate::emulator::standalone::{eden_dlc_status_in, stage_eden_files_in};
+        let base = std::env::temp_dir().join(format!("ngplus_eden_dlc_{}", std::process::id()));
+        let staging =
+            std::env::temp_dir().join(format!("ngplus_eden_staging_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let _ = std::fs::remove_dir_all(&staging);
+        // Vacío: 0 y 0
+        let empty = eden_dlc_status_in(&base, &staging);
+        assert_eq!(empty.installed_entries, 0);
+        assert_eq!(empty.staging_count, 0);
+        // Staging de updates válidos
+        let src = std::env::temp_dir().join(format!("ngplus_eden_srcupd_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&src);
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(src.join("update.nsp"), "fake").unwrap();
+        std::fs::write(src.join("dlc.xci"), "fake").unwrap();
+        let files = vec![
+            src.join("update.nsp").to_string_lossy().to_string(),
+            src.join("dlc.xci").to_string_lossy().to_string(),
+        ];
+        let staged = stage_eden_files_in(&files, &base, &staging).expect("Debe copiar a staging");
+        assert_eq!(staged.staging_count, 2);
+        assert!(staging.join("update.nsp").is_file());
+        // Extensión no válida debe fallar
+        std::fs::write(src.join("nota.txt"), "fake").unwrap();
+        let bad = vec![src.join("nota.txt").to_string_lossy().to_string()];
+        assert!(stage_eden_files_in(&bad, &base, &staging).is_err());
+        // Archivo inexistente debe fallar
+        let missing = vec![src.join("noexiste.nsp").to_string_lossy().to_string()];
+        assert!(stage_eden_files_in(&missing, &base, &staging).is_err());
+        let _ = std::fs::remove_dir_all(&base);
+        let _ = std::fs::remove_dir_all(&staging);
+        let _ = std::fs::remove_dir_all(&src);
+    }
+
+    #[test]
     #[ignore = "requiere ROMs y binarios locales en F:\\ / disco"]
     fn ps3_game_detection_test() {
         let eboot_path = r"F:\Roms\PS3\Monopoly Streets\PS3_GAME\USRDIR\EBOOT.BIN";
@@ -805,11 +908,25 @@ mod tests {
 
     #[test]
     fn test_ra_disc_game_resolution() {
-        use crate::achievements::{ra_get_console_id, ra_resolve_game_id_by_title, RAGameListItem};
+        use crate::achievements::{
+            ra_get_console_id, ra_is_supported_platform, ra_resolve_game_id_by_title,
+            RAGameListItem,
+        };
 
         assert_eq!(ra_get_console_id("PS1"), Some(12));
         assert_eq!(ra_get_console_id("PS2"), Some(21));
         assert_eq!(ra_get_console_id("PSP"), Some(41));
+        assert_eq!(ra_get_console_id("GAMECUBE"), Some(16));
+        assert_eq!(ra_get_console_id("GameCube"), Some(16));
+        assert_eq!(ra_get_console_id("GC"), Some(16));
+        assert_eq!(ra_get_console_id("WII"), Some(19));
+        assert_eq!(ra_get_console_id("Wii"), Some(19));
+        assert_eq!(ra_get_console_id("3DS"), Some(62));
+
+        assert!(ra_is_supported_platform("GAMECUBE"));
+        assert!(ra_is_supported_platform("WII"));
+        assert!(ra_is_supported_platform("gc"));
+        assert!(ra_is_supported_platform("3DS"));
 
         let mock_games = vec![
             RAGameListItem {
@@ -866,6 +983,51 @@ mod tests {
                 NumAchievements: 137,
                 Hashes: vec![],
             },
+            RAGameListItem {
+                Title: "Super Smash Bros. Melee".into(),
+                ID: 1601,
+                ConsoleID: Some(16),
+                ConsoleName: Some("GameCube".into()),
+                ImageIcon: None,
+                NumAchievements: 85,
+                Hashes: vec![],
+            },
+            RAGameListItem {
+                Title: "Mario Kart Wii".into(),
+                ID: 2854,
+                ConsoleID: Some(19),
+                ConsoleName: Some("Wii".into()),
+                ImageIcon: None,
+                NumAchievements: 92,
+                Hashes: vec![],
+            },
+            RAGameListItem {
+                Title: "Super Mario Galaxy".into(),
+                ID: 189,
+                ConsoleID: Some(19),
+                ConsoleName: Some("Wii".into()),
+                ImageIcon: None,
+                NumAchievements: 100,
+                Hashes: vec![],
+            },
+            RAGameListItem {
+                Title: "Super Mario Galaxy 2".into(),
+                ID: 190,
+                ConsoleID: Some(19),
+                ConsoleName: Some("Wii".into()),
+                ImageIcon: None,
+                NumAchievements: 100,
+                Hashes: vec![],
+            },
+            RAGameListItem {
+                Title: "The Legend of Zelda: Twilight Princess".into(),
+                ID: 1605,
+                ConsoleID: Some(16),
+                ConsoleName: Some("GameCube".into()),
+                ImageIcon: None,
+                NumAchievements: 70,
+                Hashes: vec![],
+            },
         ];
 
         // Test Castlevania SotN
@@ -893,6 +1055,28 @@ mod tests {
         let id6 =
             ra_resolve_game_id_by_title(&["Digimon World 2003 [PAL] [SLES-03936]"], &mock_games);
         assert_eq!(id6, Some(11328));
+
+        // Test GameCube: Super Smash Bros Melee
+        let id_gc =
+            ra_resolve_game_id_by_title(&["Super Smash Bros. Melee (USA) (v1.02)"], &mock_games);
+        assert_eq!(id_gc, Some(1601));
+
+        // Test Wii: Mario Kart Wii con serial inicial RMCE01
+        let id_wii = ra_resolve_game_id_by_title(&["RMCE01 - Mario Kart Wii"], &mock_games);
+        assert_eq!(id_wii, Some(2854));
+
+        // Test Wii: Super Mario Galaxy vs Super Mario Galaxy 2 (distinción de secuela)
+        let id_smg1 = ra_resolve_game_id_by_title(&["Super Mario Galaxy (USA)"], &mock_games);
+        assert_eq!(id_smg1, Some(189));
+        let id_smg2 = ra_resolve_game_id_by_title(&["Super Mario Galaxy 2 (USA)"], &mock_games);
+        assert_eq!(id_smg2, Some(190));
+
+        // Test Permutación "Legend of Zelda, The"
+        let id_zelda = ra_resolve_game_id_by_title(
+            &["Legend of Zelda, The - Twilight Princess (USA)"],
+            &mock_games,
+        );
+        assert_eq!(id_zelda, Some(1605));
     }
 
     #[test]

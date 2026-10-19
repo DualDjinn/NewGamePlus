@@ -211,9 +211,12 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
         opts.insert("citra_use_shader_jit".into(), "enabled".into());
         // Soporte táctil y cursor para Nintendo 3DS y DS
         opts.insert("citra_touch_mode".into(), "Touch".into());
-        opts.insert("melonds_touch_mode".into(), "Touch".into());
+        opts.insert("citra_mouse_touchscreen".into(), "enabled".into());
+        opts.insert("citra_render_touchscreen".into(), "enabled".into());
+        opts.insert("melonds_touch_mode".into(), "Mouse".into());
         opts.insert("melonds_cursor".into(), "enabled".into());
-        opts.insert("melondsds_touch_mode".into(), "Touch".into());
+        opts.insert("melondsds_touch_mode".into(), "Mouse".into());
+        opts.insert("melondsds_cursor".into(), "enabled".into());
         opts.insert("desmume_pointer_type".into(), "mouse".into());
         opts.insert("desmume_pointer_colour".into(), "white".into());
         opts.insert("desmume_pointer_device_l".into(), "emulated".into());
@@ -221,6 +224,12 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
 
         for (k, v) in &s.core_options {
             opts.insert(k.clone(), v.clone());
+            if k == "melonds_touch_mode" {
+                opts.insert("melondsds_touch_mode".into(), v.clone());
+            }
+            if k == "melonds_cursor" {
+                opts.insert("melondsds_cursor".into(), v.clone());
+            }
             if k.starts_with("pcsx2_") {
                 let lrps2_key = k.replace("pcsx2_", "lrps2_");
                 opts.insert(lrps2_key, v.clone());
@@ -236,7 +245,11 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          input_menu_toggle = \"f1\"\n\
          input_menu_toggle_gamepad_combo = \"0\"\n\
          input_quit_gamepad_combo = \"0\"\n\
-         input_enable_hotkey = \"escape\"\n\
+         input_enable_hotkey = \"nul\"\n\
+         input_toggle_fullscreen = \"f10\"\n\
+         input_toggle_fast_forward = \"space\"\n\
+         input_hold_fast_forward = \"l\"\n\
+         fastforward_ratio = \"0.000000\"\n\
          input_exit_emulator = \"escape\"\n\
          quit_press_twice = \"true\"\n\
          quit_on_close_content = \"2\"\n\
@@ -318,6 +331,7 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
          cursor_hide_delay = \"2000000\"\n\
          video_fullscreen = \"true\"\n\
          video_windowed_fullscreen = \"true\"\n\
+         video_window_show_decorations = \"true\"\n\
          video_borderless = \"true\"\n\
          video_fullscreen_x = \"0\"\n\
          video_fullscreen_y = \"0\"\n\
@@ -426,6 +440,63 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
         } else {
             (&cm.btn_a, &cm.btn_b, &cm.btn_x, &cm.btn_y)
         };
+
+        // Convert HTML5 Gamepad API button indices to RetroArch XInput button indices
+        // RetroArch XInput buttons: Start = 6, Select = 7, L3 = 8, R3 = 9
+        // HTML5 Gamepad API:        Select = 8, Start = 9, L3 = 10, R3 = 11
+        let start_btn = match cm.btn_start.trim() {
+            "9" | "6" | "" => "6",
+            "8" | "7" => "7",
+            "10" => "8",
+            "11" => "9",
+            other => other,
+        };
+        let select_btn = match cm.btn_select.trim() {
+            "8" | "7" | "" => "7",
+            "9" | "6" => "6",
+            "10" => "8",
+            "11" => "9",
+            other => other,
+        };
+        let l3_btn = match cm.btn_l3.trim() {
+            "10" | "8" | "" => "8",
+            "11" | "9" => "9",
+            "6" => "6",
+            "7" => "7",
+            other => other,
+        };
+        let r3_btn = match cm.btn_r3.trim() {
+            "11" | "9" | "" => "9",
+            "10" | "8" => "8",
+            "6" => "6",
+            "7" => "7",
+            other => other,
+        };
+        let l2_btn = match cm.btn_l2.trim() {
+            "6" | "+4" | "" => "+4",
+            other => other,
+        };
+        let r2_btn = match cm.btn_r2.trim() {
+            "7" | "+5" | "" => "+5",
+            other => other,
+        };
+        let dpad_up = match cm.dpad_up.trim() {
+            "12" | "h0up" | "" => "h0up",
+            other => other,
+        };
+        let dpad_down = match cm.dpad_down.trim() {
+            "13" | "h0down" | "" => "h0down",
+            other => other,
+        };
+        let dpad_left = match cm.dpad_left.trim() {
+            "14" | "h0left" | "" => "h0left",
+            other => other,
+        };
+        let dpad_right = match cm.dpad_right.trim() {
+            "15" | "h0right" | "" => "h0right",
+            other => other,
+        };
+
         format!(
             "input_player1_a_btn = \"{}\"\n\
              input_player1_b_btn = \"{}\"\n\
@@ -438,19 +509,37 @@ pub fn ensure_retroarch(profile_name: &str) -> Result<(PathBuf, PathBuf), String
              input_player1_l2_btn = \"{}\"\n\
              input_player1_r2_btn = \"{}\"\n\
              input_player1_l3_btn = \"{}\"\n\
-             input_player1_r3_btn = \"{}\"\n",
+             input_player1_r3_btn = \"{}\"\n\
+             input_player1_up_btn = \"{}\"\n\
+             input_player1_down_btn = \"{}\"\n\
+             input_player1_left_btn = \"{}\"\n\
+             input_player1_right_btn = \"{}\"\n\
+             input_player1_l_x_plus_axis = \"{}\"\n\
+             input_player1_l_x_minus_axis = \"{}\"\n\
+             input_player1_l_y_plus_axis = \"{}\"\n\
+             input_player1_l_y_minus_axis = \"{}\"\n\
+             input_player1_analog_dpad_mode = \"{}\"\n",
             btn_a,
             btn_b,
             btn_x,
             btn_y,
-            cm.btn_start,
-            cm.btn_select,
+            start_btn,
+            select_btn,
             cm.btn_l,
             cm.btn_r,
-            cm.btn_l2,
-            cm.btn_r2,
-            cm.btn_l3,
-            cm.btn_r3
+            l2_btn,
+            r2_btn,
+            l3_btn,
+            r3_btn,
+            dpad_up,
+            dpad_down,
+            dpad_left,
+            dpad_right,
+            cm.l_stick_x_plus,
+            cm.l_stick_x_minus,
+            cm.l_stick_y_plus,
+            cm.l_stick_y_minus,
+            cm.analog_dpad_mode
         )
     };
     full_cfg.push_str(&ctrl_cfg);
@@ -532,3 +621,167 @@ pub fn clear_stale_autos() {
         }
     }
 }
+
+use std::sync::atomic::{AtomicU32, Ordering};
+use tauri::{AppHandle, Emitter};
+
+pub static NETPLAY_PID: AtomicU32 = AtomicU32::new(0);
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct NetplaySession {
+    pub session_id: String,
+    pub address: String,
+    pub port: u16,
+    pub is_host: bool,
+    pub pid: u32,
+}
+
+fn get_local_ip() -> String {
+    use std::net::UdpSocket;
+    if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
+        if socket.connect("8.8.8.8:80").is_ok() {
+            if let Ok(addr) = socket.local_addr() {
+                return addr.ip().to_string();
+            }
+        }
+    }
+    "127.0.0.1".to_string()
+}
+
+pub fn launch_netplay_host(
+    app: AppHandle,
+    core_name: String,
+    rom_path: String,
+    port: u16,
+) -> Result<NetplaySession, String> {
+    let (ra_exe, cfg_path) = ensure_retroarch("default")?;
+    let core_path = get_binaries_dir()
+        .join("RetroArch")
+        .join("cores")
+        .join(format!("{}_libretro.dll", core_name));
+
+    let session_id = format!("gfx-{}", &uuid::Uuid::new_v4().to_string()[..8]);
+    let address = get_local_ip();
+
+    let mut cmd = std::process::Command::new(&ra_exe);
+    cmd.arg("-c")
+        .arg(&cfg_path)
+        .arg("-L")
+        .arg(&core_path)
+        .arg(&rom_path)
+        .arg("--netplay-enable")
+        .arg("--netplay-session-type")
+        .arg("host")
+        .arg("--netplay-port")
+        .arg(port.to_string())
+        .arg("--netplay-session-id")
+        .arg(&session_id);
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    let child = cmd.spawn().map_err(|e| format!("Error launching RetroArch netplay: {}", e))?;
+    let pid = child.id();
+    NETPLAY_PID.store(pid, Ordering::SeqCst);
+
+    let session = NetplaySession {
+        session_id,
+        address,
+        port,
+        is_host: true,
+        pid,
+    };
+
+    let session_for_emit = session.clone();
+    std::thread::spawn(move || {
+        let mut child = child;
+        let _ = child.wait();
+        NETPLAY_PID.store(0, Ordering::SeqCst);
+        let _ = app.emit("netplay-session-ended", &session_for_emit);
+    });
+
+    Ok(session)
+}
+
+pub fn launch_netplay_client(
+    app: AppHandle,
+    core_name: String,
+    rom_path: String,
+    address: String,
+    port: u16,
+    session_id: String,
+) -> Result<NetplaySession, String> {
+    let (ra_exe, cfg_path) = ensure_retroarch("default")?;
+    let core_path = get_binaries_dir()
+        .join("RetroArch")
+        .join("cores")
+        .join(format!("{}_libretro.dll", core_name));
+
+    let mut cmd = std::process::Command::new(&ra_exe);
+    cmd.arg("-c")
+        .arg(&cfg_path)
+        .arg("-L")
+        .arg(&core_path)
+        .arg(&rom_path)
+        .arg("--netplay-enable")
+        .arg("--netplay-session-type")
+        .arg("client")
+        .arg("--netplay-address")
+        .arg(&address)
+        .arg("--netplay-port")
+        .arg(port.to_string())
+        .arg("--netplay-session-id")
+        .arg(&session_id);
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    let child = cmd.spawn().map_err(|e| format!("Error joining RetroArch netplay: {}", e))?;
+    let pid = child.id();
+    NETPLAY_PID.store(pid, Ordering::SeqCst);
+
+    let session = NetplaySession {
+        session_id,
+        address,
+        port,
+        is_host: false,
+        pid,
+    };
+
+    let session_for_emit = session.clone();
+    std::thread::spawn(move || {
+        let mut child = child;
+        let _ = child.wait();
+        NETPLAY_PID.store(0, Ordering::SeqCst);
+        let _ = app.emit("netplay-session-ended", &session_for_emit);
+    });
+
+    Ok(session)
+}
+
+pub fn stop_netplay() -> Result<(), String> {
+    let pid = NETPLAY_PID.load(Ordering::SeqCst);
+    NETPLAY_PID.store(0, Ordering::SeqCst);
+    if pid > 0 {
+        #[cfg(target_os = "windows")]
+        {
+            let _ = std::process::Command::new("taskkill")
+                .args(["/F", "/T", "/PID", &pid.to_string()])
+                .output();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = std::process::Command::new("kill")
+                .args(["-9", &pid.to_string()])
+                .output();
+        }
+    }
+    Ok(())
+}
+

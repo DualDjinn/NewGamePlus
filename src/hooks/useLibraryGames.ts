@@ -36,7 +36,7 @@ export function useLibraryGames(options?: UseLibraryGamesOptions) {
   const [scanCores, setScanCores] = useState<{ installed: string[]; needed: string[] } | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("name");
   const [profiles, setProfiles] = useState<string[]>([]);
-  const [currentProfile, setCurrentProfile] = useState("Por defecto");
+  const [currentProfile, setCurrentProfile] = useState("Perfil 1");
   const [scanProgress, setScanProgress] = useState(0);
   const [platformCores, setPlatformCores] = useState<Record<string, string>>({});
   const [emulatorUpdates, setEmulatorUpdates] = useState(false);

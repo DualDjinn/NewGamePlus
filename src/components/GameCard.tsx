@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, memo } from "react";
+import { useTranslation } from "react-i18next";
 import type { Game } from "../types";
 import { launchGame, toggleFavorite, getCoverUrl } from "../lib/tauri";
 import { PLATFORM_COLORS } from "../lib/platforms";
@@ -12,7 +13,8 @@ interface Props {
   focused?: boolean;
 }
 
-export default function GameCard({ game, onSelect, onFavoriteChanged, focused }: Props) {
+function GameCard({ game, onSelect, onFavoriteChanged, focused }: Props) {
+  const { t } = useTranslation();
   const color = PLATFORM_COLORS[game.platform] ?? "#333";
   const displayName = game.display_name || game.name;
   const cardRef = useRef<HTMLDivElement>(null);
@@ -31,7 +33,7 @@ export default function GameCard({ game, onSelect, onFavoriteChanged, focused }:
     } catch (e) {
       console.error("Launch failed:", e);
       const msg = e instanceof Error ? e.message : String(e);
-      window.dispatchEvent(new CustomEvent("app-error", { detail: `Error al lanzar el juego: ${msg}` }));
+      window.dispatchEvent(new CustomEvent("app-error", { detail: t("common.launchError", { msg }) }));
     }
   }
 
@@ -58,7 +60,13 @@ export default function GameCard({ game, onSelect, onFavoriteChanged, focused }:
     >
       <div className="game-card-body" style={{ backgroundColor: color }}>
         {coverSrc ? (
-          <img src={coverSrc} alt={displayName} className="game-card-img" loading="lazy" />
+          <img
+            src={coverSrc}
+            alt={displayName}
+            className="game-card-img"
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           <div className="game-card-placeholder">
             <span>{displayName.charAt(0).toUpperCase()}</span>
@@ -75,7 +83,7 @@ export default function GameCard({ game, onSelect, onFavoriteChanged, focused }:
         </button>
 
         <div className="game-card-overlay">
-          <button type="button" className="game-card-play" onClick={handleLaunch} aria-label="Jugar" />
+          <button type="button" className="game-card-play" onClick={handleLaunch} aria-label={t("common.play")} />
         </div>
 
         <div className="game-card-footer">
@@ -92,3 +100,5 @@ export default function GameCard({ game, onSelect, onFavoriteChanged, focused }:
     </div>
   );
 }
+
+export default memo(GameCard);

@@ -11,13 +11,82 @@ pub fn now_str() -> String {
 }
 
 pub fn get_data_dir() -> PathBuf {
-    let dir = std::env::current_exe()
+    #[cfg(target_os = "windows")]
+    {
+        let base = std::env::var("APPDATA")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| {
+                std::env::current_exe()
+                    .ok()
+                    .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+                    .unwrap_or_else(|| PathBuf::from("."))
+            })
+            .join("NewGame+");
+        let _ = fs::create_dir_all(&base);
+        base
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let base = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("data");
+        let _ = fs::create_dir_all(&base);
+        base
+    }
+}
+
+fn legacy_data_dir() -> Option<PathBuf> {
+    std::env::current_exe()
         .ok()
-        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("data");
-    let _ = fs::create_dir_all(&dir);
-    dir
+        .and_then(|p| p.parent().map(|p| p.join("data")))
+        .filter(|p| p.exists())
+}
+
+fn migrate_legacy_data_dir_if_needed() {
+    let new_data = get_data_dir();
+    if let Some(old_data) = legacy_data_dir() {
+        if old_data != new_data && old_data.exists() {
+            log_error(&format!(
+                "Iniciando migración de datos: {} -> {}",
+                old_data.display(),
+                new_data.display()
+            ));
+
+            // Try rename first (atomic, fast)
+            let rename_result = fs::rename(&old_data, &new_data);
+
+            let migrated = match rename_result {
+                Ok(()) => {
+                    log_error("Migración completada con rename atómico");
+                    true
+                }
+                Err(e) => {
+                    log_error(&format!(
+                        "Rename falló ({}), intentando copia recursiva...",
+                        e
+                    ));
+                    // Fallback: copy recursively, skipping existing files
+                    match copy_dir_all(&old_data, &new_data) {
+                        Ok(()) => {
+                            log_error("Copia recursiva completada, limpiando origen...");
+                            let _ = fs::remove_dir_all(&old_data);
+                            true
+                        }
+                        Err(e) => {
+                            log_error(&format!("ERROR: Migración falló completamente: {}", e));
+                            false
+                        }
+                    }
+                }
+            };
+
+            if migrated {
+                log_error("Migración de datos legacy completada con éxito");
+            }
+        }
+    }
 }
 
 pub fn state_file_path() -> PathBuf {
@@ -25,36 +94,76 @@ pub fn state_file_path() -> PathBuf {
 }
 
 pub fn load_state() -> AppState {
+    migrate_legacy_data_dir_if_needed();
+
     let path = state_file_path();
     let mut state: AppState = if path.exists() {
-        let data = fs::read_to_string(&path).unwrap_or_default();
-        serde_json::from_str(&data).unwrap_or_default()
+        let data = fs::read(&path).unwrap_or_default();
+        serde_json::from_slice(&data).unwrap_or_default()
     } else {
         let legacy = get_data_dir().join("gameflix.json");
         if legacy.exists() {
-            let data = fs::read_to_string(&legacy).unwrap_or_default();
-            serde_json::from_str(&data).unwrap_or_default()
+            let data = fs::read(&legacy).unwrap_or_default();
+            serde_json::from_slice(&data).unwrap_or_default()
         } else {
             AppState::default()
         }
     };
-    // Migración automática: secretos legacy en texto plano -> DPAPI (idempotente)
+    let mut migrated_legacy_profile = false;
     for profile in &mut state.settings.profiles {
+        if profile.name == "Por defecto" {
+            profile.name = "Perfil 1".into();
+            migrated_legacy_profile = true;
+        }
         super::secrets::migrate_profile_secrets(profile);
     }
-    // Migración automática: XAudio2 es el motor más estable y universal para auriculares USB/Bluetooth y parlantes en Windows
+    if state.settings.current_profile == "Por defecto" {
+        state.settings.current_profile = "Perfil 1".into();
+        migrated_legacy_profile = true;
+    }
+    if state.settings.profiles.is_empty() {
+        state.settings.profiles.push(super::models::Profile {
+            name: "Perfil 1".into(),
+            favorites: std::collections::HashSet::new(),
+            last_played: std::collections::HashMap::new(),
+            play_time_secs: std::collections::HashMap::new(),
+            theme: super::models::default_theme(),
+            layout_style: super::models::default_layout_style(),
+            ra_username: None,
+            ra_api_key: None,
+            ra_token: None,
+            cheevos_hardcore: false,
+            steamgriddb_api_key: None,
+            screenscraper_user: None,
+            screenscraper_pass: None,
+            screenscraper_dev_id: None,
+            screenscraper_dev_pass: None,
+        });
+        state.settings.current_profile = "Perfil 1".into();
+    }
+    if migrated_legacy_profile {
+        let base_data = get_data_dir();
+        let old_saves = base_data.join("saves").join("Por defecto");
+        let new_saves = base_data.join("saves").join("Perfil 1");
+        if old_saves.exists() && !new_saves.exists() {
+            let _ = fs::rename(old_saves, new_saves);
+        }
+        let old_states = base_data.join("states").join("Por defecto");
+        let new_states = base_data.join("states").join("Perfil 1");
+        if old_states.exists() && !new_states.exists() {
+            let _ = fs::rename(old_states, new_states);
+        }
+    }
     if state.settings.graphics.audio_driver.is_empty()
         || state.settings.graphics.audio_driver == "wasapi"
     {
         state.settings.graphics.audio_driver = "xaudio".into();
     }
-    // Filtrar juegos y asignaciones de cores de TeknoParrot
     state
         .games
         .retain(|g| g.platform != "TEKNOPARROT" && g.core_name != "teknoparrot");
     state.settings.platform_cores.remove("TEKNOPARROT");
 
-    // Migración automática: 3DS pasa del core libretro de Citra a Azahar standalone
     for game in &mut state.games {
         if game.platform == "3DS" || game.core_name == "citra" {
             game.core_name = "azahar".into();
@@ -62,7 +171,6 @@ pub fn load_state() -> AppState {
         if game.core_name == "melonDS" {
             game.core_name = "melonds".into();
         }
-        // Enriquecimiento automático instantáneo si faltan metadatos
         if game.genre.is_none() || game.developer.is_none() || game.release_year.is_none() {
             let meta_curated =
                 crate::metadata::curated::find_curated_catalog_metadata(&game.name, &game.platform)
@@ -105,10 +213,10 @@ pub fn load_state() -> AppState {
 pub fn save_state(state: &AppState) {
     let data_dir = get_data_dir();
     let _ = fs::create_dir_all(&data_dir);
-    if let Ok(json) = serde_json::to_string_pretty(state) {
+    if let Ok(bytes) = serde_json::to_vec(state) {
         let final_path = state_file_path();
         let tmp_path = data_dir.join("newgameplus.json.tmp");
-        if fs::write(&tmp_path, json).is_ok() {
+        if fs::write(&tmp_path, bytes).is_ok() {
             let _ = fs::rename(&tmp_path, &final_path);
         }
     }

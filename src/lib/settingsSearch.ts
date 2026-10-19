@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { SettingsTab, GraphicsConsole } from "../types";
 
 export interface SettingsSearchOption {
@@ -12,66 +13,82 @@ export interface SettingsSearchOption {
   graphicsConsole?: GraphicsConsole;
 }
 
-export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
+// Raw catalog: titles/categories/descriptions are translation keys resolved
+// with t() at render/search time so the settings search follows the UI language.
+// `title` is a language-neutral brand fallback used only when titleKey is absent.
+interface RawSettingsSearchOption {
+  id: string;
+  tab: SettingsTab;
+  titleKey?: string;
+  title?: string;
+  categoryKey: string;
+  icon: string;
+  descKey: string;
+  keywords: string[];
+  targetId?: string;
+  graphicsConsole?: GraphicsConsole;
+}
+
+const RAW_OPTIONS: RawSettingsSearchOption[] = [
   // --- SONIDO ---
   {
     id: "sound-interface-volume",
     tab: "sound",
-    title: "Volumen de la Interfaz & Música",
-    category: "Sonido",
+    titleKey: "settings.sound.ifaceVolume",
+    categoryKey: "settings.tabs.sound",
     icon: "🔊",
-    description: "Volumen de la música ambiental y efectos interactivos (SFX)",
+    descKey: "settings.sound.ifaceVolumeDesc",
     keywords: ["volumen", "musica", "audio", "sfx", "sonido", "efectos", "fondo", "interfaz", "vinilo", "sound", "volume", "music"],
     targetId: "settings-sound-volume",
   },
   {
     id: "sound-emulation-volume",
     tab: "sound",
-    title: "Volumen de Emulación",
-    category: "Sonido",
+    titleKey: "settings.sound.emuVolume",
+    categoryKey: "settings.tabs.sound",
     icon: "🔊",
-    description: "Nivel de ganancia y volumen de salida de los juegos",
+    descKey: "settings.sound.emuVolumeDesc",
     keywords: ["volumen", "juego", "ganancia", "master", "audio", "sonido", "emulacion", "retroarch", "decibelios", "sound", "volume"],
     targetId: "settings-emulation-volume",
   },
   {
     id: "sound-output-device",
     tab: "sound",
-    title: "Dispositivo de Salida de Audio",
-    category: "Sonido",
+    titleKey: "settings.sound.outTitle",
+    categoryKey: "settings.tabs.sound",
     icon: "🎧",
-    description: "Selección de auriculares, altavoces o conmutador automático",
+    descKey: "settings.sound.outDesc",
     keywords: ["audio", "parlantes", "auriculares", "headset", "salida", "altavoces", "dispositivo", "speaker", "sound", "wasapi", "output", "bluetooth"],
     targetId: "settings-audio-device",
   },
   {
     id: "sound-driver",
     tab: "sound",
-    title: "Controlador de Audio & Latencia",
-    category: "Sonido",
+    titleKey: "settings.sound.driverTitle",
+    categoryKey: "settings.tabs.sound",
     icon: "🎛️",
-    description: "API de sonido en Windows (XAudio2, WASAPI) y búfer de latencia",
+    descKey: "settings.sound.driverApiDesc",
     keywords: ["driver", "latencia", "audio", "xaudio", "wasapi", "directsound", "buffer", "ms", "sonido", "api"],
     targetId: "settings-audio-driver",
   },
   {
     id: "sound-music-player",
     tab: "sound",
-    title: "Música de Fondo (Reproductor Vinilo)",
-    category: "Sonido",
+    titleKey: "settings.sound.musicPlayerTitle",
+    categoryKey: "settings.tabs.sound",
     icon: "🎵",
-    description: "Colección de música retro, escanear temas y abrir carpeta de audio",
-    keywords: ["musica", "vinilo", "reproductor", "canciones", "temas", "escanear musica", "carpeta musica", "audio", "ost", "soundtrack"],
+    descKey: "settings.sound.musicPlayerDesc",
+    keywords: ["musica", "vinilo", "reproductor", "canciones", "temas", "escanear musica", "carpeta musica", "audio", "ost", "soundtrack", "music", "vinyl"],
     targetId: "settings-music-player",
   },
   {
     id: "sound-music-folders",
     tab: "sound",
-    title: "Carpetas de Música Personalizadas",
-    category: "Sonido",
+    titleKey: "settings.sound.musicFoldersTitle",
+    categoryKey: "settings.tabs.sound",
     icon: "📁",
-    description: "Añadir directorios con pistas en MP3, OGG, FLAC, WAV u OPUS",
-    keywords: ["carpetas musica", "directorios musica", "musica", "mp3", "ogg", "flac", "wav", "agregar musica"],
+    descKey: "settings.sound.musicFoldersDesc1",
+    keywords: ["carpetas musica", "directorios musica", "musica", "mp3", "ogg", "flac", "wav", "agregar musica", "music folders"],
     targetId: "settings-music-folders",
   },
 
@@ -79,51 +96,51 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "appearance-language",
     tab: "appearance",
-    title: "Idioma / Language",
-    category: "Apariencia",
+    titleKey: "settings.appearance.language",
+    categoryKey: "settings.tabs.appearance",
     icon: "🌐",
-    description: "Español o English para toda la interfaz / Interface language",
+    descKey: "settings.appearance.languageSubtitle",
     keywords: ["idioma", "lenguaje", "language", "ingles", "english", "español", "spanish", "traduccion", "i18n"],
     targetId: "settings-language",
   },
   {
     id: "appearance-themes",
     tab: "appearance",
-    title: "Temas Visuales",
-    category: "Apariencia",
+    titleKey: "settings.appearance.themesTitle",
+    categoryKey: "settings.tabs.appearance",
     icon: "🎨",
-    description: "Paletas de iluminación y acento cromático para la interfaz",
+    descKey: "settings.appearance.themesDesc",
     keywords: ["tema", "temas", "color", "colores", "apariencia", "paleta", "interfaz", "gold", "arcade", "snes", "crimson", "midnight", "visual", "theme"],
     targetId: "settings-themes",
   },
   {
     id: "appearance-layout",
     tab: "appearance",
-    title: "Estilo de Diseño (Layout)",
-    category: "Apariencia",
+    titleKey: "settings.appearance.layoutStyle",
+    categoryKey: "settings.tabs.appearance",
     icon: "📑",
-    description: "Estructura principal: Estilo Clásico (Cards) o Inmersivo (Edge-to-Edge)",
-    keywords: ["layout", "diseño", "estilo", "clasico", "inmersivo", "cards", "panoramico", "edge to edge", "interfaz", "disposicion"],
+    descKey: "settings.appearance.layoutDesc",
+    keywords: ["layout", "diseño", "estilo", "clasico", "inmersivo", "cards", "panoramico", "edge to edge", "interfaz", "disposicion", "design"],
     targetId: "settings-layout",
   },
   {
     id: "appearance-kiosk",
     tab: "appearance",
-    title: "Modo Kiosko / Consola",
-    category: "Apariencia",
+    titleKey: "settings.appearance.kioskTitle",
+    categoryKey: "settings.tabs.appearance",
     icon: "📺",
-    description: "Iniciar GameFlix en pantalla completa sin bordes de ventana",
+    descKey: "settings.appearance.kioskDesc",
     keywords: ["kiosko", "kiosk", "consola", "pantalla completa", "fullscreen", "sin bordes", "modo tv", "borderless"],
     targetId: "settings-kiosk",
   },
   {
     id: "appearance-splash",
     tab: "appearance",
-    title: "Animación de Inicio (Splash Screen)",
-    category: "Apariencia",
+    titleKey: "settings.appearance.splashSection",
+    categoryKey: "settings.tabs.appearance",
     icon: "🎬",
-    description: "Animación cinematográfica de consola al abrir la app y efecto de sonido",
-    keywords: ["animacion", "splash", "intro", "inicio", "arranque", "boot", "sonido", "apertura", "bienvenida", "consola", "cinematica"],
+    descKey: "settings.appearance.splashSubtitle",
+    keywords: ["animacion", "splash", "intro", "inicio", "arranque", "boot", "sonido", "apertura", "bienvenida", "consola", "cinematica", "animation"],
     targetId: "settings-splash",
   },
 
@@ -131,50 +148,50 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "library-scan",
     tab: "library",
-    title: "Escanear Biblioteca",
-    category: "Biblioteca",
+    titleKey: "settings.librarySection.scanTitle",
+    categoryKey: "settings.tabs.library",
     icon: "▶",
-    description: "Indexar nuevos juegos, verificar cores y descargar carátulas",
-    keywords: ["escanear", "scan", "roms", "juegos", "actualizar", "indexar", "buscar juegos", "caratulas", "biblioteca"],
+    descKey: "settings.librarySection.scanDesc",
+    keywords: ["escanear", "scan", "roms", "juegos", "actualizar", "indexar", "buscar juegos", "caratulas", "biblioteca", "games"],
     targetId: "settings-scan",
   },
   {
     id: "library-rom-folders",
     tab: "library",
-    title: "Carpetas de ROMs",
-    category: "Biblioteca",
+    titleKey: "settings.librarySection.romTitle",
+    categoryKey: "settings.tabs.library",
     icon: "📂",
-    description: "Directorios donde se encuentran los archivos y juegos de tu colección",
+    descKey: "settings.librarySection.romDesc",
     keywords: ["carpetas", "roms", "juegos", "directorios", "rutas", "agregar carpeta", "library", "folder"],
     targetId: "settings-rom-folders",
   },
   {
     id: "library-bios-folders",
     tab: "library",
-    title: "Carpetas de BIOS / System",
-    category: "Biblioteca",
+    titleKey: "settings.librarySection.biosTitle",
+    categoryKey: "settings.tabs.library",
     icon: "💾",
-    description: "Directorios con archivos de BIOS para PlayStation, PS2, Saturn, etc.",
+    descKey: "settings.librarySection.biosDesc",
     keywords: ["bios", "system", "firmware", "playstation", "ps1", "ps2", "scph", "archivos bios", "retroarch system"],
     targetId: "settings-bios-folders",
   },
   {
     id: "library-preferences",
     tab: "library",
-    title: "Preferencias de Biblioteca (Orden & Región)",
-    category: "Biblioteca",
+    titleKey: "settings.librarySection.prefsTitle",
+    categoryKey: "settings.tabs.library",
     icon: "🌐",
-    description: "Criterio de orden predeterminado y prioridad de región de portadas",
-    keywords: ["orden", "ordenar", "alfabetico", "region", "caratulas", "usa", "eur", "jp", "portadas", "prioridad"],
+    descKey: "settings.librarySection.sortDefaultDesc",
+    keywords: ["orden", "ordenar", "alfabetico", "region", "caratulas", "usa", "eur", "jp", "portadas", "prioridad", "sort"],
     targetId: "settings-library-prefs",
   },
   {
     id: "library-backup",
     tab: "library",
-    title: "Respaldo y Copias de Seguridad",
-    category: "Biblioteca",
+    titleKey: "settings.librarySection.backupTitle",
+    categoryKey: "settings.tabs.library",
     icon: "📥",
-    description: "Exportar o importar archivo JSON de respaldo de tu biblioteca",
+    descKey: "settings.librarySection.backupDesc",
     keywords: ["respaldo", "backup", "exportar", "importar", "json", "guardar biblioteca", "copia de seguridad"],
     targetId: "settings-backup",
   },
@@ -183,21 +200,21 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "graphics-global",
     tab: "graphics",
-    title: "Opciones Gráficas Globales",
-    category: "Gráficos HD",
+    titleKey: "settings.graphics.globalTitle",
+    categoryKey: "settings.tabs.graphics",
     icon: "🌟",
-    description: "Filtro bilineal, escalado entero (pixel-perfect) y relación de aspecto",
-    keywords: ["graficos", "filtros", "suavizado", "bilineal", "pixel perfect", "escalado", "aspect ratio", "relacion aspecto", "4:3", "16:9"],
+    descKey: "settings.graphics.globalDesc",
+    keywords: ["graficos", "filtros", "suavizado", "bilineal", "pixel perfect", "escalado", "aspect ratio", "relacion aspecto", "4:3", "16:9", "graphics"],
     targetId: "settings-graphics-global",
     graphicsConsole: "global",
   },
   {
     id: "graphics-citra",
     tab: "graphics",
-    title: "Gráficos Nintendo 3DS (Citra)",
-    category: "Gráficos HD",
+    titleKey: "settings.graphics.citraTitle",
+    categoryKey: "settings.tabs.graphics",
     icon: "🎮",
-    description: "Resolución HD, disposición de pantallas superior/inferior y shaders",
+    descKey: "settings.graphics.citraDesc",
     keywords: ["3ds", "citra", "pantallas", "resolucion", "upscaling", "graficos 3ds", "texturas", "antialiasing", "nintendo 3ds"],
     targetId: "settings-graphics-citra",
     graphicsConsole: "citra",
@@ -205,10 +222,10 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "graphics-pcsx2",
     tab: "graphics",
-    title: "Gráficos PlayStation 2 (PCSX2)",
-    category: "Gráficos HD",
+    titleKey: "settings.graphics.pcsx2Title",
+    categoryKey: "settings.tabs.graphics",
     icon: "🎮",
-    description: "Resolución interna 1080p/4K, filtrado anisotrópico y parches 16:9",
+    descKey: "settings.graphics.pcsx2Desc",
     keywords: ["ps2", "pcsx2", "playstation 2", "widescreen", "resolucion", "4k", "1080p", "anisotropico", "16:9"],
     targetId: "settings-graphics-pcsx2",
     graphicsConsole: "pcsx2",
@@ -216,10 +233,10 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "graphics-dolphin",
     tab: "graphics",
-    title: "Gráficos GameCube / Wii (Dolphin)",
-    category: "Gráficos HD",
+    titleKey: "settings.graphics.dolphinTitle",
+    categoryKey: "settings.tabs.graphics",
     icon: "🎮",
-    description: "Resolución EFB, Anti-Aliasing (MSAA) y hack panorámico 16:9",
+    descKey: "settings.graphics.dolphinDesc",
     keywords: ["dolphin", "gamecube", "wii", "anti-aliasing", "msaa", "resolucion", "widescreen hack"],
     targetId: "settings-graphics-dolphin",
     graphicsConsole: "dolphin",
@@ -227,10 +244,10 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "graphics-ppsspp",
     tab: "graphics",
-    title: "Gráficos PSP (PPSSPP)",
-    category: "Gráficos HD",
+    titleKey: "settings.graphics.ppssppTitle",
+    categoryKey: "settings.tabs.graphics",
     icon: "🎮",
-    description: "Resolución de renderizado hasta 2K y escalado de texturas xBRZ",
+    descKey: "settings.graphics.ppssppDesc",
     keywords: ["psp", "ppsspp", "playstation portable", "texturas", "resolucion", "xbrz"],
     targetId: "settings-graphics-ppsspp",
     graphicsConsole: "ppsspp",
@@ -238,10 +255,10 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "graphics-ps1",
     tab: "graphics",
-    title: "Gráficos PS1 (PCSX-ReARMed)",
-    category: "Gráficos HD",
+    titleKey: "settings.graphics.ps1Title",
+    categoryKey: "settings.tabs.graphics",
     icon: "🎮",
-    description: "Modo alta resolución HD (Neon Enhanced) y suavizado de texturas",
+    descKey: "settings.graphics.ps1Desc",
     keywords: ["ps1", "psx", "playstation 1", "alta resolucion", "neon enhanced", "suavizado texturas"],
     targetId: "settings-graphics-ps1",
     graphicsConsole: "ps1",
@@ -249,10 +266,10 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "graphics-n64",
     tab: "graphics",
-    title: "Gráficos Nintendo 64 (Mupen64Plus)",
-    category: "Gráficos HD",
+    titleKey: "settings.graphics.n64Title",
+    categoryKey: "settings.tabs.graphics",
     icon: "🎮",
-    description: "Resolución de renderizado GLideN64 (720p, 1080p, 2K)",
+    descKey: "settings.graphics.n64Desc",
     keywords: ["n64", "nintendo 64", "mupen64plus", "resolucion", "gliden64"],
     targetId: "settings-graphics-n64",
     graphicsConsole: "n64",
@@ -260,10 +277,10 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "graphics-nds",
     tab: "graphics",
-    title: "Gráficos Nintendo DS (MelonDS)",
-    category: "Gráficos HD",
+    titleKey: "settings.graphics.ndsTitle",
+    categoryKey: "settings.tabs.graphics",
     icon: "🎮",
-    description: "Distribución de pantallas vertical, horizontal o individual",
+    descKey: "settings.graphics.ndsDesc",
     keywords: ["nds", "nintendo ds", "melonds", "pantallas ds", "touch", "vertical", "horizontal"],
     targetId: "settings-graphics-nds",
     graphicsConsole: "nds",
@@ -273,20 +290,20 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "emulation-gamepads",
     tab: "emulation",
-    title: "Mandos y Gamepads Conectados",
-    category: "Emulación",
+    titleKey: "settings.emulation.padsTitle",
+    categoryKey: "settings.tabs.emulation",
     icon: "🎮",
-    description: "Visualizar y verificar mandos y gamepads conectados por USB o Bluetooth",
-    keywords: ["mando", "gamepad", "joystick", "control", "conectados", "xbox", "playstation", "bluetooth", "usb"],
+    descKey: "settings.emulation.padHint",
+    keywords: ["mando", "gamepad", "joystick", "control", "conectados", "xbox", "playstation", "bluetooth", "usb", "controller"],
     targetId: "settings-gamepads",
   },
   {
     id: "emulation-platform-cores",
     tab: "emulation",
-    title: "Cores por Plataforma",
-    category: "Emulación",
+    titleKey: "settings.emulation.coresTitle",
+    categoryKey: "settings.tabs.emulation",
     icon: "🕹️",
-    description: "Asignación de núcleos de RetroArch por consola o plataforma",
+    descKey: "settings.emulation.coresDesc",
     keywords: ["cores", "nucleos", "retroarch", "emulador", "plataforma", "snes9x", "mgba", "nestopia", "genesis"],
     targetId: "settings-platform-cores",
   },
@@ -295,21 +312,21 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "integrations-ra",
     tab: "integrations",
-    title: "RetroAchievements (Logros Oficiales)",
-    category: "Cuentas",
+    title: "RetroAchievements",
+    categoryKey: "settings.tabs.integrations",
     icon: "🏆",
-    description: "Vincular cuenta de RetroAchievements y activar Modo Hardcore",
-    keywords: ["retroachievements", "logros", "cheevos", "usuario", "hardcore", "trofeos", "cuenta", "login", "api key"],
+    descKey: "settings.integrations.raDesc",
+    keywords: ["retroachievements", "logros", "cheevos", "usuario", "hardcore", "trofeos", "cuenta", "login", "api key", "achievements"],
     targetId: "settings-retroachievements",
   },
   {
     id: "integrations-sgdb",
     tab: "integrations",
-    title: "SteamGridDB (Carátulas & Posters HD)",
-    category: "Cuentas",
+    titleKey: "settings.integrations.sgdbTitle",
+    categoryKey: "settings.tabs.integrations",
     icon: "🎨",
-    description: "API Key para descargar héroes panorámicos y portadas HD",
-    keywords: ["steamgriddb", "caratulas", "posters", "heroes", "banners", "api key", "scrapear", "imagenes hd"],
+    descKey: "settings.integrations.sgdbDesc",
+    keywords: ["steamgriddb", "caratulas", "posters", "heroes", "banners", "api key", "scrapear", "imagenes hd", "covers"],
     targetId: "settings-steamgriddb",
   },
 
@@ -317,21 +334,21 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "profiles-manage",
     tab: "profiles",
-    title: "Perfiles & Usuarios",
-    category: "Perfiles",
+    titleKey: "settings.profiles.panelTitle",
+    categoryKey: "settings.tabs.profiles",
     icon: "👤",
-    description: "Cambiar de usuario, crear nuevos perfiles o eliminar perfiles existentes",
-    keywords: ["perfil", "perfiles", "usuario", "crear perfil", "cambiar perfil", "eliminar perfil", "cuenta"],
+    descKey: "settings.profiles.panelDesc",
+    keywords: ["perfil", "perfiles", "usuario", "crear perfil", "cambiar perfil", "eliminar perfil", "cuenta", "profile"],
     targetId: "settings-profiles",
   },
   {
     id: "profiles-stats",
     tab: "profiles",
-    title: "Estadísticas del Perfil",
-    category: "Perfiles",
+    titleKey: "settings.profiles.statsTitle",
+    categoryKey: "settings.tabs.profiles",
     icon: "📊",
-    description: "Conteo de juegos, favoritos, consolas y carpetas del perfil",
-    keywords: ["estadisticas", "total juegos", "favoritos", "consolas", "carpetas", "resumen"],
+    descKey: "settings.profiles.panelDesc",
+    keywords: ["estadisticas", "total juegos", "favoritos", "consolas", "carpetas", "resumen", "stats"],
     targetId: "settings-stats",
   },
 
@@ -339,21 +356,21 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "system-logs",
     tab: "system",
-    title: "Registro de Errores (Logs)",
-    category: "Sistema",
+    titleKey: "settings.systemPanel.logsTitle",
+    categoryKey: "settings.tabs.system",
     icon: "🛠️",
-    description: "Visualizar y copiar registros de error para diagnóstico de RetroArch",
-    keywords: ["logs", "errores", "registro", "consola", "diagnostico", "copiar log", "fallo"],
+    descKey: "settings.systemPanel.logsDesc",
+    keywords: ["logs", "errores", "registro", "consola", "diagnostico", "copiar log", "fallo", "errors"],
     targetId: "settings-logs",
   },
   {
     id: "system-about",
     tab: "system",
-    title: "Acerca de GameFlix",
-    category: "Sistema",
+    titleKey: "settings.systemPanel.aboutTitle",
+    categoryKey: "settings.tabs.system",
     icon: "ℹ️",
-    description: "Información de la versión, tecnologías y licencias",
-    keywords: ["acerca de", "version", "licencia", "gpl", "retroarch", "tauri", "react", "creditos"],
+    descKey: "settings.systemPanel.panelDesc",
+    keywords: ["acerca de", "version", "licencia", "gpl", "retroarch", "tauri", "react", "creditos", "about"],
     targetId: "settings-about",
   },
 
@@ -361,24 +378,50 @@ export const SETTINGS_OPTIONS: SettingsSearchOption[] = [
   {
     id: "emulators-updates",
     tab: "emulators",
-    title: "Actualizar Emuladores",
-    category: "Emuladores",
+    titleKey: "settings.tabs.emulators",
+    categoryKey: "settings.tabs.emulators",
     icon: "🎮",
-    description: "Versiones instaladas y actualización de RetroArch, RPCS3, Azahar y Sunshine",
+    descKey: "settings.emulators.subtitle",
     keywords: ["actualizar", "update", "emuladores", "retroarch", "rpcs3", "azahar", "sunshine", "version", "nueva version"],
     targetId: "settings-emulators-list",
   },
   {
     id: "emulators-cores",
     tab: "emulators",
-    title: "Actualizar Cores Libretro",
-    category: "Emuladores",
+    titleKey: "settings.emulators.updateCores",
+    categoryKey: "settings.tabs.emulators",
     icon: "🎮",
-    description: "Re-descargar los cores nightly de libretro usados por tu biblioteca",
+    descKey: "settings.emulators.subtitle",
     keywords: ["cores", "libretro", "actualizar cores", "nucleo", "nightly", "buildbot"],
     targetId: "settings-emulators-cores",
   },
 ];
+
+type TFn = TFunction | ((key: string) => string);
+
+function tr(t: TFn | undefined, key: string, fallback: string): string {
+  if (!t) return fallback;
+  if (typeof t === "function") return (t as (key: string) => string)(key);
+  return (t as TFunction)(key);
+}
+
+/** Resolve the raw catalog into display strings for the active language. */
+export function resolveSettingsOptions(t?: TFn): SettingsSearchOption[] {
+  return RAW_OPTIONS.map((o) => ({
+    id: o.id,
+    tab: o.tab,
+    title: o.titleKey ? tr(t, o.titleKey, o.title ?? o.titleKey) : (o.title ?? ""),
+    category: tr(t, o.categoryKey, o.categoryKey),
+    icon: o.icon,
+    description: tr(t, o.descKey, o.descKey),
+    keywords: o.keywords,
+    targetId: o.targetId,
+    graphicsConsole: o.graphicsConsole,
+  }));
+}
+
+// Backward-compat: default (Spanish) catalog for callers without i18n.
+export const SETTINGS_OPTIONS: SettingsSearchOption[] = resolveSettingsOptions(undefined);
 
 function normalize(str: string): string {
   return str
@@ -387,13 +430,14 @@ function normalize(str: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-export function searchSettingsOptions(query: string): SettingsSearchOption[] {
+export function searchSettingsOptions(query: string, t?: TFn): SettingsSearchOption[] {
   const q = normalize(query.trim());
   if (!q) return [];
 
+  const options = t ? resolveSettingsOptions(t) : SETTINGS_OPTIONS;
   const results: { option: SettingsSearchOption; score: number }[] = [];
 
-  for (const option of SETTINGS_OPTIONS) {
+  for (const option of options) {
     const titleNorm = normalize(option.title);
     const catNorm = normalize(option.category);
     const descNorm = normalize(option.description);

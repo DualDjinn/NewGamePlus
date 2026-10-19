@@ -38,7 +38,7 @@ export default function Sidebar({
   company,
   games = [],
   layoutStyle = "classic",
-  currentProfile = "Por defecto",
+  currentProfile = "Perfil 1",
   profiles = [],
   onProfileSwitch,
   onOpenCast,
@@ -214,18 +214,6 @@ export default function Sidebar({
               </button>
             )}
 
-            {onOpenGuide && (
-              <button
-                type="button"
-                className="sidebar-guide-btn"
-                onClick={onOpenGuide}
-                title="Guía de Inicio - NewGame+"
-                aria-label="Guía de Inicio - NewGame+"
-              >
-                <BookIcon />
-              </button>
-            )}
-
             <div className="sidebar-profile-wrap" onClick={(e) => e.stopPropagation()}>
               <div
                 className="sidebar-profile-avatar"
@@ -258,7 +246,7 @@ export default function Sidebar({
                       setProfileMenuOpen(false);
                     }}
                   >
-                    <BookIcon /> Guía de Inicio (NewGame+)
+                    <BookIcon /> {t("sidebar.guideShort")} (NewGame+)
                   </button>
                 )}
                 <button

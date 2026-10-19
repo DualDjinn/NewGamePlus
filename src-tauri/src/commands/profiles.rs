@@ -63,3 +63,45 @@ pub fn switch_profile(name: String) -> Result<(), String> {
     save_state(&state);
     Ok(())
 }
+
+#[tauri::command]
+pub fn rename_profile(old_name: String, new_name: String) -> Result<(), String> {
+    let mut state = lock_state();
+    let new_name = new_name.trim().to_string();
+    if new_name.is_empty() {
+        return Err("Profile name cannot be empty".into());
+    }
+    if old_name == new_name {
+        return Ok(());
+    }
+    if state.settings.profiles.iter().any(|p| p.name == new_name) {
+        return Err("Profile with this name already exists".into());
+    }
+    let profile = state
+        .settings
+        .profiles
+        .iter_mut()
+        .find(|p| p.name == old_name)
+        .ok_or_else(|| "Profile not found".to_string())?;
+    profile.name = new_name.clone();
+    if state.settings.current_profile == old_name {
+        state.settings.current_profile = new_name.clone();
+    }
+
+    let old_safe = old_name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
+    let new_safe = new_name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
+    let base_data = crate::state::storage::get_data_dir();
+    let old_saves = base_data.join("saves").join(&old_safe);
+    let new_saves = base_data.join("saves").join(&new_safe);
+    if old_saves.exists() && !new_saves.exists() {
+        let _ = std::fs::rename(old_saves, new_saves);
+    }
+    let old_states = base_data.join("states").join(&old_safe);
+    let new_states = base_data.join("states").join(&new_safe);
+    if old_states.exists() && !new_states.exists() {
+        let _ = std::fs::rename(old_states, new_states);
+    }
+
+    save_state(&state);
+    Ok(())
+}

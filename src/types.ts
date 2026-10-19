@@ -180,6 +180,15 @@ export interface ControllerMapping {
   btn_r2: string;
   btn_l3: string;
   btn_r3: string;
+  dpad_up: string;
+  dpad_down: string;
+  dpad_left: string;
+  dpad_right: string;
+  l_stick_x_plus: string;
+  l_stick_x_minus: string;
+  l_stick_y_plus: string;
+  l_stick_y_minus: string;
+  analog_dpad_mode: string;
   swap_ab_xy: boolean;
 }
 

@@ -139,7 +139,7 @@ export default function CastModal({ isOpen, onClose }: Props) {
     try {
       await openWirelessDisplay();
     } catch (err: any) {
-      alert(err?.toString() || "Error al iniciar proyección de Windows");
+                alert(err?.toString() || t("cast.miracastError"));
     }
   };
 
@@ -418,25 +418,25 @@ export default function CastModal({ isOpen, onClose }: Props) {
               <div className="cast-card-box">
                 <div className="cast-card-box-header">
                   <span className="cast-box-icon">🎮</span>
-                  <h3>Jugar con el control conectado a tu PC</h3>
+                  <h3>{t("cast.controller.title")}</h3>
                 </div>
                 <p>
-                  ¡Buenas noticias! Dado que tu control está conectado directamente a tu PC (por cable USB o adaptador inalámbrico de 2.4 GHz / Bluetooth):
+                  {t("cast.controller.intro")}
                 </p>
                 <ul className="cast-feature-list">
-                  <li><strong>0 ms de Input Lag:</strong> Tus botones responden inmediatamente en la computadora mientras tú miras cómodamente la pantalla de tu televisor.</li>
-                  <li><strong>Sin configuraciones adicionales:</strong> No necesitas configurar mandos en el Xiaomi Stick ni en el Fire TV.</li>
-                  <li><strong>Alcance recomendado:</strong> Si la habitación está a menos de 8 metros de la PC, la señal del joystick llegará de forma impecable.</li>
+                  <li><strong>{t("cast.controller.zero")}</strong> {t("cast.controller.zeroDesc")}</li>
+                  <li><strong>{t("cast.controller.noSetup")}</strong> {t("cast.controller.noSetupDesc")}</li>
+                  <li><strong>{t("cast.controller.range")}</strong> {t("cast.controller.rangeDesc")}</li>
                 </ul>
               </div>
 
               <div className="cast-card-box secondary">
                 <div className="cast-card-box-header">
                   <span className="cast-box-icon">📶</span>
-                  <h3>¿Y si juegas desde más lejos?</h3>
+                  <h3>{t("cast.controller.far")}</h3>
                 </div>
                 <p>
-                  Si las paredes de tu casa debilitan la señal del joystick, puedes conectar cualquier control Bluetooth (Xbox, PlayStation, 8BitDo o genérico) <strong>directamente a tu Xiaomi TV Stick o Fire TV Stick</strong>. Moonlight enviará las órdenes del mando a NewGamePlus automáticamente a través de la red Wi-Fi.
+                  {t("cast.controller.farDesc1")} <strong>{t("cast.controller.farDesc2")}</strong>{t("cast.controller.farDesc3")}
                 </p>
               </div>
             </div>
@@ -445,24 +445,24 @@ export default function CastModal({ isOpen, onClose }: Props) {
           {activeTab === "help" && (
             <div className="cast-help-section">
               <div className="cast-card-box">
-                <h3>Preguntas Frecuentes sobre Transmisión</h3>
+                <h3>{t("cast.help.title")}</h3>
                 <div className="cast-faq-item">
-                  <h4>¿Qué resolución y tasa de refresco obtendré?</h4>
-                  <p>Hasta 1080p o 4K a 60 FPS fluidos con decodificación por hardware de tu placa de video.</p>
+                  <h4>{t("cast.help.faqRes")}</h4>
+                  <p>{t("cast.help.faqResA")}</p>
                 </div>
                 <div className="cast-faq-item">
-                  <h4>¿Por qué usar Moonlight + Sunshine Portable?</h4>
+                  <h4>{t("cast.help.faqWhy")}</h4>
                   <p>
-                    Moonlight y Sunshine utilizan el protocolo de streaming en tiempo real más rápido del mundo, con menos de 15 ms de retraso. Como es portable, vive dentro de la carpeta de NewGamePlus y no ensucia tu instalación de Windows.
+                    {t("cast.help.faqWhyA")}
                   </p>
                 </div>
                 <div className="cast-faq-item">
-                  <h4>Panel web local de Sunshine</h4>
+                  <h4>{t("cast.help.faqPanel")}</h4>
                   <p>
-                    Si alguna vez deseas ver estadísticas avanzadas o gestionar clientes vinculados, puedes abrir{" "}
+                    {t("cast.help.faqPanelA")}{" "}
                     <a href="https://localhost:47990" target="_blank" rel="noreferrer">
                       https://localhost:47990
-                    </a> con el servidor encendido.
+                    </a> {t("cast.help.faqPanelB")}
                   </p>
                 </div>
               </div>

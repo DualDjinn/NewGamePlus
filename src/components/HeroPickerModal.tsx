@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import type { Game, SGDBHero } from "../types";
 import {
   getSteamGridDBKey,
   searchSteamGridDBHeroes,
   setGameHero,
   removeGameHero,
+  autoDownloadHero,
 } from "../lib/tauri";
+import "./GameDetailModal.css";
 
 interface Props {
   game: Game;
@@ -26,6 +29,7 @@ export default function HeroPickerModal({
   const [heroActionLoading, setHeroActionLoading] = useState(false);
   const [heroError, setHeroError] = useState<string | null>(null);
   const [hasSGDBKey, setHasSGDBKey] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -37,16 +41,14 @@ export default function HeroPickerModal({
     getSteamGridDBKey().then((key) => {
       if (!key) {
         setHasSGDBKey(false);
-        setHeroError(
-          "No has configurado tu API Key de SteamGridDB. Puedes agregarla en Configuración."
-        );
+        setHeroError(t("pickers.sgdbKeyMissing"));
       } else {
         setHasSGDBKey(true);
         fetchHeroes(defaultSearch);
       }
     }).catch(() => {
       setHasSGDBKey(false);
-      setHeroError("No has configurado tu API Key de SteamGridDB. Puedes agregarla en Configuración.");
+      setHeroError(t("pickers.sgdbKeyMissing"));
     });
   }, [isOpen, game]);
 
@@ -58,10 +60,10 @@ export default function HeroPickerModal({
       const results = await searchSteamGridDBHeroes(query);
       setHeroesList(results);
       if (results.length === 0) {
-        setHeroError("No se encontraron heroes para esta búsqueda. Intenta con otro nombre.");
+        setHeroError(t("pickers.noHeroes"));
       }
     } catch (e) {
-      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al buscar heroes";
+      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : t("pickers.errHeroSearch");
       setHeroError(msg);
       setHeroesList([]);
     } finally {
@@ -77,7 +79,7 @@ export default function HeroPickerModal({
       onHeroSelected(savedPath);
       onClose();
     } catch (e) {
-      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al descargar el hero";
+      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : t("pickers.errHeroDownload");
       setHeroError(msg);
     } finally {
       setHeroActionLoading(false);
@@ -92,7 +94,7 @@ export default function HeroPickerModal({
       onHeroSelected(null);
       onClose();
     } catch (e) {
-      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : "Error al quitar el hero";
+      const msg = typeof e === "string" ? e : e instanceof Error ? e.message : t("pickers.errHeroRemove");
       setHeroError(msg);
     } finally {
       setHeroActionLoading(false);
@@ -113,9 +115,9 @@ export default function HeroPickerModal({
               <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
               <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
             </svg>
-            <h3>Galería de Heroes (SteamGridDB)</h3>
+            <h3>{t("pickers.heroGallery")}</h3>
           </div>
-          <button className="hero-picker-close" onClick={onClose} title="Cerrar">
+          <button className="hero-picker-close" onClick={onClose} title={t("common.close")}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -134,14 +136,35 @@ export default function HeroPickerModal({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") fetchHeroes(heroQuery);
                 }}
-                placeholder="Buscar por nombre del juego..."
+                placeholder={t("pickers.heroSearchPh")}
               />
               <button
                 className="hero-picker-btn-search"
                 onClick={() => fetchHeroes(heroQuery)}
-                disabled={heroesLoading}
+                disabled={heroesLoading || heroActionLoading}
               >
-                {heroesLoading ? "Buscando..." : "Buscar"}
+                {heroesLoading ? t("pickers.searching") : t("pickers.searchBtn")}
+              </button>
+              <button
+                type="button"
+                className="hero-picker-btn-auto"
+                onClick={async () => {
+                  setHeroActionLoading(true);
+                  try {
+                    const saved = await autoDownloadHero(game.id, heroQuery);
+                    onHeroSelected(saved);
+                    onClose();
+                  } catch (e) {
+                    const msg = typeof e === "string" ? e : e instanceof Error ? e.message : t("pickers.errDownload");
+                    setHeroError(msg);
+                  } finally {
+                    setHeroActionLoading(false);
+                  }
+                }}
+                disabled={heroesLoading || heroActionLoading}
+                title={t("pickers.autoHeroTitle")}
+              >
+                {heroActionLoading ? t("pickers.downloading") : t("pickers.autoBest")}
               </button>
             </div>
 
@@ -150,7 +173,7 @@ export default function HeroPickerModal({
             {heroesLoading ? (
               <div className="hero-picker-loading">
                 <div className="hero-spinner" />
-                <span>Buscando banners panorámicos en SteamGridDB...</span>
+                <span>{t("pickers.loadingHeroes")}</span>
               </div>
             ) : (
               <div className="hero-picker-grid">
@@ -172,7 +195,7 @@ export default function HeroPickerModal({
                       </span>
                       {hero.author?.name && (
                         <span className="hero-picker-card-author">
-                          por {hero.author.name}
+                          {t("pickers.byAuthor", { name: hero.author.name })}
                         </span>
                       )}
                       <button
@@ -184,7 +207,7 @@ export default function HeroPickerModal({
                           if (!heroActionLoading) handleSelectHero(hero);
                         }}
                       >
-                        {heroActionLoading ? "Descargando..." : "Seleccionar"}
+                        {heroActionLoading ? t("pickers.downloading") : t("pickers.select")}
                       </button>
                     </div>
                   </div>
@@ -200,7 +223,7 @@ export default function HeroPickerModal({
                   onClick={handleRemoveHero}
                   disabled={heroActionLoading}
                 >
-                  Quitar Hero actual (usar carátula)
+                  {t("pickers.removeHero")}
                 </button>
               )}
             </div>

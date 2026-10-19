@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { GraphicsSettings } from "../../lib/tauri";
 import type { GraphicsConsole } from "../../types";
 
@@ -18,6 +19,7 @@ export default function GraphicsTab({
   updateCoreOption,
   savedToast,
 }: GraphicsTabProps) {
+  const { t } = useTranslation();
   return (
     <div className="settings-tab-panel">
       <div
@@ -25,10 +27,10 @@ export default function GraphicsTab({
         style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
       >
         <div>
-          <h2>Opciones Gráficas &amp; Renderizado HD</h2>
-          <p>Configura resolución interna, filtros de texturas, shaders y escalado por consola.</p>
+          <h2>{t("settings.graphics.panelTitle")}</h2>
+          <p>{t("settings.graphics.panelDesc")}</p>
         </div>
-        {savedToast && <span className="settings-badge-ok">✓ Guardado</span>}
+        {savedToast && <span className="settings-badge-ok">{t("settings.sound.saved")}</span>}
       </div>
 
       {/* Sub-selector de consolas */}
@@ -87,7 +89,7 @@ export default function GraphicsTab({
           className={`settings-console-pill ${activeGraphicsConsole === "global" ? "active" : ""}`}
           onClick={() => setActiveGraphicsConsole("global")}
         >
-          🌟 Globales
+          🌟 {t("settings.graphics.globalPill")}
         </button>
       </div>
 
@@ -96,15 +98,15 @@ export default function GraphicsTab({
         <section className="settings-card" id="settings-graphics-citra">
           <div className="settings-card-header">
             <div>
-              <h3>Nintendo 3DS (Core Citra)</h3>
-              <p>Opciones de renderizado 3D y distribución de pantallas.</p>
+              <h3>{t("settings.graphics.citraTitle")}</h3>
+              <p>{t("settings.graphics.citraDesc")}</p>
             </div>
           </div>
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Resolución Interna (Upscaling)</span>
-              <p className="settings-option-desc">Multiplica la resolución nativa de 3DS para gráficos nítidos en HD.</p>
+              <span className="settings-option-title">{t("settings.graphics.resolution")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.citraResolutionDesc")}</p>
             </div>
             <select
               className="settings-select"
@@ -123,18 +125,18 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Disposición de Pantallas</span>
-              <p className="settings-option-desc">Cómo se organizan la pantalla superior y táctil en tu monitor.</p>
+              <span className="settings-option-title">{t("settings.graphics.screenLayout")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.screenLayoutDesc")}</p>
             </div>
             <select
               className="settings-select"
               value={graphics.core_options["citra_layout_option"] || "Default Top-Bottom Screen"}
               onChange={(e) => updateCoreOption("citra_layout_option", e.target.value)}
             >
-              <option value="Default Top-Bottom Screen">Arriba / Abajo (Estándar)</option>
-              <option value="Side by Side">Lado a Lado (Horizontal)</option>
-              <option value="Single Screen Only">Solo Pantalla Principal</option>
-              <option value="Large Screen, Small Screen">Pantalla Principal Grande</option>
+              <option value="Default Top-Bottom Screen">{t("settings.graphics.layoutTopBottom")}</option>
+              <option value="Side by Side">{t("settings.graphics.layoutSide")}</option>
+              <option value="Single Screen Only">{t("settings.graphics.layoutSingle")}</option>
+              <option value="Large Screen, Small Screen">{t("settings.graphics.layoutLarge")}</option>
             </select>
           </div>
 
@@ -142,17 +144,17 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Filtro de Texturas (Texture Filter)</span>
-              <p className="settings-option-desc">Algoritmo de mejora y escalado de texturas 3D.</p>
+              <span className="settings-option-title">{t("settings.graphics.textureFilter")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.textureFilterDesc")}</p>
             </div>
             <select
               className="settings-select"
               value={graphics.core_options["citra_texture_filter"] || "none"}
               onChange={(e) => updateCoreOption("citra_texture_filter", e.target.value)}
             >
-              <option value="none">Desactivado (Original)</option>
+              <option value="none">{t("settings.graphics.filterOff")}</option>
               <option value="Anime4K Ultrafast">Anime4K Ultrafast</option>
-              <option value="Bicubic">Bicúbico</option>
+              <option value="Bicubic">{t("settings.graphics.bicubic")}</option>
               <option value="ScaleForce">ScaleForce</option>
               <option value="xBRZ">xBRZ HD</option>
             </select>
@@ -162,16 +164,16 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Post-Processing Shader (Anti-Aliasing)</span>
-              <p className="settings-option-desc">Suavizado de bordes y dientes de sierra en polígonos.</p>
+              <span className="settings-option-title">{t("settings.graphics.shaderTitle")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.shaderDesc")}</p>
             </div>
             <select
               className="settings-select"
               value={graphics.core_options["citra_post_processing_shader"] || "none"}
               onChange={(e) => updateCoreOption("citra_post_processing_shader", e.target.value)}
             >
-              <option value="none">Ninguno</option>
-              <option value="fxaa">FXAA (Anti-Aliasing Suave)</option>
+              <option value="none">{t("settings.graphics.filterNone")}</option>
+              <option value="fxaa">{t("settings.graphics.fxaa")}</option>
               <option value="hq4x">HQ4x</option>
             </select>
           </div>
@@ -180,8 +182,8 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Filtro Lineal de Pantalla</span>
-              <p className="settings-option-desc">Suavizado de visualización entre pantallas.</p>
+              <span className="settings-option-title">{t("settings.graphics.linearFilter")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.linearFilterDesc")}</p>
             </div>
             <label className="settings-toggle">
               <input
@@ -202,16 +204,16 @@ export default function GraphicsTab({
         <section className="settings-card" id="settings-graphics-pcsx2">
           <div className="settings-card-header">
             <div>
-              <h3>PlayStation 2 (Core PCSX2 / LRPS2)</h3>
-              <p>Mejoras de renderizado y escalado 3D de alta fidelidad.</p>
+              <h3>{t("settings.graphics.pcsx2Title")}</h3>
+              <p>{t("settings.graphics.pcsx2Desc")}</p>
             </div>
           </div>
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Resolución Interna (Upscaling)</span>
+              <span className="settings-option-title">{t("settings.graphics.resolution")}</span>
               <p className="settings-option-desc">
-                Multiplicador de resolución para gráficos de PS2 en Full HD o 4K.
+                {t("settings.graphics.pcsx2ResolutionDesc")}
               </p>
             </div>
             <select
@@ -219,7 +221,7 @@ export default function GraphicsTab({
               value={graphics.core_options["pcsx2_upscale_multiplier"] || "1"}
               onChange={(e) => updateCoreOption("pcsx2_upscale_multiplier", e.target.value)}
             >
-              <option value="1">1x (Nativo PS2 480i/p)</option>
+              <option value="1">{t("settings.graphics.resNative")}</option>
               <option value="2">2x (720p HD)</option>
               <option value="3">3x (1080p Full HD)</option>
               <option value="4">4x (1440p 2K)</option>
@@ -231,19 +233,19 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Filtrado Anisótropo (Anisotropic Filtering)</span>
-              <p className="settings-option-desc">Aumenta la claridad de las texturas en ángulos oblicuos.</p>
+              <span className="settings-option-title">{t("settings.graphics.aniso")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.anisoDesc")}</p>
             </div>
             <select
               className="settings-select"
               value={graphics.core_options["pcsx2_anisotropic_filtering"] || "0"}
               onChange={(e) => updateCoreOption("pcsx2_anisotropic_filtering", e.target.value)}
             >
-              <option value="0">Desactivado (Off)</option>
+              <option value="0">{t("settings.graphics.filterDisabled")}</option>
               <option value="2">2x</option>
               <option value="4">4x</option>
               <option value="8">8x</option>
-              <option value="16">16x (Máxima calidad)</option>
+              <option value="16">{t("settings.graphics.maxQuality")}</option>
             </select>
           </div>
 
@@ -251,9 +253,9 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Parches Widescreen 16:9</span>
+              <span className="settings-option-title">{t("settings.graphics.widescreenPatches")}</span>
               <p className="settings-option-desc">
-                Aplica parches automáticos para expandir juegos 4:3 a pantalla ancha 16:9.
+                {t("settings.graphics.widescreenPatchesDesc")}
               </p>
             </div>
             <label className="settings-toggle">
@@ -275,15 +277,15 @@ export default function GraphicsTab({
         <section className="settings-card" id="settings-graphics-dolphin">
           <div className="settings-card-header">
             <div>
-              <h3>Nintendo GameCube / Wii (Core Dolphin)</h3>
-              <p>Opciones de renderizado EFB, antialiasing y resolución.</p>
+              <h3>{t("settings.graphics.dolphinTitle")}</h3>
+              <p>{t("settings.graphics.dolphinDesc")}</p>
             </div>
           </div>
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Resolución Interna EFB</span>
-              <p className="settings-option-desc">Escalado de renderizado 3D.</p>
+              <span className="settings-option-title">{t("settings.graphics.efbScale")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.efbScaleDesc")}</p>
             </div>
             <select
               className="settings-select"
@@ -301,15 +303,15 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Anti-Aliasing (MSAA)</span>
-              <p className="settings-option-desc">Suavizado de polígonos.</p>
+              <span className="settings-option-title">{t("settings.graphics.msaa")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.msaaDesc")}</p>
             </div>
             <select
               className="settings-select"
               value={graphics.core_options["dolphin_anti_aliasing"] || "None"}
               onChange={(e) => updateCoreOption("dolphin_anti_aliasing", e.target.value)}
             >
-              <option value="None">Ninguno</option>
+              <option value="None">{t("settings.graphics.msaaNone")}</option>
               <option value="2x MSAA">2x MSAA</option>
               <option value="4x MSAA">4x MSAA</option>
               <option value="8x MSAA">8x MSAA</option>
@@ -320,9 +322,9 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Widescreen Hack 16:9</span>
+              <span className="settings-option-title">{t("settings.graphics.widescreenHack")}</span>
               <p className="settings-option-desc">
-                Fuerza renderizado panorámico 16:9 en juegos de GameCube.
+                {t("settings.graphics.widescreenHackDesc")}
               </p>
             </div>
             <label className="settings-toggle">
@@ -344,22 +346,22 @@ export default function GraphicsTab({
         <section className="settings-card" id="settings-graphics-ppsspp">
           <div className="settings-card-header">
             <div>
-              <h3>PlayStation Portable (Core PPSSPP)</h3>
-              <p>Resolución y filtros de texturas HD para PSP.</p>
+              <h3>{t("settings.graphics.ppssppTitle")}</h3>
+              <p>{t("settings.graphics.ppssppDesc")}</p>
             </div>
           </div>
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Resolución de Renderizado</span>
-              <p className="settings-option-desc">Multiplica la resolución nativa de PSP (480x272).</p>
+              <span className="settings-option-title">{t("settings.graphics.renderResolution")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.ppssppResolutionDesc")}</p>
             </div>
             <select
               className="settings-select"
               value={graphics.core_options["ppsspp_internal_resolution"] || "480x272"}
               onChange={(e) => updateCoreOption("ppsspp_internal_resolution", e.target.value)}
             >
-              <option value="480x272">1x (480x272 - Nativa)</option>
+              <option value="480x272">{t("settings.graphics.resPspNative")}</option>
               <option value="960x544">2x (960x544 - 2x PSP / PS Vita)</option>
               <option value="1440x816">3x (1440x816 - 720p HD)</option>
               <option value="1920x1088">4x (1920x1088 - 1080p Full HD)</option>
@@ -371,18 +373,18 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Escalado de Texturas HD</span>
-              <p className="settings-option-desc">Algoritmo para reescalar texturas 2D y 3D en alta definición.</p>
+              <span className="settings-option-title">{t("settings.graphics.hdTextureScale")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.hdTextureScaleDesc")}</p>
             </div>
             <select
               className="settings-select"
               value={graphics.core_options["ppsspp_texture_scaling_type"] || "off"}
               onChange={(e) => updateCoreOption("ppsspp_texture_scaling_type", e.target.value)}
             >
-              <option value="off">Desactivado (Off)</option>
+              <option value="off">{t("settings.graphics.filterDisabled")}</option>
               <option value="xbrz">xBRZ HD</option>
-              <option value="hybrid">Híbrido</option>
-              <option value="bicubic">Bicúbico</option>
+              <option value="hybrid">{t("settings.graphics.hybrid")}</option>
+              <option value="bicubic">{t("settings.graphics.bicubic")}</option>
             </select>
           </div>
         </section>
@@ -393,15 +395,15 @@ export default function GraphicsTab({
         <section className="settings-card" id="settings-graphics-ps1">
           <div className="settings-card-header">
             <div>
-              <h3>PlayStation 1 (Core PCSX-ReARMed / Beetle PSX)</h3>
-              <p>Mejoras de alta resolución y tramado para PS1.</p>
+              <h3>{t("settings.graphics.ps1Title")}</h3>
+              <p>{t("settings.graphics.ps1Desc")}</p>
             </div>
           </div>
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Modo Alta Resolución HD (Neon Enhanced)</span>
-              <p className="settings-option-desc">Duplica la resolución de renderizado 3D de PS1 a 480p.</p>
+              <span className="settings-option-title">{t("settings.graphics.neonMode")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.neonModeDesc")}</p>
             </div>
             <label className="settings-toggle">
               <input
@@ -422,8 +424,8 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Suavizado de Texturas HD</span>
-              <p className="settings-option-desc">Aplica filtrado suave a las texturas 3D en modo de alta resolución.</p>
+              <span className="settings-option-title">{t("settings.graphics.neonSmooth")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.neonSmoothDesc")}</p>
             </div>
             <label className="settings-toggle">
               <input
@@ -447,22 +449,22 @@ export default function GraphicsTab({
         <section className="settings-card" id="settings-graphics-n64">
           <div className="settings-card-header">
             <div>
-              <h3>Nintendo 64 (Core Mupen64Plus-Next)</h3>
-              <p>Resolución 3D y escalado de texturas.</p>
+              <h3>{t("settings.graphics.n64Title")}</h3>
+              <p>{t("settings.graphics.n64Desc")}</p>
             </div>
           </div>
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Resolución de Renderizado</span>
-              <p className="settings-option-desc">Resolución del plugin gráfico GLideN64.</p>
+              <span className="settings-option-title">{t("settings.graphics.renderResolution")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.n64ResolutionDesc")}</p>
             </div>
             <select
               className="settings-select"
               value={graphics.core_options["mupen64plus-next-43screensize"] || "640x480"}
               onChange={(e) => updateCoreOption("mupen64plus-next-43screensize", e.target.value)}
             >
-              <option value="640x480">640x480 (Nativa N64)</option>
+              <option value="640x480">{t("settings.graphics.resN64Native")}</option>
               <option value="960x720">960x720 (HD)</option>
               <option value="1440x1080">1440x1080 (Full HD)</option>
               <option value="1920x1440">1920x1440 (2K)</option>
@@ -476,26 +478,64 @@ export default function GraphicsTab({
         <section className="settings-card" id="settings-graphics-nds">
           <div className="settings-card-header">
             <div>
-              <h3>Nintendo DS (Core MelonDS)</h3>
-              <p>Disposición y modo táctil de pantallas.</p>
+              <h3>{t("settings.graphics.ndsTitle")}</h3>
+              <p>{t("settings.graphics.ndsDesc")}</p>
             </div>
           </div>
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Distribución de Pantallas</span>
-              <p className="settings-option-desc">Orientación de las dos pantallas de Nintendo DS.</p>
+              <span className="settings-option-title">{t("settings.graphics.ndsLayout")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.ndsLayoutDesc")}</p>
             </div>
             <select
               className="settings-select"
               value={graphics.core_options["melonds_screen_layout"] || "Top/Bottom"}
               onChange={(e) => updateCoreOption("melonds_screen_layout", e.target.value)}
             >
-              <option value="Top/Bottom">Arriba / Abajo (Vertical)</option>
-              <option value="Left/Right">Izquierda / Derecha (Horizontal)</option>
-              <option value="Top Only">Solo Pantalla Superior</option>
-              <option value="Bottom Only">Solo Pantalla Táctil</option>
+              <option value="Top/Bottom">{t("settings.graphics.ndsTopBottom")}</option>
+              <option value="Left/Right">{t("settings.graphics.ndsLeftRight")}</option>
+              <option value="Top Only">{t("settings.graphics.ndsTopOnly")}</option>
+              <option value="Bottom Only">{t("settings.graphics.ndsBottomOnly")}</option>
             </select>
+          </div>
+
+          <div className="settings-divider" />
+
+          <div className="settings-row-option">
+            <div>
+              <span className="settings-option-title">{t("settings.graphics.ndsTouchMode")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.ndsTouchModeDesc")}</p>
+            </div>
+            <select
+              className="settings-select"
+              value={graphics.core_options["melonds_touch_mode"] || "Mouse"}
+              onChange={(e) => updateCoreOption("melonds_touch_mode", e.target.value)}
+            >
+              <option value="Mouse">{t("settings.graphics.ndsTouchMouse")}</option>
+              <option value="Joystick">{t("settings.graphics.ndsTouchJoystick")}</option>
+              <option value="Touch">{t("settings.graphics.ndsTouchTouch")}</option>
+              <option value="Disabled">{t("settings.graphics.ndsTouchDisabled")}</option>
+            </select>
+          </div>
+
+          <div className="settings-divider" />
+
+          <div className="settings-row-option">
+            <div>
+              <span className="settings-option-title">{t("settings.graphics.ndsCursor")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.ndsCursorDesc")}</p>
+            </div>
+            <label className="settings-toggle">
+              <input
+                type="checkbox"
+                checked={graphics.core_options["melonds_cursor"] !== "disabled"}
+                onChange={(e) =>
+                  updateCoreOption("melonds_cursor", e.target.checked ? "enabled" : "disabled")
+                }
+              />
+              <span className="settings-toggle-slider" />
+            </label>
           </div>
         </section>
       )}
@@ -505,15 +545,15 @@ export default function GraphicsTab({
         <section className="settings-card" id="settings-graphics-global">
           <div className="settings-card-header">
             <div>
-              <h3>Opciones Gráficas Globales</h3>
-              <p>Filtros aplicables a todas las consolas y juegos 2D/3D.</p>
+              <h3>{t("settings.graphics.globalTitle")}</h3>
+              <p>{t("settings.graphics.globalDesc")}</p>
             </div>
           </div>
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Filtro de Suavizado Bilineal (Linear Filter)</span>
-              <p className="settings-option-desc">Suaviza los bordes de la imagen para pantallas grandes.</p>
+              <span className="settings-option-title">{t("settings.graphics.bilinear")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.bilinearDesc")}</p>
             </div>
             <label className="settings-toggle">
               <input
@@ -529,8 +569,8 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Escalado por Enteros (Pixel-Perfect)</span>
-              <p className="settings-option-desc">Garantiza que los píxeles 2D de consolas retro no se distorsionen.</p>
+              <span className="settings-option-title">{t("settings.graphics.intScale")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.intScaleDesc")}</p>
             </div>
             <label className="settings-toggle">
               <input
@@ -546,18 +586,18 @@ export default function GraphicsTab({
 
           <div className="settings-row-option">
             <div>
-              <span className="settings-option-title">Relación de Aspecto Global</span>
-              <p className="settings-option-desc">Proporción de pantalla al reproducir juegos.</p>
+              <span className="settings-option-title">{t("settings.graphics.aspectGlobal")}</span>
+              <p className="settings-option-desc">{t("settings.graphics.aspectGlobalDesc")}</p>
             </div>
             <select
               className="settings-select"
               value={graphics.aspect_ratio || "auto"}
               onChange={(e) => updateGlobalGraphic("aspect_ratio", e.target.value)}
             >
-              <option value="auto">Automática (Provista por el Core)</option>
-              <option value="4:3">4:3 (Televisor Clásico)</option>
-              <option value="16:9">16:9 (Pantalla Ancha)</option>
-              <option value="16:10">16:10 (Monitor PC / Steam Deck)</option>
+              <option value="auto">{t("settings.graphics.aspectAuto")}</option>
+              <option value="4:3">{t("settings.graphics.aspect43")}</option>
+              <option value="16:9">{t("settings.graphics.aspect169")}</option>
+              <option value="16:10">{t("settings.graphics.aspect1610")}</option>
             </select>
           </div>
         </section>

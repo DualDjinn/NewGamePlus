@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import React, { useState, useEffect, useRef } from "react";
 import { Game } from "../types";
 import { useMusic } from "../context/MusicContext";
@@ -22,6 +23,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
     toggleMute,
   } = useMusic();
 
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const navbarRef = useRef<HTMLDivElement | null>(null);
 
@@ -42,14 +44,14 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
         <div
           ref={navbarRef}
           className="vinyl-player-navbar vinyl-player-navbar-compact"
-          title={`${currentTrack.title} — ${currentTrack.game} (Clic para abrir reproductor)`}
+          title={`${currentTrack.title} — ${currentTrack.game} ${t("vinyl.openHint")}`}
           onClick={(e) => {
             e.stopPropagation();
             setExpanded(true);
           }}
           role="button"
           tabIndex={0}
-          aria-label="Abrir reproductor de música"
+          aria-label={t("vinyl.openPlayer")}
         >
           <div className="vinyl-disc-wrapper vinyl-navbar-disc">
             <div className={`vinyl-disc-body ${isPlaying ? "vinyl-spinning" : "vinyl-paused"}`}>
@@ -79,8 +81,8 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
           onClick={() => setExpanded(false)}
           role="button"
           tabIndex={0}
-          aria-label="Minimizar reproductor"
-          title="Minimizar reproductor"
+          aria-label={t("vinyl.minimize")}
+          title={t("vinyl.minimize")}
         >
           <div className={`vinyl-disc-body ${isPlaying ? "vinyl-spinning" : "vinyl-paused"}`}>
             {coverUrl ? (
@@ -99,7 +101,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
           onClick={togglePlay}
           role="button"
           tabIndex={0}
-          title={isPlaying ? "Pausar" : "Reproducir"}
+          title={isPlaying ? t("vinyl.pauseShort") : t("vinyl.playShort")}
         >
           <span className="wave-bar bar-1" />
           <span className="wave-bar bar-2" />
@@ -120,7 +122,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
             type="button"
             onClick={handlePrevTrack}
             className="vinyl-btn-icon vinyl-navbar-btn"
-            title="Pista anterior"
+            title={t("vinyl.prevTrack")}
           >
             <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
               <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
@@ -131,7 +133,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
             type="button"
             onClick={togglePlay}
             className="vinyl-btn-play vinyl-navbar-play-btn"
-            title={isPlaying ? "Pausa" : "Play"}
+            title={isPlaying ? t("vinyl.pauseShort") : t("vinyl.playShort")}
           >
             {isPlaying ? (
               <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor">
@@ -148,7 +150,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
             type="button"
             onClick={handleNextTrack}
             className="vinyl-btn-icon vinyl-navbar-btn"
-            title="Pista siguiente"
+            title={t("vinyl.nextTrack")}
           >
             <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
               <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
@@ -165,7 +167,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
             type="button"
             onClick={toggleMute}
             className="vinyl-btn-mute vinyl-navbar-mute-btn"
-            title={isMuted || volume === 0 ? "Activar sonido" : "Silenciar"}
+            title={isMuted || volume === 0 ? t("vinyl.unmute") : t("vinyl.mute")}
           >
             {isMuted || volume === 0 ? (
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2">
@@ -187,7 +189,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
             onChange={handleVolumeChange}
             className="vinyl-volume-slider vinyl-navbar-volume-slider"
             title={`Volumen: ${Math.round((isMuted ? 0 : volume) * 100)}%`}
-            aria-label="Volumen"
+            aria-label={t("vinyl.volume")}
           />
         </div>
 
@@ -207,13 +209,13 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
 
   if (collapsed || mode === "collapsed") {
     return (
-      <div className="vinyl-player-collapsed" title={`${currentTrack.title} — ${currentTrack.game} (Click para reproducir/pausar)`}>
+      <div className="vinyl-player-collapsed" title={`${currentTrack.title} — ${currentTrack.game} ${t("vinyl.toggleHint")}`}>
         <div
           className="vinyl-disc-wrapper"
           onClick={togglePlay}
           role="button"
           tabIndex={0}
-          aria-label={isPlaying ? "Pausar música" : "Reproducir música"}
+          aria-label={isPlaying ? t("vinyl.pause") : t("vinyl.resume")}
         >
           <div className={`vinyl-disc-body ${isPlaying ? "vinyl-spinning" : "vinyl-paused"}`}>
             {coverUrl ? (
@@ -238,7 +240,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
           onClick={togglePlay}
           role="button"
           tabIndex={0}
-          aria-label={isPlaying ? "Pausar música" : "Reproducir música"}
+          aria-label={isPlaying ? t("vinyl.pause") : t("vinyl.resume")}
         >
           <div className={`vinyl-disc-body ${isPlaying ? "vinyl-spinning" : "vinyl-paused"}`}>
             {coverUrl ? (
@@ -275,7 +277,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
             type="button"
             onClick={handlePrevTrack}
             className="vinyl-btn-icon"
-            title="Pista anterior"
+            title={t("vinyl.prevTrack")}
           >
             <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
               <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
@@ -286,7 +288,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
             type="button"
             onClick={togglePlay}
             className="vinyl-btn-play"
-            title={isPlaying ? "Pausa" : "Play"}
+            title={isPlaying ? t("vinyl.pauseShort") : t("vinyl.playShort")}
           >
             {isPlaying ? (
               <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
@@ -303,7 +305,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
             type="button"
             onClick={handleNextTrack}
             className="vinyl-btn-icon"
-            title="Pista siguiente"
+            title={t("vinyl.nextTrack")}
           >
             <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
               <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
@@ -316,7 +318,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
             type="button"
             onClick={toggleMute}
             className="vinyl-btn-mute"
-            title={isMuted || volume === 0 ? "Activar sonido" : "Silenciar"}
+            title={isMuted || volume === 0 ? t("vinyl.unmute") : t("vinyl.mute")}
           >
             {isMuted || volume === 0 ? (
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
@@ -337,7 +339,7 @@ export const VinylPlayer: React.FC<VinylPlayerProps> = ({ collapsed = false, mod
             value={isMuted ? 0 : volume}
             onChange={handleVolumeChange}
             className="vinyl-volume-slider"
-            aria-label="Volumen"
+            aria-label={t("vinyl.volume")}
           />
         </div>
       </div>

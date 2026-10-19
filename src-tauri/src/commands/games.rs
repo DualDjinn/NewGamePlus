@@ -1,4 +1,4 @@
-use crate::emulator::launch_game_runner;
+use crate::emulator::{launch_game_runner, retroarch::{launch_netplay_host, launch_netplay_client, NetplaySession}};
 use crate::metadata::{self, GameMetadata};
 use crate::platforms;
 use crate::state::lock_state;
@@ -6,6 +6,7 @@ use crate::state::models::{ControllerMapping, Game};
 use crate::state::storage::save_state;
 use std::fs;
 use std::path::Path;
+use tauri::AppHandle;
 
 fn base64_encode(data: &[u8]) -> String {
     const TABLE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -412,4 +413,31 @@ pub fn scan_local_videos() -> Result<crate::state::models::LocalVideoStats, Stri
         games_with_video,
         games_missing_video,
     })
+}
+
+#[tauri::command]
+pub fn netplay_create_room(
+    app: AppHandle,
+    core_name: String,
+    rom_path: String,
+    port: u16,
+) -> Result<NetplaySession, String> {
+    launch_netplay_host(app, core_name, rom_path, port)
+}
+
+#[tauri::command]
+pub fn netplay_join_room(
+    app: AppHandle,
+    core_name: String,
+    rom_path: String,
+    address: String,
+    port: u16,
+    session_id: String,
+) -> Result<NetplaySession, String> {
+    launch_netplay_client(app, core_name, rom_path, address, port, session_id)
+}
+
+#[tauri::command]
+pub fn netplay_stop() -> Result<(), String> {
+    crate::emulator::retroarch::stop_netplay()
 }

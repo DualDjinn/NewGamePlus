@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { TrophyIcon } from "../icons";
 import type { BatchScrapeProgressEvent } from "../../lib/tauri";
 
@@ -88,11 +89,12 @@ export default function IntegrationsTab({
   handleCancelBatchScrape,
 }: IntegrationsTabProps) {
   const [batchOnlyMissing, setBatchOnlyMissing] = useState(true);
+  const { t } = useTranslation();
   return (
     <div className="settings-tab-panel">
       <div className="settings-panel-header">
-        <h2>Cuentas &amp; Servicios Online</h2>
-        <p>Vincula logros y scrapers de imágenes en alta resolución.</p>
+        <h2>{t("settings.integrations.panelTitle")}</h2>
+        <p>{t("settings.integrations.panelDesc")}</p>
       </div>
 
       {/* RetroAchievements */}
@@ -102,19 +104,19 @@ export default function IntegrationsTab({
             <TrophyIcon />
             <div>
               <h3>RetroAchievements</h3>
-              <p>Desbloquea logros retro oficiales mientras juegas.</p>
+              <p>{t("settings.integrations.raDesc")}</p>
             </div>
           </div>
-          {raLinkedUser && <span className="settings-badge-ok">✓ Vinculado</span>}
+          {raLinkedUser && <span className="settings-badge-ok">{t("settings.integrations.linkedBadge")}</span>}
         </div>
 
         {raLinkedUser ? (
           <div className="settings-account-linked">
             <p className="settings-hint">
-              Sesión activa con el usuario: <strong>{raLinkedUser}</strong>
+              {t("settings.integrations.activeSession")} <strong>{raLinkedUser}</strong>
             </p>
             <button type="button" className="settings-btn-secondary" onClick={handleUnlinkRA}>
-              Desvincular Cuenta
+              {t("settings.integrations.unlinkAccount")}
             </button>
           </div>
         ) : (
@@ -122,14 +124,14 @@ export default function IntegrationsTab({
             <div className="settings-input-group">
               <input
                 className="settings-input"
-                placeholder="Usuario de RetroAchievements"
+                placeholder={t("settings.integrations.raUserPh")}
                 value={raUsername}
                 onChange={(e) => setRaUsername(e.target.value)}
               />
               <input
                 className="settings-input"
                 type="password"
-                placeholder="Contraseña"
+                placeholder={t("settings.integrations.raPassPh")}
                 value={raPassword}
                 onChange={(e) => setRaPassword(e.target.value)}
               />
@@ -148,10 +150,10 @@ export default function IntegrationsTab({
                 rel="noreferrer"
                 className="settings-link"
               >
-                🔗 Obtener mi API Key en RetroAchievements
+                {t("settings.integrations.getRaKey")}
               </a>
               <button type="button" className="settings-btn-primary" onClick={handleLinkRA}>
-                Vincular Cuenta
+                {t("settings.integrations.linkAccount")}
               </button>
             </div>
           </div>
@@ -167,9 +169,9 @@ export default function IntegrationsTab({
 
         <div className="settings-row-option">
           <div>
-            <span className="settings-option-title">Modo Hardcore</span>
+            <span className="settings-option-title">{t("settings.integrations.hardcoreTitle")}</span>
             <p className="settings-option-desc">
-              Deshabilita savestates y trucos para competir en tablas de clasificación oficiales.
+              {t("settings.integrations.hardcoreDesc")}
             </p>
           </div>
           <label className="settings-toggle">
@@ -187,17 +189,17 @@ export default function IntegrationsTab({
       <section className="settings-card" id="settings-steamgriddb">
         <div className="settings-card-header">
           <div>
-            <h3>🎨 SteamGridDB (Heroes &amp; Banners)</h3>
-            <p>Descarga portadas y banners panorámicos en alta definición para el carrusel.</p>
+            <h3>{t("settings.integrations.sgdbTitle")}</h3>
+            <p>{t("settings.integrations.sgdbDesc")}</p>
           </div>
-          {sgdbLinked && <span className="settings-badge-ok">✓ Activo</span>}
+          {sgdbLinked && <span className="settings-badge-ok">{t("settings.integrations.activeBadge")}</span>}
         </div>
 
         {sgdbLinked ? (
           <div className="settings-account-linked">
-            <p className="settings-hint">API Key configurada correctamente.</p>
+            <p className="settings-hint">{t("settings.integrations.keyOk")}</p>
             <button type="button" className="settings-btn-secondary" onClick={handleUnlinkSGDB}>
-              Desvincular API Key
+              {t("settings.integrations.unlinkKey")}
             </button>
           </div>
         ) : (
@@ -219,7 +221,7 @@ export default function IntegrationsTab({
                 rel="noreferrer"
                 className="settings-link"
               >
-                🔗 Obtener API Key en SteamGridDB (Perfil &gt; Preferencias &gt; API)
+                {t("settings.integrations.getSgdbKey")}
               </a>
               <button
                 type="button"
@@ -227,7 +229,7 @@ export default function IntegrationsTab({
                 onClick={handleLinkSGDB}
                 disabled={sgdbLoading}
               >
-                {sgdbLoading ? "Verificando..." : "Guardar API Key"}
+                {sgdbLoading ? t("settings.integrations.verifying") : t("settings.integrations.saveKey")}
               </button>
             </div>
           </div>
@@ -244,25 +246,25 @@ export default function IntegrationsTab({
       <section className="settings-card" id="settings-screenscraper">
         <div className="settings-card-header">
           <div>
-            <h3>🎬 ScreenScraper.fr (Gameplay Snaps &amp; Logos)</h3>
-            <p>Descarga videos de gameplay MP4 y logos transparentes de alta resolución para la ruleta Arcade.</p>
+            <h3>{t("settings.integrations.ssTitle")}</h3>
+            <p>{t("settings.integrations.ssDesc")}</p>
           </div>
-          {ssLinked && <span className="settings-badge-ok">✓ Conectado</span>}
+          {ssLinked && <span className="settings-badge-ok">{t("settings.integrations.connectedBadge")}</span>}
         </div>
 
         {ssLinked ? (
           <div>
             <div className="settings-account-linked">
               <p className="settings-hint">
-                Conectado como Dev: <strong>{ssDevIdSaved || "Configurado"}</strong>
-                {ssUserSaved ? ` | Usuario: ${ssUserSaved}` : ""}
+                {t("settings.integrations.connectedAs")} <strong>{ssDevIdSaved || t("settings.integrations.configured")}</strong>
+                {ssUserSaved ? ` ${t("settings.integrations.userLabel")} ${ssUserSaved}` : ""}
               </p>
               <button
                 type="button"
                 className="settings-btn-secondary"
                 onClick={handleUnlinkScreenScraper}
               >
-                Desvincular ScreenScraper
+                {t("settings.integrations.unlinkSs")}
               </button>
             </div>
 
@@ -273,10 +275,10 @@ export default function IntegrationsTab({
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "10px" }}>
                 <div>
                   <span className="settings-option-title" style={{ fontSize: "1rem" }}>
-                    Descarga Masiva de Gameplays y Logos
+                    {t("settings.integrations.batchTitle")}
                   </span>
                   <p className="settings-option-desc">
-                    Descarga en segundo plano los videos y logos de toda tu colección automáticamente.
+                    {t("settings.integrations.batchDesc")}
                   </p>
                 </div>
                 {isBatchScraping ? (
@@ -286,7 +288,7 @@ export default function IntegrationsTab({
                     style={{ padding: "6px 14px", borderRadius: "6px", fontSize: "0.85rem" }}
                     onClick={handleCancelBatchScrape}
                   >
-                    ✕ Cancelar
+                    {t("settings.librarySection.cancelBtn")}
                   </button>
                 ) : (
                   <button
@@ -294,7 +296,7 @@ export default function IntegrationsTab({
                     className="settings-btn-primary"
                     onClick={() => handleStartBatchScrape?.(batchOnlyMissing)}
                   >
-                    ▶ Iniciar Descarga Masiva
+                    {t("settings.librarySection.startBtn")}
                   </button>
                 )}
               </div>
@@ -306,7 +308,7 @@ export default function IntegrationsTab({
                     checked={batchOnlyMissing}
                     onChange={(e) => setBatchOnlyMissing(e.target.checked)}
                   />
-                  <span>Solo para juegos que no tengan video</span>
+                  <span>{t("settings.integrations.onlyNoVideo")}</span>
                 </label>
               )}
 
@@ -317,12 +319,12 @@ export default function IntegrationsTab({
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", fontSize: "0.84rem" }}>
                     <span style={{ fontWeight: 600, color: "var(--accent, #00f0ff)" }}>
-                      {batchProgress.status === "downloading" ? "Descargando:" : "Procesando:"} {batchProgress.game_name} ({batchProgress.current_index}/{batchProgress.total})
+                      {batchProgress.status === "downloading" ? t("settings.librarySection.statusDownloading") : t("settings.librarySection.statusProcessing")} {batchProgress.game_name} ({batchProgress.current_index}/{batchProgress.total})
                     </span>
                     <span>{batchProgress.percent}%</span>
                   </div>
                   <p className="settings-progress-msg" style={{ marginTop: "4px" }}>
-                    ✓ {batchProgress.downloaded_count} descargados • ⏭ {batchProgress.skipped_count} omitidos • ⚠ {batchProgress.failed_count} fallidos
+                    {t("settings.librarySection.progressLine", { done: batchProgress.downloaded_count, skipped: batchProgress.skipped_count, failed: batchProgress.failed_count })}
                   </p>
                 </div>
               )}
@@ -331,8 +333,8 @@ export default function IntegrationsTab({
                 <div style={{ marginTop: "10px", padding: "8px 12px", borderRadius: "6px", background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.2)", fontSize: "0.85rem" }}>
                   <span>
                     {batchProgress.status === "completed"
-                      ? `¡Descarga masiva completada! ${batchProgress.downloaded_count} descargados, ${batchProgress.skipped_count} omitidos, ${batchProgress.failed_count} fallidos.`
-                      : "Descarga cancelada"}
+                      ? t("settings.librarySection.batchScrapeCompleted", { downloaded: batchProgress.downloaded_count, skipped: batchProgress.skipped_count, failed: batchProgress.failed_count })
+                      : t("settings.librarySection.batchScrapeCancelled")}
                   </span>
                 </div>
               )}
@@ -344,14 +346,14 @@ export default function IntegrationsTab({
               <input
                 className="settings-input"
                 type="text"
-                placeholder="Usuario Desarrollador (Dev ID)*"
+                placeholder={t("settings.integrations.devIdPh")}
                 value={ssDevId}
                 onChange={(e) => setSsDevId(e.target.value)}
               />
               <input
                 className="settings-input"
                 type="password"
-                placeholder="Contraseña Desarrollador (Dev Password)*"
+                placeholder={t("settings.integrations.devPassPh")}
                 value={ssDevPass}
                 onChange={(e) => setSsDevPass(e.target.value)}
               />
@@ -361,14 +363,14 @@ export default function IntegrationsTab({
               <input
                 className="settings-input"
                 type="text"
-                placeholder="Usuario ScreenScraper (Opcional)"
+                placeholder={t("settings.integrations.ssUserPh")}
                 value={ssUser}
                 onChange={(e) => setSsUser(e.target.value)}
               />
               <input
                 className="settings-input"
                 type="password"
-                placeholder="Contraseña ScreenScraper (Opcional)"
+                placeholder={t("settings.integrations.ssPassPh")}
                 value={ssPass}
                 onChange={(e) => setSsPass(e.target.value)}
               />
@@ -381,7 +383,7 @@ export default function IntegrationsTab({
                 rel="noreferrer"
                 className="settings-link"
               >
-                🔗 Obtener cuenta y clave API en ScreenScraper.fr
+                {t("settings.integrations.getSsAccount")}
               </a>
               <button
                 type="button"
@@ -389,7 +391,7 @@ export default function IntegrationsTab({
                 onClick={handleLinkScreenScraper}
                 disabled={ssLoading || !ssDevId.trim() || !ssDevPass.trim()}
               >
-                {ssLoading ? "Conectando..." : "Guardar Credenciales"}
+                {ssLoading ? t("settings.integrations.connecting") : t("settings.integrations.saveCreds")}
               </button>
             </div>
           </div>
