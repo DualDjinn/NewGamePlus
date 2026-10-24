@@ -42,30 +42,6 @@ export default function SystemTab({
         </div>
       </section>
 
-      {/* Log de Errores */}
-      <section className="settings-card" id="settings-logs">
-        <div className="settings-card-header">
-          <div>
-            <h3>{t("settings.systemPanel.logsTitle")}</h3>
-            <p>{t("settings.systemPanel.logsDesc")}</p>
-          </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            {errorLogs !== null && (
-              <button type="button" className="settings-btn-secondary" onClick={handleCopyLogs}>
-                {copiedLog ? t("settings.systemPanel.copied") : t("settings.systemPanel.copyLog")}
-              </button>
-            )}
-            <button type="button" className="settings-btn-secondary" onClick={handleToggleLogs}>
-              {errorLogs !== null ? t("settings.systemPanel.hide") : t("settings.systemPanel.viewLogs")}
-            </button>
-          </div>
-        </div>
-
-        {errorLogs !== null && (
-          <pre className="settings-log-view">{errorLogs}</pre>
-        )}
-      </section>
-
       {/* Acerca de */}
       <section className="settings-card settings-about" id="settings-about">
         <h3>{t("settings.systemPanel.aboutTitle")}</h3>
@@ -95,6 +71,31 @@ export default function SystemTab({
           </p>
         </div>
       </section>
+
+      {/* Log de Errores */}
+      <section className="settings-card settings-card--wide" id="settings-logs">
+        <div className="settings-card-header">
+          <div>
+            <h3>{t("settings.systemPanel.logsTitle")}</h3>
+            <p>{t("settings.systemPanel.logsDesc")}</p>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            {errorLogs !== null && (
+              <button type="button" className="settings-btn-secondary" onClick={handleCopyLogs}>
+                {copiedLog ? t("settings.systemPanel.copied") : t("settings.systemPanel.copyLog")}
+              </button>
+            )}
+            <button type="button" className="settings-btn-secondary" onClick={handleToggleLogs}>
+              {errorLogs !== null ? t("settings.systemPanel.hide") : t("settings.systemPanel.viewLogs")}
+            </button>
+          </div>
+        </div>
+
+        {errorLogs !== null && (
+          <pre className="settings-log-view">{errorLogs}</pre>
+        )}
+      </section>
+
     </div>
   );
 }

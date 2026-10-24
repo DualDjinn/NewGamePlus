@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use tauri::Emitter;
 
 use crate::scanner::pc::{download_file_to, find_local_cover, find_primary_pc_game_exe};
-use crate::scanner::roms::fnv1a_id;
+use crate::scanner::roms::{file_mtime_secs, fnv1a_id};
 use crate::state::models::Game;
 use crate::steamgriddb;
 
@@ -281,6 +281,16 @@ let existing = existing_games
     .iter()
     .find(|g| g.id == game_id || g.rom_path == rom_path);
 
+if let Some(eg) = existing {
+    let mt = file_mtime_secs(std::path::Path::new(&rom_path));
+    if mt.is_some() && eg.rom_mtime == mt {
+        let mut g = eg.clone();
+        g.rom_mtime = mt;
+        games.push(g);
+        continue;
+    }
+}
+
             let mut cover_path = existing.and_then(|g| g.cover_path.clone());
             let mut hero_path = existing.and_then(|g| g.hero_path.clone());
             let mut logo_path = existing.and_then(|g| g.logo_path.clone());
@@ -361,7 +371,7 @@ let existing = existing_games
                 id: game_id,
                 name: manifest.name,
                 platform: "PC".to_string(),
-                rom_path,
+                rom_path: rom_path.clone(),
                 core_name: "pc".to_string(),
                 cover_path,
                 favorite,
@@ -376,6 +386,8 @@ let existing = existing_games
                 publisher: None,
                 release_year: None,
                 region: None,
+            rom_mtime: file_mtime_secs(std::path::Path::new(&rom_path)),
+            manual_exe: false,
             });
         }
     }
@@ -489,7 +501,7 @@ pub fn scan_installed_riot_games(
             id: game_id,
             name: game_title,
             platform: "PC".to_string(),
-            rom_path,
+            rom_path: rom_path.clone(),
             core_name: "pc".to_string(),
             cover_path,
             favorite,
@@ -504,6 +516,8 @@ pub fn scan_installed_riot_games(
             publisher: Some("Riot Games".to_string()),
             release_year: None,
             region: None,
+            rom_mtime: file_mtime_secs(std::path::Path::new(&rom_path)),
+            manual_exe: false,
         });
     }
 
@@ -612,7 +626,7 @@ pub fn scan_installed_epic_games(
             id: game_id,
             name: display_name.clone(),
             platform: "PC".to_string(),
-            rom_path,
+            rom_path: rom_path.clone(),
             core_name: "pc".to_string(),
             cover_path,
             favorite,
@@ -627,6 +641,8 @@ pub fn scan_installed_epic_games(
             publisher: None,
             release_year: None,
             region: None,
+            rom_mtime: file_mtime_secs(std::path::Path::new(&rom_path)),
+            manual_exe: false,
         });
     }
 
@@ -683,6 +699,16 @@ let existing = existing_games
     .iter()
     .find(|g| g.id == game_id || g.rom_path == rom_path);
 
+if let Some(eg) = existing {
+    let mt = file_mtime_secs(std::path::Path::new(&rom_path));
+    if mt.is_some() && eg.rom_mtime == mt {
+        let mut g = eg.clone();
+        g.rom_mtime = mt;
+        games.push(g);
+        continue;
+    }
+}
+
             let mut cover_path = existing.and_then(|g| g.cover_path.clone());
             let mut hero_path = existing.and_then(|g| g.hero_path.clone());
             let mut logo_path = existing.and_then(|g| g.logo_path.clone());
@@ -718,7 +744,7 @@ let existing = existing_games
                 id: game_id,
                 name: game_title.clone(),
                 platform: "PC".to_string(),
-                rom_path,
+                rom_path: rom_path.clone(),
                 core_name: "pc".to_string(),
                 cover_path,
                 favorite,
@@ -733,6 +759,8 @@ let existing = existing_games
                 publisher: None,
                 release_year: None,
                 region: None,
+            rom_mtime: file_mtime_secs(std::path::Path::new(&rom_path)),
+            manual_exe: false,
             });
         }
     }
@@ -819,7 +847,28 @@ pub fn scan_all_installed_pc_games(
         }
     }
 
-    all_pc_games
+    // Preserve manually-associated PC games: drop auto-detected duplicates by name
+    let manual_existing: Vec<Game> = existing_games
+        .iter()
+        .filter(|g| g.manual_exe && g.platform == "PC")
+        .cloned()
+        .collect();
+    let mut result = Vec::new();
+    for g in all_pc_games {
+        let gname = g.display_name.as_deref().unwrap_or(&g.name).to_lowercase();
+        let dup = manual_existing.iter().any(|m| {
+            m.display_name.as_deref().unwrap_or(&m.name).to_lowercase() == gname
+        });
+        if !dup {
+            result.push(g);
+        }
+    }
+    for m in manual_existing {
+        if !result.iter().any(|g| g.id == m.id) {
+            result.push(m);
+        }
+    }
+    result
 }
 
 #[cfg(test)]

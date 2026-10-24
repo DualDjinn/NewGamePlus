@@ -92,7 +92,6 @@ function HomeView({
               prev.map((g) => (g.id === gameId ? { ...g, logo_path: newLogoPath } : g))
             );
           }}
-          onOpenSettings={onOpenSettings}
           onBack={() => handleLayoutStyleChange("classic")}
         />
       </Suspense>

@@ -205,7 +205,26 @@ export default function EmulatorsTab() {
         </div>
       </section>
 
-      <section className="settings-card" id="settings-emulators-list">
+      <section className="settings-card" id="settings-emulators-cores">
+        <div className="settings-card-header">
+          <div>
+            <h3>{t("settings.emulators.updateCores")}</h3>
+            <p>Nightly libretro — {t("settings.emulators.subtitle")}</p>
+          </div>
+          <button
+            type="button"
+            className="settings-btn-secondary"
+            onClick={handleUpdateCores}
+            disabled={updatingCores || updatingId !== null}
+          >
+            {updatingCores
+              ? t("settings.emulators.updatingCores")
+              : t("settings.emulators.updateCores")}
+          </button>
+        </div>
+      </section>
+
+      <section className="settings-card settings-card--wide" id="settings-emulators-list">
         <div className="settings-card-header">
           <div>
             <h3>{t("settings.tabs.emulators")}</h3>
@@ -257,7 +276,11 @@ export default function EmulatorsTab() {
                   <>
                   <p className="settings-option-desc">
                     {t("settings.emulators.edenKeys.prodKeys")}:{" "}
-                    {edenReqs.has_prod_keys ? "✅" : "❌"}{" "}
+                    {edenReqs.has_prod_keys ? (
+                      <span className="settings-badge-ok">{t("settings.emulators.edenKeys.ready")}</span>
+                    ) : (
+                      <span className="settings-badge-warn">{t("settings.emulators.edenKeys.missing")}</span>
+                    )}{" "}
                     <code style={{ userSelect: "text" }}>{edenReqs.keys_dir}</code>{" "}
                     <button
                       type="button"
@@ -278,7 +301,11 @@ export default function EmulatorsTab() {
                   </p>
                   <p className="settings-option-desc">
                     {t("settings.emulators.edenKeys.firmware")}:{" "}
-                    {edenReqs.has_firmware ? "✅" : "❌"}{" "}
+                    {edenReqs.has_firmware ? (
+                      <span className="settings-badge-ok">{t("settings.emulators.edenKeys.ready")}</span>
+                    ) : (
+                      <span className="settings-badge-warn">{t("settings.emulators.edenKeys.missing")}</span>
+                    )}{" "}
                     <code style={{ userSelect: "text" }}>{edenReqs.firmware_dir}</code>{" "}
                     <button
                       type="button"
@@ -306,7 +333,7 @@ export default function EmulatorsTab() {
       </section>
 
       {infos?.some((i) => i.id === "eden" && i.installed) && (
-        <section className="settings-card" id="settings-emulators-eden-dlc">
+        <section className="settings-card settings-card--wide" id="settings-emulators-eden-dlc">
           <div className="settings-card-header">
             <div>
               <h3>{t("settings.emulators.edenDlc.title")}</h3>
@@ -362,25 +389,6 @@ export default function EmulatorsTab() {
           )}
         </section>
       )}
-
-      <section className="settings-card" id="settings-emulators-cores">
-        <div className="settings-card-header">
-          <div>
-            <h3>{t("settings.emulators.updateCores")}</h3>
-            <p>Nightly libretro — {t("settings.emulators.subtitle")}</p>
-          </div>
-          <button
-            type="button"
-            className="settings-btn-secondary"
-            onClick={handleUpdateCores}
-            disabled={updatingCores || updatingId !== null}
-          >
-            {updatingCores
-              ? t("settings.emulators.updatingCores")
-              : t("settings.emulators.updateCores")}
-          </button>
-        </div>
-      </section>
 
       {message && (
         <section className="settings-card" id="settings-emulators-message">

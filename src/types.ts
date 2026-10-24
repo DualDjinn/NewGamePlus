@@ -18,6 +18,8 @@ export interface Game {
   release_year?: number | null;
   region?: string | null;
   video_path?: string | null;
+  rom_mtime?: number | null;
+  manual_exe?: boolean | null;
 }
 
 export interface SGDBLogo {
@@ -118,7 +120,8 @@ export interface AppSettings {
 
 export type Section = "home" | "library" | "favorites" | "search" | "settings" | "genre" | "genres";
 
-export type SettingsTab = "library" | "appearance" | "graphics" | "sound" | "emulation" | "emulators" | "integrations" | "profiles" | "system";
+export type SettingsTab = "library" | "appearance" | "graphics" | "sound" | "emulation" | "emulators" 
+| "integrations" | "profiles" | "system" | "pcexe";
 export type GraphicsConsole = "global" | "citra" | "pcsx2" | "dolphin" | "ppsspp" | "ps1" | "n64" | "nds";
 
 export type SortKey = "name" | "platform" | "last_played";

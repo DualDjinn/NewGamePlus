@@ -65,7 +65,7 @@ export default function SoundTab({
       </div>
 
       {/* Dispositivo de Salida */}
-      <section className="settings-card highlight" id="settings-audio-device">
+      <section className="settings-card highlight settings-card--wide" id="settings-audio-device">
         <div className="settings-card-header">
           <div>
             <h3>{t("settings.sound.outTitle")}</h3>
@@ -96,22 +96,9 @@ export default function SoundTab({
           >
             <option value="">{t("settings.sound.systemDefault")}</option>
             {audioDevices.map((dev) => {
-              const devLower = dev.toLowerCase();
-              const icon =
-                devLower.includes("head") ||
-                devLower.includes("auricul") ||
-                devLower.includes("g733") ||
-                devLower.includes("yeti") ||
-                devLower.includes("corsair")
-                  ? "🎧"
-                  : devLower.includes("parlante") ||
-                    devLower.includes("altavoz") ||
-                    devLower.includes("speaker")
-                  ? "🔊"
-                  : "🖥️";
               return (
                 <option key={dev} value={dev}>
-                  {icon} {dev}
+                  {dev}
                 </option>
               );
             })}
@@ -121,7 +108,7 @@ export default function SoundTab({
         <div className="settings-divider" />
 
         <p className="settings-hint">
-          💡 <strong>{t("settings.sound.defaultModeTitle")}</strong> {t("settings.sound.defaultModeHint", { opt: t("settings.sound.systemDefaultShort"), driver: "WASAPI" })}
+          <strong>{t("settings.sound.defaultModeTitle")}</strong> {t("settings.sound.defaultModeHint", { opt: t("settings.sound.systemDefaultShort"), driver: "WASAPI" })}
         </p>
       </section>
 
@@ -143,7 +130,7 @@ export default function SoundTab({
               step="5"
               value={graphics.audio_volume ?? 100}
               onChange={(e) => updateGlobalGraphic("audio_volume", parseInt(e.target.value, 10))}
-              style={{ width: "180px", accentColor: "var(--primary, #f59e0b)", cursor: "pointer" }}
+              style={{ width: "180px", accentColor: "var(--accent, #f59e0b)", cursor: "pointer" }}
             />
             <span style={{ minWidth: "45px", fontWeight: 600, fontSize: "0.95rem" }}>
               {graphics.audio_volume ?? 100}%
@@ -194,7 +181,7 @@ export default function SoundTab({
       </section>
 
       {/* Volumen de Interfaz, Música y Efectos */}
-      <section className="settings-card highlight" id="settings-sound-volume">
+      <section className="settings-card highlight settings-card--wide" id="settings-sound-volume">
         <h3>{t("settings.sound.ifaceVolume")}</h3>
         <p style={{ marginTop: "4px", fontSize: "0.9rem", color: "var(--text-muted, #9ca3af)" }}>
           {t("settings.sound.ifaceVolumeDesc")}
@@ -218,7 +205,7 @@ export default function SoundTab({
               step="0.01"
               value={musicVolume}
               onChange={(e) => handleMusicVolumeChange(parseFloat(e.target.value))}
-              style={{ width: "180px", accentColor: "var(--primary, #f59e0b)", cursor: "pointer" }}
+              style={{ width: "180px", accentColor: "var(--accent, #f59e0b)", cursor: "pointer" }}
             />
             <span style={{ minWidth: "45px", fontWeight: 600, fontSize: "0.95rem" }}>
               {Math.round(musicVolume * 100)}%
@@ -246,7 +233,7 @@ export default function SoundTab({
               step="0.05"
               value={sfxVolume}
               onChange={(e) => handleSfxVolumeChange(parseFloat(e.target.value))}
-              style={{ width: "180px", accentColor: "var(--primary, #f59e0b)", cursor: "pointer" }}
+              style={{ width: "180px", accentColor: "var(--accent, #f59e0b)", cursor: "pointer" }}
             />
             <span style={{ minWidth: "45px", fontWeight: 600, fontSize: "0.95rem" }}>
               {Math.round(sfxVolume * 100)}%
@@ -294,7 +281,7 @@ export default function SoundTab({
                 step="0.05"
                 value={previewVideoVolume}
                 onChange={(e) => handlePreviewVideoVolumeChange(parseFloat(e.target.value))}
-                style={{ width: "180px", accentColor: "var(--primary, #f59e0b)", cursor: "pointer" }}
+                style={{ width: "180px", accentColor: "var(--accent, #f59e0b)", cursor: "pointer" }}
               />
               <span style={{ minWidth: "45px", fontWeight: 600, fontSize: "0.95rem" }}>
                 {Math.round(previewVideoVolume * 100)}%

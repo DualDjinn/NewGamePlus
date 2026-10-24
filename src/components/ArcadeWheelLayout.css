@@ -1584,18 +1584,6 @@
   box-shadow: 0 6px 18px rgba(0, 180, 216, 0.5);
 }
 
-/* Options Button (osu! Deep Purple / Slate) */
-.osu-btn-options {
-  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
-  padding: 0 20px;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
-}
-
-.osu-btn-options:hover {
-  background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
-  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.5);
-}
-
 .osu-btn-icon {
   flex-shrink: 0;
 }

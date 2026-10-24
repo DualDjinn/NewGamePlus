@@ -30,6 +30,14 @@ pub fn fnv1a_id(data: &str) -> u64 {
     h
 }
 
+pub fn file_mtime_secs(path: &Path) -> Option<u64> {
+    std::fs::metadata(path)
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+}
+
 pub fn scan_and_fetch_cores_inner(
     app: tauri::AppHandle,
     folders: Vec<String>,
@@ -242,6 +250,14 @@ pub fn scan_and_fetch_cores_inner(
                         // (e.g. RVZ reclasificado de GAMECUBE a WII)
                         g.platform = info.platform.into();
                         g.core_name = info.core_name.into();
+
+                        let current_mtime = file_mtime_secs(path);
+                        if current_mtime.is_some() && g.rom_mtime == current_mtime {
+                            g.favorite = is_fav;
+                            g.rom_mtime = current_mtime;
+                            return Some(g);
+                        }
+                        g.rom_mtime = current_mtime;
 
                         let rom_name = if info.platform == "PS3" {
                             game_name.clone()
@@ -562,6 +578,8 @@ pub fn scan_and_fetch_cores_inner(
                             publisher: final_publisher,
                             release_year: final_release_year,
                             region,
+                            rom_mtime: file_mtime_secs(path),
+                            manual_exe: false,
                         })
                     }
                 })

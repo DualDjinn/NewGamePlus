@@ -97,7 +97,7 @@ export default function LibraryTab({
       </div>
 
       {/* Escaneo Principal */}
-      <section className="settings-card highlight" id="settings-scan">
+      <section className="settings-card highlight settings-card--wide" id="settings-scan">
         <div className="settings-card-header">
           <div>
             <h3>{t("settings.librarySection.scanTitle")}</h3>
@@ -201,7 +201,7 @@ export default function LibraryTab({
       </section>
 
       {/* Carpetas de Videos / Snaps Locales */}
-      <section className="settings-card" id="settings-video-folders">
+      <section className="settings-card settings-card--wide" id="settings-video-folders">
         <div className="settings-card-header">
           <div>
             <h3>{t("librarySection.videoFolders", "Carpetas de Videos / Snaps")}</h3>
@@ -244,7 +244,7 @@ export default function LibraryTab({
             >
               {scanningLocalVideos
                 ? t("librarySection.scanningLocalVideos", "Verificando videos...")
-                : `🔄 ${t("librarySection.scanLocalVideos", "Escanear Videos Locales")}`}
+                : ` ${t("librarySection.scanLocalVideos", "Escanear Videos Locales")}`}
             </button>
             {videoStats && (
               <span className="settings-badge-ok" style={{ fontSize: "0.85rem", padding: "4px 10px" }}>
@@ -252,7 +252,7 @@ export default function LibraryTab({
                   withVideo: videoStats.games_with_video,
                   total: videoStats.total_games,
                   percent: Math.round((videoStats.games_with_video / (videoStats.total_games || 1)) * 100),
-                  defaultValue: `🎮 ${videoStats.games_with_video} de ${videoStats.total_games} juegos con video (${Math.round((videoStats.games_with_video / (videoStats.total_games || 1)) * 100)}%)`,
+                  defaultValue: ` ${videoStats.games_with_video} de ${videoStats.total_games} juegos con video (${Math.round((videoStats.games_with_video / (videoStats.total_games || 1)) * 100)}%)`,
                 })}
               </span>
             )}
@@ -264,7 +264,7 @@ export default function LibraryTab({
       <section className="settings-card" id="settings-batch-screenscraper">
         <div className="settings-card-header">
           <div>
-            <h3>🎬 {t("librarySection.batchScrapeTitle", "Descarga Masiva de Gameplays (ScreenScraper)")}</h3>
+            <h3>{t("librarySection.batchScrapeTitle", "Descarga Masiva de Gameplays (ScreenScraper)")}</h3>
             <p>{t("librarySection.batchScrapeSubtitle", "Descarga automáticamente los videos y logos de toda tu biblioteca en segundo plano.")}</p>
           </div>
           {ssLinked ? (
@@ -276,7 +276,7 @@ export default function LibraryTab({
                   style={{ padding: "6px 14px", borderRadius: "6px", fontSize: "0.85rem" }}
                   onClick={onCancelBatchScrape}
                 >
-                  {t("librarySection.batchScrapeCancel", "✕ Cancelar")}
+                  {t("librarySection.batchScrapeCancel", "Cancelar")}
                 </button>
               ) : (
                 <button
@@ -284,7 +284,7 @@ export default function LibraryTab({
                   className="settings-btn-primary"
                   onClick={() => onStartBatchScrape?.(batchOnlyMissing)}
                 >
-                  {t("librarySection.batchScrapeStart", "▶ Iniciar Descarga Masiva")}
+                  {t("librarySection.batchScrapeStart", "Iniciar Descarga Masiva")}
                 </button>
               )}
             </div>
@@ -351,7 +351,7 @@ export default function LibraryTab({
       <section className="settings-card" id="settings-batch-steamgrid">
         <div className="settings-card-header">
           <div>
-            <h3>🎨 {t("librarySection.batchSteamGridTitle", "Descarga Masiva de Heroes y Logos (SteamGridDB)")}</h3>
+            <h3>{t("librarySection.batchSteamGridTitle", "Descarga Masiva de Heroes y Logos (SteamGridDB)")}</h3>
             <p>{t("librarySection.batchSteamGridSubtitle", "Descarga automáticamente los banners panorámicos HD y logos transparentes de toda tu biblioteca en segundo plano.")}</p>
           </div>
           {sgdbLinked ? (
@@ -484,7 +484,7 @@ export default function LibraryTab({
               className={`settings-sort-btn ${regionPref === "usa" ? "active" : ""}`}
               onClick={() => onRegionPrefChange("usa")}
             >
-              🇺🇸 USA
+              USA
             </button>
             <button
               type="button"

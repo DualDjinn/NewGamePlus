@@ -31,6 +31,10 @@ pub struct Game {
     pub release_year: Option<i32>,
     #[serde(default)]
     pub region: Option<String>,
+    #[serde(default)]
+    pub rom_mtime: Option<u64>,
+    #[serde(default)]
+    pub manual_exe: bool,
 }
 
 pub fn default_theme() -> String {

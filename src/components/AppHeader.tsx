@@ -58,7 +58,7 @@ export default function AppHeader(props: AppHeaderProps) {
       <div className="app-header-left" />
 
       <div className="app-header-center">
-        {section === "settings" ? (
+        {section === "home" && layoutStyle === "arcade" ? null : section === "settings" ? (
           <div className="app-navbar-search app-settings-search">
             <div className="app-navbar-search-box">
               <span className="app-navbar-search-icon">

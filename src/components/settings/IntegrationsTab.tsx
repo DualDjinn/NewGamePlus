@@ -243,7 +243,7 @@ export default function IntegrationsTab({
       </section>
 
       {/* ScreenScraper.fr (Gameplay Snaps & Wheel Logos) */}
-      <section className="settings-card" id="settings-screenscraper">
+      <section className="settings-card settings-card--wide" id="settings-screenscraper">
         <div className="settings-card-header">
           <div>
             <h3>{t("settings.integrations.ssTitle")}</h3>

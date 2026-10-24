@@ -35,7 +35,7 @@ describe("LibraryTab Component", () => {
     const onScan = vi.fn();
     render(<LibraryTab {...defaultProps} onScan={onScan} />);
 
-    const scanBtn = screen.getByRole("button", { name: /▶ Escanear Ahora/i });
+    const scanBtn = screen.getByRole("button", { name: /Escanear Ahora/i });
     fireEvent.click(scanBtn);
 
     expect(onScan).toHaveBeenCalledTimes(1);

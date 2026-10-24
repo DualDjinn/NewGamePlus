@@ -18,6 +18,7 @@ import {
 } from "../lib/tauri";
 import type { SortKey, Game, SettingsTab, GraphicsConsole, LayoutStyle } from "../types";
 import EmulatorsTab from "./EmulatorsTab";
+import PcExeTab from "./PcExeTab";
 import ConfirmModal from "./ConfirmModal";
 import LibraryTab from "./settings/LibraryTab";
 import AppearanceTab from "./settings/AppearanceTab";
@@ -31,6 +32,7 @@ import { useIntegrationsSettings } from "./settings/useIntegrationsSettings";
 import { useSoundSettings } from "./settings/useSoundSettings";
 import { useLibraryTabSettings } from "./settings/useLibraryTabSettings";
 import { useSystemSettings } from "./settings/useSystemSettings";
+import { FolderIcon, PaletteIcon, ImageIcon, VolumeIcon, GamepadIcon, CpuIcon, GlobeIcon, UserIcon, WrenchIcon } from "./icons";
 import "./Settings.css";
 
 interface Props {
@@ -439,7 +441,7 @@ export default function Settings({
             className={`settings-nav-item ${activeTab === "library" ? "active" : ""}`}
             onClick={() => setActiveTab("library")}
           >
-            <span className="settings-nav-icon">📂</span>
+            <span className="settings-nav-icon"><FolderIcon /></span>
             <span className="settings-nav-text">{t("settings.tabs.library")}</span>
           </button>
 
@@ -448,7 +450,7 @@ export default function Settings({
             className={`settings-nav-item ${activeTab === "appearance" ? "active" : ""}`}
             onClick={() => setActiveTab("appearance")}
           >
-            <span className="settings-nav-icon">🎨</span>
+            <span className="settings-nav-icon"><PaletteIcon /></span>
             <span className="settings-nav-text">{t("settings.tabs.appearance")}</span>
           </button>
 
@@ -457,7 +459,7 @@ export default function Settings({
             className={`settings-nav-item ${activeTab === "graphics" ? "active" : ""}`}
             onClick={() => setActiveTab("graphics")}
           >
-            <span className="settings-nav-icon">🖼️</span>
+            <span className="settings-nav-icon"><ImageIcon /></span>
             <span className="settings-nav-text">{t("settings.tabs.graphics")}</span>
           </button>
 
@@ -466,7 +468,7 @@ export default function Settings({
             className={`settings-nav-item ${activeTab === "sound" ? "active" : ""}`}
             onClick={() => setActiveTab("sound")}
           >
-            <span className="settings-nav-icon">🔊</span>
+            <span className="settings-nav-icon"><VolumeIcon /></span>
             <span className="settings-nav-text">{t("settings.tabs.sound")}</span>
           </button>
 
@@ -475,7 +477,7 @@ export default function Settings({
             className={`settings-nav-item ${activeTab === "emulation" ? "active" : ""}`}
             onClick={() => setActiveTab("emulation")}
           >
-            <span className="settings-nav-icon">🕹️</span>
+            <span className="settings-nav-icon"><GamepadIcon /></span>
             <span className="settings-nav-text">{t("settings.tabs.emulation")}</span>
           </button>
 
@@ -484,9 +486,16 @@ export default function Settings({
             className={`settings-nav-item ${activeTab === "emulators" ? "active" : ""}`}
             onClick={() => setActiveTab("emulators")}
           >
-            <span className="settings-nav-icon">🎮</span>
+            <span className="settings-nav-icon"><CpuIcon /></span>
             <span className="settings-nav-text">{t("settings.tabs.emulators")}</span>
             {emulatorUpdatesCount > 0 && <span className="settings-pill-dot" />}
+          </button>
+
+          <button
+            className={`settings-nav-item ${activeTab === "pcexe" ? "active" : ""}`}
+            onClick={() => setActiveTab("pcexe")}
+          >
+            <span className="settings-nav-text">{t("settings.tabs.pcexe")}</span>
           </button>
 
           <button
@@ -494,7 +503,7 @@ export default function Settings({
             className={`settings-nav-item ${activeTab === "integrations" ? "active" : ""}`}
             onClick={() => setActiveTab("integrations")}
           >
-            <span className="settings-nav-icon">🌐</span>
+            <span className="settings-nav-icon"><GlobeIcon /></span>
             <span className="settings-nav-text">{t("settings.tabs.integrations")}</span>
             {(integrations.raLinkedUser || integrations.sgdbLinked) && <span className="settings-pill-dot" />}
           </button>
@@ -504,7 +513,7 @@ export default function Settings({
             className={`settings-nav-item ${activeTab === "profiles" ? "active" : ""}`}
             onClick={() => setActiveTab("profiles")}
           >
-            <span className="settings-nav-icon">👤</span>
+            <span className="settings-nav-icon"><UserIcon /></span>
             <span className="settings-nav-text">{t("settings.tabs.profiles")}</span>
           </button>
 
@@ -513,7 +522,7 @@ export default function Settings({
             className={`settings-nav-item ${activeTab === "system" ? "active" : ""}`}
             onClick={() => setActiveTab("system")}
           >
-            <span className="settings-nav-icon">🛠️</span>
+            <span className="settings-nav-icon"><WrenchIcon /></span>
             <span className="settings-nav-text">{t("settings.tabs.system")}</span>
           </button>
         </nav>
@@ -625,6 +634,8 @@ export default function Settings({
         )}
 
         {activeTab === "emulators" && <EmulatorsTab />}
+
+        {activeTab === "pcexe" && <PcExeTab />}
 
         {activeTab === "integrations" && <IntegrationsTab {...integrations} />}
 

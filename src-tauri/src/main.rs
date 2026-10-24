@@ -232,6 +232,8 @@ fn main() {
             commands::fix_match_get_covers,
             commands::apply_fix_match,
             commands::update_game_title,
+            commands::associate_pc_exe,
+            commands::clear_pc_exe,
             commands::get_cast_network_info,
             commands::open_wireless_display,
             commands::discover_lan_devices,

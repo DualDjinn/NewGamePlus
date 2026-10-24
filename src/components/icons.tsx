@@ -141,3 +141,95 @@ export function MinimizeIcon({ className }: { className?: string }) {
     </Icon>
   );
 }
+
+export function FolderIcon() {
+  return (
+    <Icon>
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+    </Icon>
+  );
+}
+
+export function PaletteIcon() {
+  return (
+    <Icon>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="8" cy="9" r="1.2" fill="currentColor" />
+      <circle cx="12" cy="7" r="1.2" fill="currentColor" />
+      <circle cx="16" cy="9" r="1.2" fill="currentColor" />
+      <circle cx="9" cy="14" r="1.2" fill="currentColor" />
+    </Icon>
+  );
+}
+
+export function ImageIcon() {
+  return (
+    <Icon>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="8.5" cy="10.5" r="1.5" fill="currentColor" />
+      <path d="M3 17l5-5 4 4 3-3 6 6" />
+    </Icon>
+  );
+}
+
+export function VolumeIcon() {
+  return (
+    <Icon>
+      <path d="M11 5L6 9H3v6h3l5 4V5z" />
+      <path d="M15.5 8.5a4.5 4.5 0 0 1 0 7" />
+      <path d="M18 6a8 8 0 0 1 0 12" />
+    </Icon>
+  );
+}
+
+export function GamepadIcon() {
+  return (
+    <Icon>
+      <rect x="2" y="6" width="20" height="12" rx="4" />
+      <path d="M6 12h4m-2-2v4m9-3h.01m2 2h.01" />
+    </Icon>
+  );
+}
+
+export function CpuIcon() {
+  return (
+    <Icon>
+      <rect x="7" y="7" width="10" height="10" rx="1" />
+      <path d="M9 1v3m6-3v3M9 20v3m6-3v3M1 9h3m-3 6h3M20 9h3m-3 6h3" />
+    </Icon>
+  );
+}
+
+export function GlobeIcon() {
+  return (
+    <Icon>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+    </Icon>
+  );
+}
+
+export function UserIcon() {
+  return (
+    <Icon>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+    </Icon>
+  );
+}
+
+export function WrenchIcon() {
+  return (
+    <Icon>
+      <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.1 2.1-2.8-2.8 2.1-2.1z" />
+    </Icon>
+  );
+}
+
+export function PlayIcon() {
+  return (
+    <Icon>
+      <polygon points="6 4 20 12 6 20 6 4" fill="currentColor" />
+    </Icon>
+  );
+}

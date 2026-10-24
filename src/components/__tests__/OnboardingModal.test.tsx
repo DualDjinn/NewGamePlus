@@ -60,7 +60,7 @@ describe("OnboardingModal Component", () => {
     expect(screen.getByRole("heading", { name: /SteamGridDB/i })).toBeInTheDocument();
 
     // Step 2 -> Back to Step 1
-    const backBtn = screen.getByRole("button", { name: /← Anterior/i });
+    const backBtn = screen.getByRole("button", { name: /Anterior/i });
     fireEvent.click(backBtn);
     expect(screen.getByText("Carpetas de ROMs y Juegos")).toBeInTheDocument();
   });
@@ -90,7 +90,7 @@ describe("OnboardingModal Component", () => {
 
     await waitFor(() => {
       expect(tauriLib.saveSteamGridDBKey).toHaveBeenCalledWith("test-api-token-12345");
-      expect(screen.getByText(/✓ SteamGridDB Conectado/i)).toBeInTheDocument();
+      expect(screen.getByText(/SteamGridDB Conectado/i)).toBeInTheDocument();
     });
   });
 
@@ -113,7 +113,7 @@ describe("OnboardingModal Component", () => {
     }
 
     expect(screen.getByText("Controles y Navegación")).toBeInTheDocument();
-    const finalizeBtn = screen.getByRole("button", { name: /🚀 Escanear e Iniciar NewGame\+/i });
+    const finalizeBtn = screen.getByRole("button", { name: /Escanear e Iniciar NewGame\+/i });
     fireEvent.click(finalizeBtn);
 
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);

@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { changeAppLanguage } from "../../i18n";
+import { LibraryIcon, MaximizeIcon, PlayIcon } from "../icons";
+import { ConsoleIcon } from "../ConsoleIcon";
 import type { LayoutStyle } from "../../types";
 
 export interface ThemeOption {
@@ -92,6 +94,24 @@ export default function AppearanceTab({
         </p>
       </div>
 
+      {/* Modo Kiosko */}
+      <section className="settings-card" id="settings-kiosk">
+        <div className="settings-row-option">
+          <div>
+            <span className="settings-option-title">{t("settings.appearance.kioskTitle")}</span>
+            <p className="settings-option-desc">{t("settings.appearance.kioskDesc")}</p>
+          </div>
+          <label className="settings-toggle">
+            <input
+              type="checkbox"
+              checked={kioskMode}
+              onChange={onToggleKiosk}
+            />
+            <span className="settings-toggle-slider" />
+          </label>
+        </div>
+      </section>
+
       {/* Selector de Idioma */}
       <section className="settings-card" id="settings-language">
         <h3>{t("settings.appearance.language")}</h3>
@@ -104,20 +124,20 @@ export default function AppearanceTab({
             className={`settings-sort-btn ${i18n.language.startsWith("es") ? "active" : ""}`}
             onClick={() => changeAppLanguage("es")}
           >
-            🇪🇸 {t("settings.appearance.languageEs")}
+            {t("settings.appearance.languageEs")}
           </button>
           <button
             type="button"
             className={`settings-sort-btn ${i18n.language.startsWith("en") ? "active" : ""}`}
             onClick={() => changeAppLanguage("en")}
           >
-            🇺🇸 {t("settings.appearance.languageEn")}
+            {t("settings.appearance.languageEn")}
           </button>
         </div>
       </section>
 
       {/* Selector de Estilos de Diseño */}
-      <section className="settings-card" id="settings-layout">
+      <section className="settings-card settings-card--wide" id="settings-layout">
         <h3>{t("settings.appearance.layoutStyle")}</h3>
         <p className="settings-hint" style={{ marginBottom: "16px" }}>
           {t("settings.appearance.layoutDesc")}
@@ -138,7 +158,7 @@ export default function AppearanceTab({
                 fontSize: "24px",
               }}
             >
-              📑
+               <LibraryIcon />
             </div>
             <div className="settings-theme-info">
               <span className="settings-theme-name">
@@ -162,7 +182,7 @@ export default function AppearanceTab({
                 fontSize: "24px",
               }}
             >
-              🌌
+               <MaximizeIcon />
             </div>
             <div className="settings-theme-info">
               <span className="settings-theme-name">
@@ -186,7 +206,7 @@ export default function AppearanceTab({
                 fontSize: "24px",
               }}
             >
-              🕹️
+               <ConsoleIcon platform="arcade" size={26} />
             </div>
             <div className="settings-theme-info">
               <span className="settings-theme-name">
@@ -198,7 +218,7 @@ export default function AppearanceTab({
       </section>
 
       {/* Selector de Temas */}
-      <section className="settings-card" id="settings-themes">
+      <section className="settings-card settings-card--wide" id="settings-themes">
         <h3>{t("settings.appearance.themesTitle")}</h3>
         <p className="settings-hint" style={{ marginBottom: "16px" }}>
           {t("settings.appearance.themesDesc")}
@@ -223,8 +243,24 @@ export default function AppearanceTab({
         </div>
       </section>
 
-      {/* Animación de Inicio (Splash Screen) */}
-      <section className="settings-card" id="settings-splash">
+      {/* Modo Kiosko */}
+      <section className="settings-card" id="settings-kiosk">
+        <div className="settings-row-option">
+          <div>
+            <span className="settings-option-title">{t("settings.appearance.kioskTitle")}</span>
+            <p className="settings-option-desc">{t("settings.appearance.kioskDesc")}</p>
+          </div>
+          <label className="settings-toggle">
+            <input
+              type="checkbox"
+              checked={kioskMode}
+              onChange={onToggleKiosk}
+            />
+            <span className="settings-toggle-slider" />
+          </label>
+        </div>
+      </section>
+      <section className="settings-card settings-card--wide" id="settings-splash">
         <h3>{t("settings.appearance.splashSection")}</h3>
         <p className="settings-hint" style={{ marginBottom: "16px" }}>
           {t("settings.appearance.splashSubtitle")}
@@ -268,28 +304,11 @@ export default function AppearanceTab({
             onClick={onPreviewSplash}
             title={t("settings.appearance.splashPreviewBtn")}
           >
-            ▶ {t("settings.appearance.splashPreviewBtn")}
+            <PlayIcon /> {t("settings.appearance.splashPreviewBtn")}
           </button>
         </div>
       </section>
 
-      {/* Modo Kiosko */}
-      <section className="settings-card" id="settings-kiosk">
-        <div className="settings-row-option">
-          <div>
-            <span className="settings-option-title">{t("settings.appearance.kioskTitle")}</span>
-            <p className="settings-option-desc">{t("settings.appearance.kioskDesc")}</p>
-          </div>
-          <label className="settings-toggle">
-            <input
-              type="checkbox"
-              checked={kioskMode}
-              onChange={onToggleKiosk}
-            />
-            <span className="settings-toggle-slider" />
-          </label>
-        </div>
-      </section>
     </div>
   );
 }

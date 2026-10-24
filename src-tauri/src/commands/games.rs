@@ -260,6 +260,50 @@ pub fn update_game_title(
 }
 
 #[tauri::command]
+pub fn associate_pc_exe(game_id: String, exe_path: String) -> Result<Game, String> {
+    let path = std::path::Path::new(&exe_path);
+    if !path.exists() || !path.is_file() {
+        return Err("El archivo no existe".into());
+    }
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    if !["exe", "lnk", "bat", "cmd"].contains(&ext.as_str()) {
+        return Err("Solo se permiten .exe, .lnk, .bat o .cmd".into());
+    }
+    let mut state = lock_state();
+    let game = state
+        .games
+        .iter_mut()
+        .find(|g| g.id == game_id)
+        .ok_or_else(|| format!("Juego con ID {} no encontrado", game_id))?;
+    if game.platform != "PC" {
+        return Err("Solo juegos de PC".into());
+    }
+    game.rom_path = exe_path;
+    game.manual_exe = true;
+    game.rom_mtime = None;
+    let updated = game.clone();
+    save_state(&state);
+    Ok(updated)
+}
+
+#[tauri::command]
+pub fn clear_pc_exe(game_id: String) -> Result<Game, String> {
+    let mut state = lock_state();
+    let game = state
+        .games
+        .iter_mut()
+        .find(|g| g.id == game_id)
+        .ok_or_else(|| format!("Juego con ID {} no encontrado", game_id))?;
+    game.manual_exe = false;
+    let updated = game.clone();
+    save_state(&state);
+    Ok(updated)
+}
+#[tauri::command]
 pub fn save_slot(slot_num: u8) -> Result<crate::emulator::SaveSlot, String> {
     crate::emulator::save_slot(slot_num)
 }

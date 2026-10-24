@@ -1,6 +1,7 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PLATFORM_CORES } from "../../lib/cores";
+import { GamepadIcon } from "../icons";
 import ControllerMappingModal from "../ControllerMappingModal";
 
 export interface EmulationTabProps {
@@ -27,15 +28,15 @@ export default function EmulationTab({
         <p>{t("settings.emulation.panelDesc")}</p>
       </div>
 
-      {/* Detección de Gamepad */}
-      <section className="settings-card" id="settings-gamepads">
+      {/* DetecciÃ³n de Gamepad */}
+      <section className="settings-card settings-card--wide" id="settings-gamepads">
         <h3>{t("settings.emulation.padsTitle")}</h3>
         <div className="settings-gamepad-box">
           {connectedGamepads.length > 0 ? (
             <div className="settings-gamepad-list">
               {connectedGamepads.map((name, i) => (
                 <div key={i} className="settings-gamepad-item">
-                  <span className="settings-gamepad-icon">🎮</span>
+                  <span className="settings-gamepad-icon"><GamepadIcon /></span>
                   <div>
                     <span className="settings-gamepad-name">{name}</span>
                     <span className="settings-badge-ok">{t("settings.emulation.padActive")}</span>
@@ -45,7 +46,7 @@ export default function EmulationTab({
             </div>
           ) : (
             <div className="settings-gamepad-empty">
-              <span className="settings-gamepad-icon-muted">🎮</span>
+              <span className="settings-gamepad-icon-muted"><GamepadIcon /></span>
               <p>{t("settings.emulation.padEmpty")}</p>
               <span className="settings-hint">{t("settings.emulation.padHint")}</span>
             </div>
@@ -54,7 +55,7 @@ export default function EmulationTab({
         <div style={{ marginTop: "16px" }}>
           <button
             type="button"
-            className="settings-action-btn"
+            className="settings-btn-primary"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -75,11 +76,11 @@ export default function EmulationTab({
         </div>
       </section>
 
-      {/* Asignación de Cores */}
+      {/* AsignaciÃ³n de Cores */}
       {uniquePlatforms.length > 0 ? (
-        <section className="settings-card" id="settings-platform-cores">
-          <h3>{t("settings.emulation.coresTitle")}</h3>
-          <p className="settings-hint" style={{ marginBottom: "16px" }}>
+<section className="settings-card settings-card--wide" id="settings-platform-cores">
+            <h3>{t("settings.emulation.coresTitle")}</h3>
+            <p className="settings-hint" style={{ marginBottom: "16px" }}>
             {t("settings.emulation.coresDesc")}
           </p>
           <div className="settings-platform-cores">
@@ -105,9 +106,9 @@ export default function EmulationTab({
           </div>
         </section>
       ) : (
-        <section className="settings-card" id="settings-platform-cores">
-          <h3>{t("settings.emulation.coresTitle")}</h3>
-          <p className="settings-hint">
+<section className="settings-card settings-card--wide" id="settings-platform-cores">
+            <h3>{t("settings.emulation.coresTitle")}</h3>
+            <p className="settings-hint">
             {t("settings.emulation.coresEmpty")}
           </p>
         </section>
@@ -120,3 +121,4 @@ export default function EmulationTab({
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Game } from "../../types";
 
@@ -113,7 +113,7 @@ export default function ProfilesTab({
                 onClick={startRenaming}
                 title={t("settings.profiles.renameProfile", "Renombrar Perfil")}
               >
-                ✏️ {t("settings.profiles.renameProfile", "Renombrar")}
+                âœï¸ âœï¸ {t("settings.profiles.renameProfile", "Renombrar")}
               </button>
             )}
             {profiles.length > 1 && (
@@ -149,7 +149,7 @@ export default function ProfilesTab({
         </div>
       </section>
 
-      {/* Estadísticas del Perfil */}
+      {/* EstadÃ­sticas del Perfil */}
       <section className="settings-card" id="settings-stats">
         <h3>{t("settings.profiles.statsTitle")}</h3>
         <div className="settings-stats-grid">
@@ -176,3 +176,4 @@ export default function ProfilesTab({
     </div>
   );
 }
+

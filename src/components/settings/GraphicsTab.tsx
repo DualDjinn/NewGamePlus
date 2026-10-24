@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+﻿import { useTranslation } from "react-i18next";
 import type { GraphicsSettings } from "../../lib/tauri";
 import type { GraphicsConsole } from "../../types";
 
@@ -34,68 +34,68 @@ export default function GraphicsTab({
       </div>
 
       {/* Sub-selector de consolas */}
-      <div className="settings-console-tabs">
+      <div className="settings-console-tabs settings-card--wide">
         <button
           type="button"
           className={`settings-console-pill ${activeGraphicsConsole === "citra" ? "active" : ""}`}
           onClick={() => setActiveGraphicsConsole("citra")}
         >
-          🎮 3DS (Citra)
+          ðŸŽ®            ðŸŽ® 3DS (Citra)
         </button>
         <button
           type="button"
           className={`settings-console-pill ${activeGraphicsConsole === "pcsx2" ? "active" : ""}`}
           onClick={() => setActiveGraphicsConsole("pcsx2")}
         >
-          🎮 PS2 (PCSX2)
+          ðŸŽ®            ðŸŽ® PS2 (PCSX2)
         </button>
         <button
           type="button"
           className={`settings-console-pill ${activeGraphicsConsole === "dolphin" ? "active" : ""}`}
           onClick={() => setActiveGraphicsConsole("dolphin")}
         >
-          🎮 GameCube / Wii
+          ðŸŽ®            ðŸŽ® GameCube / Wii
         </button>
         <button
           type="button"
           className={`settings-console-pill ${activeGraphicsConsole === "ppsspp" ? "active" : ""}`}
           onClick={() => setActiveGraphicsConsole("ppsspp")}
         >
-          🎮 PSP (PPSSPP)
+          ðŸŽ®            ðŸŽ® PSP (PPSSPP)
         </button>
         <button
           type="button"
           className={`settings-console-pill ${activeGraphicsConsole === "ps1" ? "active" : ""}`}
           onClick={() => setActiveGraphicsConsole("ps1")}
         >
-          🎮 PS1
+          ðŸŽ® PS1
         </button>
         <button
           type="button"
           className={`settings-console-pill ${activeGraphicsConsole === "n64" ? "active" : ""}`}
           onClick={() => setActiveGraphicsConsole("n64")}
         >
-          🎮 N64
+          ðŸŽ® N64
         </button>
         <button
           type="button"
           className={`settings-console-pill ${activeGraphicsConsole === "nds" ? "active" : ""}`}
           onClick={() => setActiveGraphicsConsole("nds")}
         >
-          🎮 NDS (MelonDS)
+          ðŸŽ®            ðŸŽ® NDS (MelonDS)
         </button>
         <button
           type="button"
           className={`settings-console-pill ${activeGraphicsConsole === "global" ? "active" : ""}`}
           onClick={() => setActiveGraphicsConsole("global")}
         >
-          🌟 {t("settings.graphics.globalPill")}
+          ðŸŒŸ            {t("settings.graphics.globalPill")}
         </button>
       </div>
 
       {/* --- CITRA (3DS) --- */}
       {activeGraphicsConsole === "citra" && (
-        <section className="settings-card" id="settings-graphics-citra">
+        <section className="settings-card settings-card--wide" id="settings-graphics-citra">
           <div className="settings-card-header">
             <div>
               <h3>{t("settings.graphics.citraTitle")}</h3>
@@ -201,7 +201,7 @@ export default function GraphicsTab({
 
       {/* --- PCSX2 (PS2) --- */}
       {activeGraphicsConsole === "pcsx2" && (
-        <section className="settings-card" id="settings-graphics-pcsx2">
+        <section className="settings-card settings-card--wide" id="settings-graphics-pcsx2">
           <div className="settings-card-header">
             <div>
               <h3>{t("settings.graphics.pcsx2Title")}</h3>
@@ -272,9 +272,9 @@ export default function GraphicsTab({
         </section>
       )}
 
-      {/* --- DOLPHIN (GameCube / Wii) --- */}
+      {/* --- DOLPHIN (           ðŸŽ® GameCube / Wii) --- */}
       {activeGraphicsConsole === "dolphin" && (
-        <section className="settings-card" id="settings-graphics-dolphin">
+        <section className="settings-card settings-card--wide" id="settings-graphics-dolphin">
           <div className="settings-card-header">
             <div>
               <h3>{t("settings.graphics.dolphinTitle")}</h3>
@@ -343,7 +343,7 @@ export default function GraphicsTab({
 
       {/* --- PPSSPP (PSP) --- */}
       {activeGraphicsConsole === "ppsspp" && (
-        <section className="settings-card" id="settings-graphics-ppsspp">
+        <section className="settings-card settings-card--wide" id="settings-graphics-ppsspp">
           <div className="settings-card-header">
             <div>
               <h3>{t("settings.graphics.ppssppTitle")}</h3>
@@ -392,7 +392,7 @@ export default function GraphicsTab({
 
       {/* --- PS1 --- */}
       {activeGraphicsConsole === "ps1" && (
-        <section className="settings-card" id="settings-graphics-ps1">
+        <section className="settings-card settings-card--wide" id="settings-graphics-ps1">
           <div className="settings-card-header">
             <div>
               <h3>{t("settings.graphics.ps1Title")}</h3>
@@ -446,7 +446,7 @@ export default function GraphicsTab({
 
       {/* --- N64 --- */}
       {activeGraphicsConsole === "n64" && (
-        <section className="settings-card" id="settings-graphics-n64">
+        <section className="settings-card settings-card--wide" id="settings-graphics-n64">
           <div className="settings-card-header">
             <div>
               <h3>{t("settings.graphics.n64Title")}</h3>
@@ -475,7 +475,7 @@ export default function GraphicsTab({
 
       {/* --- NDS --- */}
       {activeGraphicsConsole === "nds" && (
-        <section className="settings-card" id="settings-graphics-nds">
+        <section className="settings-card settings-card--wide" id="settings-graphics-nds">
           <div className="settings-card-header">
             <div>
               <h3>{t("settings.graphics.ndsTitle")}</h3>
@@ -542,7 +542,7 @@ export default function GraphicsTab({
 
       {/* --- GLOBALES --- */}
       {activeGraphicsConsole === "global" && (
-        <section className="settings-card" id="settings-graphics-global">
+        <section className="settings-card settings-card--wide" id="settings-graphics-global">
           <div className="settings-card-header">
             <div>
               <h3>{t("settings.graphics.globalTitle")}</h3>
@@ -605,3 +605,4 @@ export default function GraphicsTab({
     </div>
   );
 }
+

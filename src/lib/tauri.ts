@@ -495,6 +495,14 @@ export async function updateGameTitle(
   });
 }
 
+export async function associatePcExe(gameId: string, exePath: string): Promise<Game> {
+  return invoke<Game>("associate_pc_exe", { gameId, exePath });
+}
+
+export async function clearPcExe(gameId: string): Promise<Game> {
+  return invoke<Game>("clear_pc_exe", { gameId });
+}
+
 export type { CastNetworkInfo, LanDevice, SunshineStatus } from "./api";
 export {
   getCastNetworkInfo,
