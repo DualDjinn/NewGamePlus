@@ -11,25 +11,6 @@ export function getCoverUrl(path: string | null | undefined): string {
   }
 }
 
-// Cover cache: path -> data URI (fallback)
-const coverCache = new Map<string, string>();
-
-export async function getCoverDataUri(path: string | null): Promise<string> {
-  if (!path) return "";
-  const cached = coverCache.get(path);
-  if (cached) return cached;
-  try {
-    const uri = await invoke<string | null>("get_cover_data_uri", { path });
-    if (uri) {
-      coverCache.set(path, uri);
-      return uri;
-    }
-  } catch (e) {
-    console.error("Cover load failed:", e);
-  }
-  return "";
-}
-
 export async function scanAndFetchCores(folders: string[]): Promise<ScanResult> {
   return invoke<ScanResult>("scan_and_fetch_cores", { folders });
 }
@@ -109,10 +90,6 @@ export async function launchGame(romPath: string): Promise<string> {
   }
 }
 
-export async function checkCore(coreName: string): Promise<boolean> {
-  return invoke<boolean>("check_core", { coreName });
-}
-
 export async function toggleFavorite(gameId: string): Promise<boolean> {
   return invoke<boolean>("toggle_favorite", { gameId });
 }
@@ -121,20 +98,8 @@ export async function getGames(): Promise<Game[]> {
   return invoke<Game[]>("get_games");
 }
 
-export async function getFavoritesList(): Promise<string[]> {
-  return invoke<string[]>("get_favorites_list");
-}
-
 export async function checkRetroarch(): Promise<boolean> {
   return invoke<boolean>("check_retroarch");
-}
-
-export async function checkRpcs3(): Promise<boolean> {
-  return invoke<boolean>("check_rpcs3");
-}
-
-export async function checkAzahar(): Promise<boolean> {
-  return invoke<boolean>("check_azahar");
 }
 
 export async function checkEden(): Promise<boolean> {
@@ -229,10 +194,6 @@ export async function setLayoutStyle(style: string): Promise<void> {
   return invoke<void>("set_layout_style", { style });
 }
 
-export async function updateGameCore(gameId: string, coreName: string): Promise<void> {
-  return invoke<void>("update_game_core", { gameId, coreName });
-}
-
 export async function createProfile(name: string): Promise<void> {
   return invoke<void>("create_profile", { name });
 }
@@ -267,14 +228,6 @@ export async function getGameMetadata(romPath: string): Promise<GameMetadata | n
 
 export async function savePlatformCores(cores: Record<string, string>): Promise<void> {
   return invoke<void>("save_platform_cores", { cores });
-}
-
-export async function saveBiosFolder(folder: string | null): Promise<void> {
-  return invoke<void>("save_bios_folder", { folder });
-}
-
-export async function getBiosFolder(): Promise<string | null> {
-  return invoke<string | null>("get_bios_folder");
 }
 
 export async function saveBiosFolders(folders: string[]): Promise<void> {
@@ -818,10 +771,6 @@ export async function netplayJoinRoom(
 
 export async function netplayStop(): Promise<void> {
   return invoke<void>("netplay_stop");
-}
-
-export function onNetplaySessionEnded(cb: (session: NetplaySession) => void) {
-  return listen<NetplaySession>("netplay-session-ended", (e) => cb(e.payload));
 }
 
 export function onScrapeBatchProgress(cb: (payload: BatchScrapeProgressEvent) => void) {
