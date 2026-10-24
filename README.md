@@ -93,6 +93,4 @@ La carpeta `src-tauri/binaries/` está excluida de git a propósito: cada usuari
 - No abras ROMs de orígenes no confiables: los parsers de headers/ISOs son
   superficie real de riesgo.
 
-## Estado del proyecto
 
-Ver `proximosPasos.md` (roadmap) y `pendientes2.md` (deuda de matching de metadatos).
